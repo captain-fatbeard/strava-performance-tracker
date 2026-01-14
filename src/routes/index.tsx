@@ -30,7 +30,7 @@ function Home() {
 
         // Refresh token if expired
         if (isTokenExpired(tokens)) {
-          const newTokens = await refreshStravaToken({ refreshToken: tokens.refresh_token })
+          const newTokens = await refreshStravaToken({ data: { refreshToken: tokens.refresh_token } })
           tokens = newTokens
           setStoredAuth({ tokens, athlete: auth.athlete })
         }
@@ -42,8 +42,10 @@ function Home() {
         oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
 
         const fetchedActivities = await fetchAllStravaActivities({
-          accessToken: tokens.access_token,
-          afterDate: oneYearAgo.toISOString(),
+          data: {
+            accessToken: tokens.access_token,
+            afterDate: oneYearAgo.toISOString(),
+          },
         })
 
         setActivities(fetchedActivities)

@@ -34,12 +34,19 @@ export const handleStravaCallback = createServerFn({ method: 'POST' })
   .inputValidator((data: { code: string }) => data)
   .handler(async ({ data }) => {
     const env = getEnv()
-    const result = await exchangeCodeForTokens(
-      data.code,
-      env.STRAVA_CLIENT_ID,
-      env.STRAVA_CLIENT_SECRET
-    )
-    return result
+    console.log('[Auth] Exchanging code, client_id:', env.STRAVA_CLIENT_ID, 'code:', data.code?.substring(0, 10) + '...')
+    try {
+      const result = await exchangeCodeForTokens(
+        data.code,
+        env.STRAVA_CLIENT_ID,
+        env.STRAVA_CLIENT_SECRET
+      )
+      console.log('[Auth] Success, got athlete:', result.athlete?.firstname)
+      return result
+    } catch (err) {
+      console.error('[Auth] Failed:', err)
+      throw err
+    }
   })
 
 export const refreshStravaToken = createServerFn({ method: 'POST' })

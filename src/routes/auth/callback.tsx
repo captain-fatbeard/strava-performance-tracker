@@ -24,7 +24,7 @@ function AuthCallback() {
       }
 
       try {
-        const result = await handleStravaCallback({ code })
+        const result = await handleStravaCallback({ data: { code } })
 
         setStoredAuth({
           tokens: {
