@@ -81,7 +81,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
     const weekMap = new Map<string, { distance: number; elevation: number; time: number; count: number }>()
 
     activities.forEach((activity) => {
-      const weekStart = format(startOfWeek(parseISO(activity.start_date)), 'MMM d')
+      const weekStart = format(startOfWeek(parseISO(activity.start_date), { weekStartsOn: 1 }), 'MMM d')
       const existing = weekMap.get(weekStart) || { distance: 0, elevation: 0, time: 0, count: 0 }
       weekMap.set(weekStart, {
         distance: existing.distance + metersToKm(activity.distance),

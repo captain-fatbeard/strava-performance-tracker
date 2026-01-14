@@ -1,8 +1,13 @@
 import { useState, useMemo } from 'react'
-import { type StravaActivity, type StravaAthlete, metersToKm, secondsToHMS } from '~/lib/strava'
+import { type StravaActivity, type StravaAthlete, metersToKm } from '~/lib/strava'
+import { estimateFTP } from '~/lib/performance'
 import { PerformanceCharts } from './PerformanceCharts'
 import { ActivityList } from './ActivityList'
 import { StatsCards } from './StatsCards'
+import { FitnessChart } from './FitnessChart'
+import { PowerZonesChart } from './PowerZonesChart'
+import { PersonalRecords } from './PersonalRecords'
+import { WeeklyProgress } from './WeeklyProgress'
 
 interface DashboardProps {
   athlete: StravaAthlete
@@ -16,7 +21,7 @@ type ActivityType = 'all' | 'Ride' | 'Run' | 'VirtualRide'
 export function Dashboard({ athlete, activities, onLogout }: DashboardProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>('90d')
   const [activityType, setActivityType] = useState<ActivityType>('all')
-  const [activeTab, setActiveTab] = useState<'overview' | 'activities' | 'trends'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'fitness' | 'trends' | 'activities'>('overview')
 
   const filteredActivities = useMemo(() => {
     let filtered = activities
@@ -84,6 +89,8 @@ export function Dashboard({ athlete, activities, onLogout }: DashboardProps) {
           filteredActivities.filter((a) => a.average_heartrate).length
         : 0
 
+    const ftp = estimateFTP(rides) || 0
+
     return {
       totalActivities: filteredActivities.length,
       totalDistance: metersToKm(totalDistance),
@@ -93,6 +100,7 @@ export function Dashboard({ athlete, activities, onLogout }: DashboardProps) {
       avgHR: Math.round(avgHR),
       rides: rides.length,
       runs: runs.length,
+      ftp,
     }
   }, [filteredActivities])
 
@@ -149,6 +157,12 @@ export function Dashboard({ athlete, activities, onLogout }: DashboardProps) {
           Overview
         </button>
         <button
+          className={activeTab === 'fitness' ? 'active' : ''}
+          onClick={() => setActiveTab('fitness')}
+        >
+          Fitness
+        </button>
+        <button
           className={activeTab === 'trends' ? 'active' : ''}
           onClick={() => setActiveTab('trends')}
         >
@@ -166,7 +180,15 @@ export function Dashboard({ athlete, activities, onLogout }: DashboardProps) {
         {activeTab === 'overview' && (
           <>
             <StatsCards stats={stats} />
-            <PerformanceCharts activities={filteredActivities} />
+            <PersonalRecords activities={filteredActivities} />
+            <WeeklyProgress activities={filteredActivities} />
+          </>
+        )}
+
+        {activeTab === 'fitness' && (
+          <>
+            <FitnessChart activities={filteredActivities} />
+            <PowerZonesChart activities={filteredActivities} />
           </>
         )}
 

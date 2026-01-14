@@ -10,6 +10,7 @@ interface StatsCardsProps {
     avgHR: number
     rides: number
     runs: number
+    ftp: number
   }
 }
 
@@ -42,8 +43,16 @@ export function StatsCards({ stats }: StatsCardsProps) {
         <span className="stat-detail">Total moving time</span>
       </div>
 
-      {stats.avgPower > 0 && (
+      {stats.ftp > 0 && (
         <div className="stat-card highlight">
+          <span className="stat-value">{stats.ftp}</span>
+          <span className="stat-label">Est. FTP</span>
+          <span className="stat-detail">Functional Threshold Power</span>
+        </div>
+      )}
+
+      {stats.avgPower > 0 && (
+        <div className="stat-card">
           <span className="stat-value">{stats.avgPower}</span>
           <span className="stat-label">Avg Watts</span>
           <span className="stat-detail">Average power</span>

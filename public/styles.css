@@ -415,3 +415,215 @@ body {
     padding: 0.5rem;
   }
 }
+
+/* Fitness Chart */
+.fitness-stats {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.fitness-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.fitness-stat .label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.fitness-stat .value {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.fitness-legend {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.fitness-legend p {
+  margin-bottom: 0.5rem;
+}
+
+.fitness-legend p:last-child {
+  margin-bottom: 0;
+}
+
+/* Power Zones */
+.ftp-badge {
+  background: var(--strava-orange);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.zones-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.zones-table table {
+  width: 100%;
+  font-size: 0.875rem;
+}
+
+.zones-table th {
+  text-align: left;
+  padding: 0.5rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.zones-table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.zone-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 0.5rem;
+}
+
+/* Personal Records */
+.personal-records {
+  margin-bottom: 2rem;
+}
+
+.personal-records h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.records-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.record-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.record-type {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.record-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--strava-orange);
+  line-height: 1.2;
+}
+
+.record-unit {
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+  margin-left: 0.25rem;
+}
+
+.record-activity {
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  margin-top: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.record-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Weekly Progress */
+.weekly-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.weekly-card {
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.weekly-card-header {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.weekly-card-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+.weekly-card-stats > div {
+  text-align: center;
+}
+
+.weekly-card-stats .stat-num {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.weekly-card-stats .stat-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+/* Responsive for new components */
+@media (max-width: 768px) {
+  .zones-container {
+    grid-template-columns: 1fr;
+  }
+
+  .weekly-summary-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .records-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .fitness-stats {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
