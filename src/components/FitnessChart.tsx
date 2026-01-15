@@ -16,15 +16,16 @@ import { calculateFitnessOverTime, estimateFTP } from '~/lib/performance'
 
 interface FitnessChartProps {
   activities: StravaActivity[]
+  days?: number
 }
 
-export function FitnessChart({ activities }: FitnessChartProps) {
+export function FitnessChart({ activities, days = 90 }: FitnessChartProps) {
   const ftp = useMemo(() => estimateFTP(activities), [activities])
 
   const fitnessData = useMemo(() => {
     if (!ftp) return []
-    return calculateFitnessOverTime(activities, ftp, 90)
-  }, [activities, ftp])
+    return calculateFitnessOverTime(activities, ftp, days)
+  }, [activities, ftp, days])
 
   if (!ftp || fitnessData.length === 0) {
     return (
