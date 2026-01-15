@@ -124,7 +124,8 @@ export function calculateFitnessOverTime(
 
   // Iterate through each day
   for (let d = new Date(startDate); d <= now; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toISOString().split('T')[0]
+    // Use local date to match activity.start_date_local format
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     const tss = dailyTSS[dateStr] || 0
 
     // Exponential weighted moving averages
