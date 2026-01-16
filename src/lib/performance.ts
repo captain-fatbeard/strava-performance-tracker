@@ -264,6 +264,172 @@ export function calculatePersonalRecords(activities: StravaActivity[]): Personal
   return records
 }
 
+// Advanced Metrics
+
+// VO2max estimation from cycling power (ml/kg/min)
+// Based on the relationship between power output and oxygen consumption
+export function estimateVO2max(ftp: number, weight: number): number {
+  if (!ftp || !weight) return 0
+  // Formula: VO2max ≈ (10.8 * W/kg) + 7
+  // This is based on the linear relationship between power and VO2
+  const wattsPerKg = ftp / weight
+  return Math.round((10.8 * wattsPerKg + 7) * 10) / 10
+}
+
+// Get VO2max category
+export function getVO2maxCategory(vo2max: number, gender: 'male' | 'female' = 'male'): string {
+  if (gender === 'male') {
+    if (vo2max >= 60) return 'Elite'
+    if (vo2max >= 52) return 'Excellent'
+    if (vo2max >= 45) return 'Good'
+    if (vo2max >= 38) return 'Average'
+    return 'Below Average'
+  } else {
+    if (vo2max >= 54) return 'Elite'
+    if (vo2max >= 47) return 'Excellent'
+    if (vo2max >= 40) return 'Good'
+    if (vo2max >= 33) return 'Average'
+    return 'Below Average'
+  }
+}
+
+// Intensity Factor (IF) - how hard was the workout relative to FTP
+export function calculateIF(normalizedPower: number, ftp: number): number {
+  if (!normalizedPower || !ftp) return 0
+  return Math.round((normalizedPower / ftp) * 100) / 100
+}
+
+// Variability Index (VI) - how steady was the effort (1.0 = perfectly steady)
+export function calculateVI(normalizedPower: number, avgPower: number): number {
+  if (!normalizedPower || !avgPower) return 0
+  return Math.round((normalizedPower / avgPower) * 100) / 100
+}
+
+// VAM (Velocità Ascensionale Media) - climbing speed in m/hour
+export function calculateVAM(elevationGain: number, movingTimeSeconds: number): number {
+  if (!elevationGain || !movingTimeSeconds) return 0
+  const hours = movingTimeSeconds / 3600
+  return Math.round(elevationGain / hours)
+}
+
+// Efficiency Factor (EF) - aerobic efficiency (higher = fitter)
+export function calculateEF(normalizedPower: number, avgHR: number): number {
+  if (!normalizedPower || !avgHR) return 0
+  return Math.round((normalizedPower / avgHR) * 100) / 100
+}
+
+// Power:HR ratio (watts per beat)
+export function calculatePowerHR(avgPower: number, avgHR: number): number {
+  if (!avgPower || !avgHR) return 0
+  return Math.round((avgPower / avgHR) * 100) / 100
+}
+
+// Calculate average metrics across activities
+export interface AdvancedMetrics {
+  avgIF: number
+  avgVI: number
+  avgVAM: number
+  avgEF: number
+  avgPowerHR: number
+  vo2max: number
+  vo2maxCategory: string
+  bestVAM: number
+  bestEF: number
+}
+
+export function calculateAdvancedMetrics(
+  activities: StravaActivity[],
+  ftp: number,
+  weight: number
+): AdvancedMetrics {
+  const rides = activities.filter(
+    (a) => (a.type === 'Ride' || a.type === 'VirtualRide') && a.average_watts
+  )
+
+  if (rides.length === 0) {
+    return {
+      avgIF: 0,
+      avgVI: 0,
+      avgVAM: 0,
+      avgEF: 0,
+      avgPowerHR: 0,
+      vo2max: 0,
+      vo2maxCategory: '',
+      bestVAM: 0,
+      bestEF: 0,
+    }
+  }
+
+  let totalIF = 0
+  let totalVI = 0
+  let totalVAM = 0
+  let totalEF = 0
+  let totalPowerHR = 0
+  let countIF = 0
+  let countVI = 0
+  let countVAM = 0
+  let countEF = 0
+  let countPowerHR = 0
+  let bestVAM = 0
+  let bestEF = 0
+
+  rides.forEach((ride) => {
+    const np = ride.weighted_average_watts || ride.average_watts || 0
+    const avgPower = ride.average_watts || 0
+    const avgHR = ride.average_heartrate || 0
+
+    // IF
+    if (ftp > 0) {
+      const rideIF = calculateIF(np, ftp)
+      totalIF += rideIF
+      countIF++
+    }
+
+    // VI
+    if (np > 0 && avgPower > 0) {
+      const rideVI = calculateVI(np, avgPower)
+      totalVI += rideVI
+      countVI++
+    }
+
+    // VAM (only for rides with significant climbing)
+    if (ride.total_elevation_gain > 100) {
+      const rideVAM = calculateVAM(ride.total_elevation_gain, ride.moving_time)
+      totalVAM += rideVAM
+      countVAM++
+      if (rideVAM > bestVAM) bestVAM = rideVAM
+    }
+
+    // EF and Power:HR (need HR data)
+    if (avgHR > 0 && np > 0) {
+      const rideEF = calculateEF(np, avgHR)
+      totalEF += rideEF
+      countEF++
+      if (rideEF > bestEF) bestEF = rideEF
+    }
+
+    if (avgHR > 0 && avgPower > 0) {
+      const ridePowerHR = calculatePowerHR(avgPower, avgHR)
+      totalPowerHR += ridePowerHR
+      countPowerHR++
+    }
+  })
+
+  const vo2max = estimateVO2max(ftp, weight)
+
+  return {
+    avgIF: countIF > 0 ? Math.round((totalIF / countIF) * 100) / 100 : 0,
+    avgVI: countVI > 0 ? Math.round((totalVI / countVI) * 100) / 100 : 0,
+    avgVAM: countVAM > 0 ? Math.round(totalVAM / countVAM) : 0,
+    avgEF: countEF > 0 ? Math.round((totalEF / countEF) * 100) / 100 : 0,
+    avgPowerHR: countPowerHR > 0 ? Math.round((totalPowerHR / countPowerHR) * 100) / 100 : 0,
+    vo2max,
+    vo2maxCategory: getVO2maxCategory(vo2max),
+    bestVAM,
+    bestEF: Math.round(bestEF * 100) / 100,
+  }
+}
+
 // Weekly training summary
 export interface WeeklySummary {
   week: string

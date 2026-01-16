@@ -11,6 +11,7 @@ interface StatsCardsProps {
     rides: number
     runs: number
     ftp: number
+    wattsPerKilo: number
   }
 }
 
@@ -48,6 +49,14 @@ export function StatsCards({ stats }: StatsCardsProps) {
           <span className="stat-value">{stats.ftp}</span>
           <span className="stat-label">Est. FTP</span>
           <span className="stat-detail">Functional Threshold Power</span>
+        </div>
+      )}
+
+      {stats.wattsPerKilo > 0 && (
+        <div className="stat-card highlight">
+          <span className="stat-value">{stats.wattsPerKilo.toFixed(2)}</span>
+          <span className="stat-label">W/kg</span>
+          <span className="stat-detail">Watts per kilogram</span>
         </div>
       )}
 

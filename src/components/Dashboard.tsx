@@ -8,6 +8,8 @@ import { FitnessChart } from './FitnessChart'
 import { PowerZonesChart } from './PowerZonesChart'
 import { PersonalRecords } from './PersonalRecords'
 import { WeeklyProgress } from './WeeklyProgress'
+import { AdvancedMetrics } from './AdvancedMetrics'
+import { EfficiencyChart } from './EfficiencyChart'
 
 interface DashboardProps {
   athlete: StravaAthlete
@@ -16,12 +18,21 @@ interface DashboardProps {
 }
 
 type TimeRange = '30d' | '90d' | '6m' | '1y' | 'all'
+
+const timeRangeToDays: Record<TimeRange, number> = {
+  '30d': 30,
+  '90d': 90,
+  '6m': 180,
+  '1y': 365,
+  'all': 365 * 3,
+}
 type ActivityType = 'all' | 'Ride' | 'Run' | 'VirtualRide'
 
 export function Dashboard({ athlete, activities, onLogout }: DashboardProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>('90d')
   const [activityType, setActivityType] = useState<ActivityType>('all')
   const [activeTab, setActiveTab] = useState<'overview' | 'fitness' | 'trends' | 'activities'>('overview')
+  const [weight, setWeight] = useState<number>(75)
 
   const filteredActivities = useMemo(() => {
     let filtered = activities
@@ -91,6 +102,8 @@ export function Dashboard({ athlete, activities, onLogout }: DashboardProps) {
 
     const ftp = estimateFTP(rides) || 0
 
+    const wattsPerKilo = ftp > 0 && weight > 0 ? ftp / weight : 0
+
     return {
       totalActivities: filteredActivities.length,
       totalDistance: metersToKm(totalDistance),
@@ -101,8 +114,9 @@ export function Dashboard({ athlete, activities, onLogout }: DashboardProps) {
       rides: rides.length,
       runs: runs.length,
       ftp,
+      wattsPerKilo,
     }
-  }, [filteredActivities])
+  }, [filteredActivities, weight])
 
   return (
     <div className="dashboard">
@@ -147,6 +161,17 @@ export function Dashboard({ athlete, activities, onLogout }: DashboardProps) {
             <option value="VirtualRide">Zwift only</option>
           </select>
         </div>
+
+        <div className="filter-group weight-slider">
+          <label>Weight: {weight} kg</label>
+          <input
+            type="range"
+            min="40"
+            max="150"
+            value={weight}
+            onChange={(e) => setWeight(Number(e.target.value))}
+          />
+        </div>
       </div>
 
       <nav className="dashboard-tabs">
@@ -187,7 +212,9 @@ export function Dashboard({ athlete, activities, onLogout }: DashboardProps) {
 
         {activeTab === 'fitness' && (
           <>
-            <FitnessChart activities={filteredActivities} />
+            <FitnessChart activities={filteredActivities} days={timeRangeToDays[timeRange]} />
+            <AdvancedMetrics activities={filteredActivities} weight={weight} />
+            <EfficiencyChart activities={filteredActivities} weight={weight} />
             <PowerZonesChart activities={filteredActivities} />
           </>
         )}
