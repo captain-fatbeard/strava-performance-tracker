@@ -160,10 +160,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
               <Tooltip
                 contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}
                 labelStyle={{ color: '#fff' }}
-                formatter={(value: number, name: string) => [
-                  `${value} W`,
-                  name === 'avgPower' ? 'Avg Power' : name === 'normalizedPower' ? 'NP' : 'Max',
-                ]}
+                formatter={(value: number, name: string) => [`${value} W`, name]}
               />
               <Legend />
               <Line
@@ -214,10 +211,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
                 <YAxis stroke="#888" fontSize={12} domain={['auto', 'auto']} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}
-                  formatter={(value: number, name: string) => [
-                    `${value} bpm`,
-                    name === 'avgHR' ? 'Avg HR' : 'Max HR',
-                  ]}
+                  formatter={(value: number, name: string) => [`${value} bpm`, name]}
                 />
                 <Legend />
                 <Area
@@ -275,7 +269,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
               <YAxis stroke="#888" fontSize={12} unit=" km/h" />
               <Tooltip
                 contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}
-                formatter={(value: number) => [`${value} km/h`]}
+                formatter={(value: number, name: string) => [`${value} km/h`, name]}
               />
               <Legend />
               <Line
