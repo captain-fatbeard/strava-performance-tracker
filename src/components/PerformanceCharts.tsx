@@ -13,6 +13,7 @@ import {
   Area,
   Legend,
   ReferenceLine,
+  ComposedChart,
 } from 'recharts'
 import { format, startOfWeek, parseISO } from 'date-fns'
 import { type StravaActivity, metersToKm } from '~/lib/strava'
@@ -111,26 +112,12 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
         date: format(new Date(activity.start_date_local), 'MMM d'),
         speed: Math.round((activity.average_speed * 3.6) * 10) / 10, // m/s to km/h
         maxSpeed: Math.round((activity.max_speed * 3.6) * 10) / 10,
+        elevation: Math.round(activity.total_elevation_gain),
         type: activity.type,
         name: activity.name,
       }))
   }, [activities])
 
-  // Elevation per ride trend
-  const elevationTrendData = useMemo(() => {
-    return activities
-      .filter((a) => a.type === 'Ride' || a.type === 'VirtualRide')
-      .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
-      .map((activity) => ({
-        date: format(new Date(activity.start_date_local), 'MMM d'),
-        elevation: Math.round(activity.total_elevation_gain),
-        distance: Math.round(metersToKm(activity.distance)),
-        gradient: activity.distance > 0
-          ? Math.round((activity.total_elevation_gain / activity.distance) * 1000) / 10
-          : 0,
-        name: activity.name,
-      }))
-  }, [activities])
 
   const hasNoPowerData = powerTrendData.length === 0
   const hasNoHRData = hrTrendData.length === 0
@@ -258,21 +245,33 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
         </ResponsiveContainer>
       </div>
 
-      {/* Speed Trend */}
+      {/* Speed & Elevation Trend */}
       {showAllCharts && (
         <div className="chart-section">
-          <h3>Speed Trend</h3>
+          <h3>Speed & Elevation Trend</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={speedTrendData}>
+            <ComposedChart data={speedTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke="#333" />
               <XAxis dataKey="date" stroke="#888" fontSize={12} />
-              <YAxis stroke="#888" fontSize={12} unit=" km/h" />
+              <YAxis yAxisId="speed" stroke="#888" fontSize={12} unit=" km/h" />
+              <YAxis yAxisId="elevation" orientation="right" stroke="#888" fontSize={12} unit=" m" />
               <Tooltip
                 contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}
-                formatter={(value: number, name: string) => [`${value} km/h`, name]}
+                formatter={(value: number, name: string) => {
+                  if (name === 'Elevation') return [`${value} m`, name]
+                  return [`${value} km/h`, name]
+                }}
               />
               <Legend />
+              <Bar
+                yAxisId="elevation"
+                dataKey="elevation"
+                fill="#14b8a644"
+                stroke="#14b8a6"
+                name="Elevation"
+              />
               <Line
+                yAxisId="speed"
                 type="monotone"
                 dataKey="speed"
                 stroke="#8b5cf6"
@@ -281,6 +280,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
                 name="Avg Speed"
               />
               <Line
+                yAxisId="speed"
                 type="monotone"
                 dataKey="maxSpeed"
                 stroke="#c084fc"
@@ -289,31 +289,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
                 name="Max Speed"
                 strokeDasharray="3 3"
               />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Elevation Trend */}
-      {showAllCharts && (
-        <div className="chart-section">
-          <h3>Elevation Trend (Cycling)</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={elevationTrendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-              <XAxis dataKey="date" stroke="#888" fontSize={12} />
-              <YAxis stroke="#888" fontSize={12} unit=" m" />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}
-                formatter={(value: number, name: string) => {
-                  if (name === 'elevation') return [`${value} m`, 'Elevation']
-                  if (name === 'gradient') return [`${value}%`, 'Avg Gradient']
-                  return [value, name]
-                }}
-              />
-              <Legend />
-              <Bar dataKey="elevation" fill="#14b8a6" name="Elevation (m)" />
-            </BarChart>
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       )}
