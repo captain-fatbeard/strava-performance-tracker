@@ -13,6 +13,7 @@ import {
 import { format, parseISO } from 'date-fns'
 import { type StravaActivity } from '~/lib/strava'
 import { calculateFitnessOverTime, estimateFTP } from '~/lib/performance'
+import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
 
 interface FitnessChartProps {
   activities: StravaActivity[]
@@ -41,12 +42,12 @@ export function FitnessChart({ activities, days = 90 }: FitnessChartProps) {
   const latestData = fitnessData[fitnessData.length - 1]
   const formStatus =
     latestData.tsb > 15
-      ? { label: 'Fresh', color: '#22c55e' }
+      ? { label: 'Fresh', color: chartTheme.colors.success }
       : latestData.tsb > 0
-        ? { label: 'Optimal', color: '#3b82f6' }
+        ? { label: 'Optimal', color: chartTheme.colors.info }
         : latestData.tsb > -15
-          ? { label: 'Tired', color: '#f97316' }
-          : { label: 'Overreached', color: '#ef4444' }
+          ? { label: 'Tired', color: chartTheme.colors.primary }
+          : { label: 'Overreached', color: chartTheme.colors.danger }
 
   return (
     <div className="chart-section">
@@ -55,11 +56,11 @@ export function FitnessChart({ activities, days = 90 }: FitnessChartProps) {
         <div className="fitness-stats">
           <span className="fitness-stat">
             <span className="label">CTL</span>
-            <span className="value">{latestData.ctl}</span>
+            <span className="value" style={{ color: chartTheme.colors.info }}>{latestData.ctl}</span>
           </span>
           <span className="fitness-stat">
             <span className="label">ATL</span>
-            <span className="value">{latestData.atl}</span>
+            <span className="value" style={{ color: chartTheme.colors.primary }}>{latestData.atl}</span>
           </span>
           <span className="fitness-stat">
             <span className="label">Form</span>
@@ -72,17 +73,17 @@ export function FitnessChart({ activities, days = 90 }: FitnessChartProps) {
 
       <ResponsiveContainer width="100%" height={300}>
         <AreaChart data={fitnessData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+          <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
           <XAxis
             dataKey="date"
-            stroke="#888"
+            stroke={chartTheme.axis}
             fontSize={12}
             tickFormatter={(date) => format(parseISO(date), 'MMM d')}
             interval="preserveStartEnd"
           />
-          <YAxis stroke="#888" fontSize={12} />
+          <YAxis stroke={chartTheme.axis} fontSize={12} />
           <Tooltip
-            contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}
+            {...tooltipStyle}
             labelFormatter={(date) => format(parseISO(date as string), 'MMM d, yyyy')}
             formatter={(value: number, name: string) => {
               const labels: Record<string, string> = {
@@ -94,28 +95,28 @@ export function FitnessChart({ activities, days = 90 }: FitnessChartProps) {
             }}
           />
           <Legend />
-          <ReferenceLine y={0} stroke="#666" strokeDasharray="3 3" />
+          <ReferenceLine y={0} stroke={chartTheme.axis} strokeDasharray="3 3" />
           <Area
             type="monotone"
             dataKey="ctl"
-            stroke="#3b82f6"
-            fill="#3b82f633"
+            stroke={chartTheme.colors.info}
+            fill={chartTheme.fills.info}
             name="Fitness (CTL)"
             strokeWidth={2}
           />
           <Area
             type="monotone"
             dataKey="atl"
-            stroke="#f97316"
-            fill="#f9731633"
+            stroke={chartTheme.colors.primary}
+            fill={chartTheme.fills.primary}
             name="Fatigue (ATL)"
             strokeWidth={2}
           />
           <Area
             type="monotone"
             dataKey="tsb"
-            stroke="#22c55e"
-            fill="#22c55e33"
+            stroke={chartTheme.colors.success}
+            fill={chartTheme.fills.success}
             name="Form (TSB)"
             strokeWidth={2}
           />

@@ -15,6 +15,7 @@ import {
 import { format } from 'date-fns'
 import { type StravaActivity } from '~/lib/strava'
 import { calculateEF, estimateVO2max, calculateVAM } from '~/lib/performance'
+import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
 
 interface EfficiencyChartProps {
   activities: StravaActivity[]
@@ -179,20 +180,19 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
           <>
             <ResponsiveContainer width="100%" height={300}>
               <ComposedChart data={efficiencyData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                <XAxis dataKey="date" stroke="#888" fontSize={12} />
+                <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+                <XAxis dataKey="date" stroke={chartTheme.axis} fontSize={12} />
                 <YAxis
                   yAxisId="ef"
-                  stroke="#888"
+                  stroke={chartTheme.axis}
                   fontSize={12}
                   domain={['auto', 'auto']}
-                  label={{ value: 'EF', angle: -90, position: 'insideLeft', fill: '#888' }}
+                  label={{ value: 'EF', angle: -90, position: 'insideLeft', fill: chartTheme.axis }}
                 />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}
-                  labelStyle={{ color: '#fff' }}
+                  {...tooltipStyle}
                   formatter={(value: number, name: string) => {
-                    if (name === 'ef') return [value.toFixed(2), 'Efficiency Factor']
+                    if (name === 'Efficiency Factor') return [value.toFixed(2), 'Efficiency Factor']
                     return [value, name]
                   }}
                   labelFormatter={(label, payload) => {
@@ -207,10 +207,10 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
                   yAxisId="ef"
                   type="monotone"
                   dataKey="ef"
-                  stroke="#22c55e"
-                  fill="#22c55e33"
+                  stroke={chartTheme.colors.success}
+                  fill={chartTheme.fills.success}
                   strokeWidth={2}
-                  dot={{ r: 4, fill: '#22c55e' }}
+                  dot={{ r: 4, fill: chartTheme.colors.success }}
                   name="Efficiency Factor"
                 />
                 {efTrendLine && (
@@ -220,7 +220,7 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
                       { x: efficiencyData[0]?.date, y: efTrendLine.startValue },
                       { x: efficiencyData[efficiencyData.length - 1]?.date, y: efTrendLine.endValue },
                     ]}
-                    stroke="#4ade80"
+                    stroke={chartTheme.colors.secondary}
                     strokeDasharray="5 5"
                     strokeWidth={2}
                   />
@@ -247,20 +247,19 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={vo2maxData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-              <XAxis dataKey="date" stroke="#888" fontSize={12} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+              <XAxis dataKey="date" stroke={chartTheme.axis} fontSize={12} />
               <YAxis
-                stroke="#888"
+                stroke={chartTheme.axis}
                 fontSize={12}
                 domain={['auto', 'auto']}
-                label={{ value: 'ml/kg/min', angle: -90, position: 'insideLeft', fill: '#888' }}
+                label={{ value: 'ml/kg/min', angle: -90, position: 'insideLeft', fill: chartTheme.axis }}
               />
               <Tooltip
-                contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}
-                labelStyle={{ color: '#fff' }}
+                {...tooltipStyle}
                 formatter={(value: number, name: string) => {
-                  if (name === 'vo2max') return [`${value.toFixed(1)} ml/kg/min`, 'Est. VO2max']
-                  if (name === 'rollingFTP') return [`${value} W`, 'Rolling FTP']
+                  if (name === 'Est. VO2max') return [`${value.toFixed(1)} ml/kg/min`, 'Est. VO2max']
+                  if (name === 'Rolling FTP') return [`${value} W`, 'Rolling FTP']
                   return [value, name]
                 }}
               />
@@ -268,15 +267,16 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
               <Line
                 type="monotone"
                 dataKey="vo2max"
-                stroke="#fc4c02"
+                stroke={chartTheme.colors.primary}
                 strokeWidth={3}
-                dot={{ r: 4, fill: '#fc4c02' }}
+                dot={{ r: 4, fill: chartTheme.colors.primary }}
+                activeDot={{ r: 6, stroke: chartTheme.colors.primary, strokeWidth: 2 }}
                 name="Est. VO2max"
               />
               {/* Reference lines for fitness categories */}
-              <ReferenceLine y={60} stroke="#fc4c02" strokeDasharray="3 3" label={{ value: 'Elite', fill: '#fc4c02', fontSize: 10 }} />
-              <ReferenceLine y={52} stroke="#22c55e" strokeDasharray="3 3" label={{ value: 'Excellent', fill: '#22c55e', fontSize: 10 }} />
-              <ReferenceLine y={45} stroke="#3b82f6" strokeDasharray="3 3" label={{ value: 'Good', fill: '#3b82f6', fontSize: 10 }} />
+              <ReferenceLine y={60} stroke={chartTheme.colors.primary} strokeDasharray="3 3" label={{ value: 'Elite', fill: chartTheme.colors.primary, fontSize: 10 }} />
+              <ReferenceLine y={52} stroke={chartTheme.colors.success} strokeDasharray="3 3" label={{ value: 'Excellent', fill: chartTheme.colors.success, fontSize: 10 }} />
+              <ReferenceLine y={45} stroke={chartTheme.colors.info} strokeDasharray="3 3" label={{ value: 'Good', fill: chartTheme.colors.info, fontSize: 10 }} />
             </LineChart>
           </ResponsiveContainer>
           <div className="chart-info">
@@ -304,21 +304,20 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={vamData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-              <XAxis dataKey="date" stroke="#888" fontSize={12} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+              <XAxis dataKey="date" stroke={chartTheme.axis} fontSize={12} />
               <YAxis
                 yAxisId="vam"
-                stroke="#888"
+                stroke={chartTheme.axis}
                 fontSize={12}
                 domain={['auto', 'auto']}
-                label={{ value: 'm/hr', angle: -90, position: 'insideLeft', fill: '#888' }}
+                label={{ value: 'm/hr', angle: -90, position: 'insideLeft', fill: chartTheme.axis }}
               />
               <Tooltip
-                contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}
-                labelStyle={{ color: '#fff' }}
+                {...tooltipStyle}
                 formatter={(value: number, name: string) => {
-                  if (name === 'vam') return [`${value} m/hr`, 'VAM']
-                  if (name === 'elevation') return [`${value} m`, 'Elevation']
+                  if (name === 'VAM') return [`${value} m/hr`, 'VAM']
+                  if (name === 'Elevation') return [`${value} m`, 'Elevation']
                   return [value, name]
                 }}
                 labelFormatter={(label, payload) => {
@@ -333,10 +332,10 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
                 yAxisId="vam"
                 type="monotone"
                 dataKey="vam"
-                stroke="#14b8a6"
-                fill="#14b8a633"
+                stroke={chartTheme.colors.secondary}
+                fill={chartTheme.fills.secondary}
                 strokeWidth={2}
-                dot={{ r: 4, fill: '#14b8a6' }}
+                dot={{ r: 4, fill: chartTheme.colors.secondary }}
                 name="VAM"
               />
               {vamTrendLine && (
@@ -346,15 +345,15 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
                     { x: vamData[0]?.date, y: vamTrendLine.startValue },
                     { x: vamData[vamData.length - 1]?.date, y: vamTrendLine.endValue },
                   ]}
-                  stroke="#2dd4bf"
+                  stroke={chartTheme.colors.tertiary}
                   strokeDasharray="5 5"
                   strokeWidth={2}
                 />
               )}
               {/* Reference lines for climbing categories */}
-              <ReferenceLine yAxisId="vam" y={1500} stroke="#fc4c02" strokeDasharray="3 3" label={{ value: 'Pro', fill: '#fc4c02', fontSize: 10 }} />
-              <ReferenceLine yAxisId="vam" y={1200} stroke="#22c55e" strokeDasharray="3 3" label={{ value: 'Elite Amateur', fill: '#22c55e', fontSize: 10 }} />
-              <ReferenceLine yAxisId="vam" y={900} stroke="#3b82f6" strokeDasharray="3 3" label={{ value: 'Strong', fill: '#3b82f6', fontSize: 10 }} />
+              <ReferenceLine yAxisId="vam" y={1500} stroke={chartTheme.colors.primary} strokeDasharray="3 3" label={{ value: 'Pro', fill: chartTheme.colors.primary, fontSize: 10 }} />
+              <ReferenceLine yAxisId="vam" y={1200} stroke={chartTheme.colors.success} strokeDasharray="3 3" label={{ value: 'Elite Amateur', fill: chartTheme.colors.success, fontSize: 10 }} />
+              <ReferenceLine yAxisId="vam" y={900} stroke={chartTheme.colors.info} strokeDasharray="3 3" label={{ value: 'Strong', fill: chartTheme.colors.info, fontSize: 10 }} />
             </ComposedChart>
           </ResponsiveContainer>
           <div className="chart-info">

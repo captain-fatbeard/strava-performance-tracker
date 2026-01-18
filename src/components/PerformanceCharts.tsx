@@ -17,6 +17,7 @@ import {
 } from 'recharts'
 import { format, startOfWeek, parseISO } from 'date-fns'
 import { type StravaActivity, metersToKm } from '~/lib/strava'
+import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
 
 interface PerformanceChartsProps {
   activities: StravaActivity[]
@@ -141,30 +142,27 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
         ) : (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={powerTrendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-              <XAxis dataKey="date" stroke="#888" fontSize={12} />
-              <YAxis stroke="#888" fontSize={12} domain={['auto', 'auto']} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}
-                labelStyle={{ color: '#fff' }}
-                formatter={(value: number, name: string) => [`${value} W`, name]}
-              />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+              <XAxis dataKey="date" stroke={chartTheme.axis} fontSize={12} />
+              <YAxis stroke={chartTheme.axis} fontSize={12} domain={['auto', 'auto']} />
+              <Tooltip {...tooltipStyle} formatter={(value: number, name: string) => [`${value} W`, name]} />
               <Legend />
               <Line
                 type="monotone"
                 dataKey="avgPower"
-                stroke="#fc4c02"
+                stroke={chartTheme.colors.primary}
                 strokeWidth={2}
-                dot={{ r: 4 }}
+                dot={{ r: 4, fill: chartTheme.colors.primary }}
+                activeDot={{ r: 6, stroke: chartTheme.colors.primary, strokeWidth: 2 }}
                 name="Avg Power"
               />
               {powerTrendData.some((d) => d.normalizedPower > 0) && (
                 <Line
                   type="monotone"
                   dataKey="normalizedPower"
-                  stroke="#ffd700"
+                  stroke={chartTheme.colors.warning}
                   strokeWidth={2}
-                  dot={{ r: 3 }}
+                  dot={{ r: 3, fill: chartTheme.colors.warning }}
                   name="Normalized Power"
                 />
               )}
@@ -174,7 +172,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
                     { x: powerTrendData[0]?.date, y: powerTrendLine.startValue },
                     { x: powerTrendData[powerTrendData.length - 1]?.date, y: powerTrendLine.endValue },
                   ]}
-                  stroke="#4ade80"
+                  stroke={chartTheme.colors.success}
                   strokeDasharray="5 5"
                   strokeWidth={2}
                 />
@@ -193,26 +191,25 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={hrTrendData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-                <XAxis dataKey="date" stroke="#888" fontSize={12} />
-                <YAxis stroke="#888" fontSize={12} domain={['auto', 'auto']} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}
-                  formatter={(value: number, name: string) => [`${value} bpm`, name]}
-                />
+                <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+                <XAxis dataKey="date" stroke={chartTheme.axis} fontSize={12} />
+                <YAxis stroke={chartTheme.axis} fontSize={12} domain={['auto', 'auto']} />
+                <Tooltip {...tooltipStyle} formatter={(value: number, name: string) => [`${value} bpm`, name]} />
                 <Legend />
                 <Area
                   type="monotone"
                   dataKey="maxHR"
-                  stroke="#ef4444"
-                  fill="#ef444433"
+                  stroke={chartTheme.colors.danger}
+                  fill={chartTheme.fills.danger}
+                  strokeWidth={2}
                   name="Max HR"
                 />
                 <Area
                   type="monotone"
                   dataKey="avgHR"
-                  stroke="#f97316"
-                  fill="#f9731633"
+                  stroke={chartTheme.colors.primary}
+                  fill={chartTheme.fills.primary}
+                  strokeWidth={2}
                   name="Avg HR"
                 />
               </AreaChart>
@@ -226,21 +223,21 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
         <h3>Weekly Volume</h3>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={weeklyVolumeData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-            <XAxis dataKey="week" stroke="#888" fontSize={12} />
-            <YAxis yAxisId="left" stroke="#888" fontSize={12} />
-            <YAxis yAxisId="right" orientation="right" stroke="#888" fontSize={12} />
+            <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+            <XAxis dataKey="week" stroke={chartTheme.axis} fontSize={12} />
+            <YAxis yAxisId="left" stroke={chartTheme.axis} fontSize={12} />
+            <YAxis yAxisId="right" orientation="right" stroke={chartTheme.axis} fontSize={12} />
             <Tooltip
-              contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}
+              {...tooltipStyle}
               formatter={(value: number, name: string) => {
-                if (name === 'distance') return [`${value} km`, 'Distance']
-                if (name === 'hours') return [`${value} hrs`, 'Time']
+                if (name === 'Distance (km)') return [`${value} km`, 'Distance']
+                if (name === 'Hours') return [`${value} hrs`, 'Time']
                 return [value, name]
               }}
             />
             <Legend />
-            <Bar yAxisId="left" dataKey="distance" fill="#3b82f6" name="Distance (km)" />
-            <Bar yAxisId="right" dataKey="hours" fill="#22c55e" name="Hours" />
+            <Bar yAxisId="left" dataKey="distance" fill={chartTheme.colors.secondary} radius={[4, 4, 0, 0]} name="Distance (km)" />
+            <Bar yAxisId="right" dataKey="hours" fill={chartTheme.colors.success} radius={[4, 4, 0, 0]} name="Hours" />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -251,12 +248,12 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
           <h3>Speed & Elevation Trend</h3>
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={speedTrendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-              <XAxis dataKey="date" stroke="#888" fontSize={12} />
-              <YAxis yAxisId="speed" stroke="#888" fontSize={12} unit=" km/h" />
-              <YAxis yAxisId="elevation" orientation="right" stroke="#888" fontSize={12} unit=" m" />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+              <XAxis dataKey="date" stroke={chartTheme.axis} fontSize={12} />
+              <YAxis yAxisId="speed" stroke={chartTheme.axis} fontSize={12} unit=" km/h" />
+              <YAxis yAxisId="elevation" orientation="right" stroke={chartTheme.axis} fontSize={12} unit=" m" />
               <Tooltip
-                contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}
+                {...tooltipStyle}
                 formatter={(value: number, name: string) => {
                   if (name === 'Elevation') return [`${value} m`, name]
                   return [`${value} km/h`, name]
@@ -266,26 +263,27 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
               <Bar
                 yAxisId="elevation"
                 dataKey="elevation"
-                fill="#14b8a644"
-                stroke="#14b8a6"
+                fill={chartTheme.fills.tertiary}
+                stroke={chartTheme.colors.tertiary}
+                radius={[4, 4, 0, 0]}
                 name="Elevation"
               />
               <Line
                 yAxisId="speed"
                 type="monotone"
                 dataKey="speed"
-                stroke="#8b5cf6"
+                stroke={chartTheme.colors.secondary}
                 strokeWidth={2}
-                dot={{ r: 3 }}
+                dot={{ r: 3, fill: chartTheme.colors.secondary }}
                 name="Avg Speed"
               />
               <Line
                 yAxisId="speed"
                 type="monotone"
                 dataKey="maxSpeed"
-                stroke="#c084fc"
+                stroke={chartTheme.colors.info}
                 strokeWidth={1}
-                dot={{ r: 2 }}
+                dot={{ r: 2, fill: chartTheme.colors.info }}
                 name="Max Speed"
                 strokeDasharray="3 3"
               />

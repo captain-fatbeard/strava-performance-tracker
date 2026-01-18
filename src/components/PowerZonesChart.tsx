@@ -7,6 +7,7 @@ import {
   calculateZoneDistribution,
 } from '~/lib/performance'
 import { secondsToHMS } from '~/lib/strava'
+import { zoneColors, tooltipStyle } from '~/lib/chart-theme'
 
 interface PowerZonesChartProps {
   activities: StravaActivity[]
@@ -17,10 +18,23 @@ export function PowerZonesChart({ activities }: PowerZonesChartProps) {
 
   const zoneData = useMemo(() => {
     if (!ftp) return []
-    return calculateZoneDistribution(activities, ftp)
+    const data = calculateZoneDistribution(activities, ftp)
+    // Override colors with theme colors
+    return data.map((d, i) => ({
+      ...d,
+      color: zoneColors[i] || d.color,
+    }))
   }, [activities, ftp])
 
-  const zones = useMemo(() => (ftp ? getPowerZones(ftp) : []), [ftp])
+  const zones = useMemo(() => {
+    if (!ftp) return []
+    const z = getPowerZones(ftp)
+    // Override colors with theme colors
+    return z.map((zone, i) => ({
+      ...zone,
+      color: zoneColors[i] || zone.color,
+    }))
+  }, [ftp])
 
   if (!ftp || zoneData.length === 0) {
     return (
@@ -63,11 +77,11 @@ export function PowerZonesChart({ activities }: PowerZonesChartProps) {
                 ))}
               </Pie>
               <Tooltip
+                {...tooltipStyle}
                 formatter={(value: number, name: string) => [
                   secondsToHMS(value),
                   name,
                 ]}
-                contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}
               />
               <Legend />
             </PieChart>
