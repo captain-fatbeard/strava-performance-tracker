@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useDashboard } from '../_dashboard'
+import { useDashboard } from '~/lib/dashboard-context'
 import { StatsCards } from '~/components/StatsCards'
 import { PersonalRecords } from '~/components/PersonalRecords'
 import { WeeklyProgress } from '~/components/WeeklyProgress'

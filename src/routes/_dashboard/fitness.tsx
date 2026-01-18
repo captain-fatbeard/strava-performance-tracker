@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useDashboard } from '../_dashboard'
+import { useDashboard } from '~/lib/dashboard-context'
 import { FitnessChart } from '~/components/FitnessChart'
 import { AdvancedMetrics } from '~/components/AdvancedMetrics'
 import { EfficiencyChart } from '~/components/EfficiencyChart'

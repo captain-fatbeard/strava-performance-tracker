@@ -1,60 +1,21 @@
 import { createFileRoute, Outlet, Link, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState, useMemo, createContext, useContext } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { getStoredAuth, isTokenExpired, setStoredAuth, clearStoredAuth } from '~/lib/auth-store'
 import { getStoredSettings, setStoredSettings } from '~/lib/settings-store'
 import { refreshStravaToken, fetchAllStravaActivities } from '~/lib/server-functions'
 import { type StravaActivity, type StravaAthlete, metersToKm } from '~/lib/strava'
 import { estimateFTP } from '~/lib/performance'
+import {
+  DashboardContext,
+  type TimeRange,
+  type ActivityType,
+  type DashboardContextType,
+  timeRangeToDays,
+} from '~/lib/dashboard-context'
 
 export const Route = createFileRoute('/_dashboard')({
   component: DashboardLayout,
 })
-
-type TimeRange = '30d' | '90d' | '6m' | '1y' | 'all'
-type ActivityType = 'all' | 'Ride' | 'Run' | 'VirtualRide'
-
-const timeRangeToDays: Record<TimeRange, number> = {
-  '30d': 30,
-  '90d': 90,
-  '6m': 180,
-  '1y': 365,
-  'all': 365 * 3,
-}
-
-interface DashboardContextType {
-  athlete: StravaAthlete
-  activities: StravaActivity[]
-  filteredActivities: StravaActivity[]
-  stats: {
-    totalActivities: number
-    totalDistance: number
-    totalElevation: number
-    totalTime: number
-    avgPower: number
-    avgHR: number
-    rides: number
-    runs: number
-    ftp: number
-    wattsPerKilo: number
-  }
-  timeRange: TimeRange
-  setTimeRange: (range: TimeRange) => void
-  activityType: ActivityType
-  setActivityType: (type: ActivityType) => void
-  weight: number
-  setWeight: (weight: number) => void
-  timeRangeDays: number
-}
-
-const DashboardContext = createContext<DashboardContextType | null>(null)
-
-export function useDashboard() {
-  const context = useContext(DashboardContext)
-  if (!context) {
-    throw new Error('useDashboard must be used within DashboardLayout')
-  }
-  return context
-}
 
 function DashboardLayout() {
   const navigate = useNavigate()
