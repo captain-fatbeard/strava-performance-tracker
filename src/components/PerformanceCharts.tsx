@@ -25,7 +25,6 @@ interface PerformanceChartsProps {
 }
 
 export function PerformanceCharts({ activities, showAllCharts }: PerformanceChartsProps) {
-  // Power trend data (cycling only)
   const powerTrendData = useMemo(() => {
     const rides = activities
       .filter((a) => (a.type === 'Ride' || a.type === 'VirtualRide') && a.average_watts)
@@ -41,7 +40,6 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
     }))
   }, [activities])
 
-  // Calculate power trend line (simple linear regression)
   const powerTrendLine = useMemo(() => {
     if (powerTrendData.length < 2) return null
 
@@ -63,7 +61,6 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
     }
   }, [powerTrendData])
 
-  // Heart rate trend data
   const hrTrendData = useMemo(() => {
     const withHR = activities
       .filter((a) => a.average_heartrate)
@@ -78,7 +75,6 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
     }))
   }, [activities])
 
-  // Weekly volume data
   const weeklyVolumeData = useMemo(() => {
     const weekMap = new Map<string, { distance: number; elevation: number; time: number; count: number }>()
 
@@ -101,24 +97,22 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
         hours: Math.round(data.time * 10) / 10,
         activities: data.count,
       }))
-      .slice(-12) // Last 12 weeks
+      .slice(-12)
   }, [activities])
 
-  // Speed/pace trend (by activity type)
   const speedTrendData = useMemo(() => {
     return activities
       .filter((a) => a.average_speed > 0)
       .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
       .map((activity) => ({
         date: format(new Date(activity.start_date_local), 'MMM d'),
-        speed: Math.round((activity.average_speed * 3.6) * 10) / 10, // m/s to km/h
+        speed: Math.round((activity.average_speed * 3.6) * 10) / 10,
         maxSpeed: Math.round((activity.max_speed * 3.6) * 10) / 10,
         elevation: Math.round(activity.total_elevation_gain),
         type: activity.type,
         name: activity.name,
       }))
   }, [activities])
-
 
   const hasNoPowerData = powerTrendData.length === 0
   const hasNoHRData = hrTrendData.length === 0
@@ -150,19 +144,19 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
               <Line
                 type="monotone"
                 dataKey="avgPower"
-                stroke={chartTheme.colors.primary}
+                stroke={chartTheme.colors.orange.primary}
                 strokeWidth={2}
-                dot={{ r: 4, fill: chartTheme.colors.primary }}
-                activeDot={{ r: 6, stroke: chartTheme.colors.primary, strokeWidth: 2 }}
+                dot={{ r: 4, fill: chartTheme.colors.orange.primary }}
+                activeDot={{ r: 6, stroke: chartTheme.colors.orange.primary, strokeWidth: 2 }}
                 name="Avg Power"
               />
               {powerTrendData.some((d) => d.normalizedPower > 0) && (
                 <Line
                   type="monotone"
                   dataKey="normalizedPower"
-                  stroke={chartTheme.colors.warning}
+                  stroke={chartTheme.colors.amber.primary}
                   strokeWidth={2}
-                  dot={{ r: 3, fill: chartTheme.colors.warning }}
+                  dot={{ r: 3, fill: chartTheme.colors.amber.primary }}
                   name="Normalized Power"
                 />
               )}
@@ -172,7 +166,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
                     { x: powerTrendData[0]?.date, y: powerTrendLine.startValue },
                     { x: powerTrendData[powerTrendData.length - 1]?.date, y: powerTrendLine.endValue },
                   ]}
-                  stroke={chartTheme.colors.success}
+                  stroke={chartTheme.colors.semantic.positive}
                   strokeDasharray="5 5"
                   strokeWidth={2}
                 />
@@ -199,16 +193,16 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
                 <Area
                   type="monotone"
                   dataKey="maxHR"
-                  stroke={chartTheme.colors.danger}
-                  fill={chartTheme.fills.danger}
+                  stroke={chartTheme.colors.orange.dark}
+                  fill={chartTheme.fills.orange.primary}
                   strokeWidth={2}
                   name="Max HR"
                 />
                 <Area
                   type="monotone"
                   dataKey="avgHR"
-                  stroke={chartTheme.colors.primary}
-                  fill={chartTheme.fills.primary}
+                  stroke={chartTheme.colors.amber.primary}
+                  fill={chartTheme.fills.amber.primary}
                   strokeWidth={2}
                   name="Avg HR"
                 />
@@ -236,8 +230,8 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
               }}
             />
             <Legend />
-            <Bar yAxisId="left" dataKey="distance" fill={chartTheme.colors.primary} radius={[4, 4, 0, 0]} name="Distance (km)" />
-            <Bar yAxisId="right" dataKey="hours" fill={chartTheme.colors.info} radius={[4, 4, 0, 0]} name="Hours" />
+            <Bar yAxisId="left" dataKey="distance" fill={chartTheme.colors.orange.primary} radius={[4, 4, 0, 0]} name="Distance (km)" />
+            <Bar yAxisId="right" dataKey="hours" fill={chartTheme.colors.orange.lighter} radius={[4, 4, 0, 0]} name="Hours" />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -263,8 +257,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
               <Bar
                 yAxisId="elevation"
                 dataKey="elevation"
-                fill={chartTheme.fills.tertiary}
-                stroke={chartTheme.colors.tertiary}
+                fill={chartTheme.colors.neutral[600]}
                 radius={[4, 4, 0, 0]}
                 name="Elevation"
               />
@@ -272,18 +265,18 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
                 yAxisId="speed"
                 type="monotone"
                 dataKey="speed"
-                stroke={chartTheme.colors.secondary}
+                stroke={chartTheme.colors.orange.primary}
                 strokeWidth={2}
-                dot={{ r: 3, fill: chartTheme.colors.secondary }}
+                dot={{ r: 3, fill: chartTheme.colors.orange.primary }}
                 name="Avg Speed"
               />
               <Line
                 yAxisId="speed"
                 type="monotone"
                 dataKey="maxSpeed"
-                stroke={chartTheme.colors.info}
+                stroke={chartTheme.colors.amber.light}
                 strokeWidth={1}
-                dot={{ r: 2, fill: chartTheme.colors.info }}
+                dot={{ r: 2, fill: chartTheme.colors.amber.light }}
                 name="Max Speed"
                 strokeDasharray="3 3"
               />

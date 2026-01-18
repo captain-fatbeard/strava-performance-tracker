@@ -207,10 +207,10 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
                   yAxisId="ef"
                   type="monotone"
                   dataKey="ef"
-                  stroke={chartTheme.colors.success}
-                  fill={chartTheme.fills.success}
+                  stroke={chartTheme.colors.orange.primary}
+                  fill={chartTheme.fills.orange.primary}
                   strokeWidth={2}
-                  dot={{ r: 4, fill: chartTheme.colors.success }}
+                  dot={{ r: 4, fill: chartTheme.colors.orange.primary }}
                   name="Efficiency Factor"
                 />
                 {efTrendLine && (
@@ -220,7 +220,7 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
                       { x: efficiencyData[0]?.date, y: efTrendLine.startValue },
                       { x: efficiencyData[efficiencyData.length - 1]?.date, y: efTrendLine.endValue },
                     ]}
-                    stroke={chartTheme.colors.secondary}
+                    stroke={chartTheme.colors.semantic.positive}
                     strokeDasharray="5 5"
                     strokeWidth={2}
                   />
@@ -267,16 +267,16 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
               <Line
                 type="monotone"
                 dataKey="vo2max"
-                stroke={chartTheme.colors.primary}
+                stroke={chartTheme.colors.orange.primary}
                 strokeWidth={3}
-                dot={{ r: 4, fill: chartTheme.colors.primary }}
-                activeDot={{ r: 6, stroke: chartTheme.colors.primary, strokeWidth: 2 }}
+                dot={{ r: 4, fill: chartTheme.colors.orange.primary }}
+                activeDot={{ r: 6, stroke: chartTheme.colors.orange.primary, strokeWidth: 2 }}
                 name="Est. VO2max"
               />
               {/* Reference lines for fitness categories */}
-              <ReferenceLine y={60} stroke={chartTheme.colors.primary} strokeDasharray="3 3" label={{ value: 'Elite', fill: chartTheme.colors.primary, fontSize: 10 }} />
-              <ReferenceLine y={52} stroke={chartTheme.colors.success} strokeDasharray="3 3" label={{ value: 'Excellent', fill: chartTheme.colors.success, fontSize: 10 }} />
-              <ReferenceLine y={45} stroke={chartTheme.colors.info} strokeDasharray="3 3" label={{ value: 'Good', fill: chartTheme.colors.info, fontSize: 10 }} />
+              <ReferenceLine y={60} stroke={chartTheme.colors.orange.dark} strokeDasharray="3 3" label={{ value: 'Elite', fill: chartTheme.colors.orange.dark, fontSize: 10 }} />
+              <ReferenceLine y={52} stroke={chartTheme.colors.amber.primary} strokeDasharray="3 3" label={{ value: 'Excellent', fill: chartTheme.colors.amber.primary, fontSize: 10 }} />
+              <ReferenceLine y={45} stroke={chartTheme.colors.amber.light} strokeDasharray="3 3" label={{ value: 'Good', fill: chartTheme.colors.amber.light, fontSize: 10 }} />
             </LineChart>
           </ResponsiveContainer>
           <div className="chart-info">
@@ -332,10 +332,10 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
                 yAxisId="vam"
                 type="monotone"
                 dataKey="vam"
-                stroke={chartTheme.colors.secondary}
-                fill={chartTheme.fills.secondary}
+                stroke={chartTheme.colors.amber.primary}
+                fill={chartTheme.fills.amber.primary}
                 strokeWidth={2}
-                dot={{ r: 4, fill: chartTheme.colors.secondary }}
+                dot={{ r: 4, fill: chartTheme.colors.amber.primary }}
                 name="VAM"
               />
               {vamTrendLine && (
@@ -345,15 +345,15 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
                     { x: vamData[0]?.date, y: vamTrendLine.startValue },
                     { x: vamData[vamData.length - 1]?.date, y: vamTrendLine.endValue },
                   ]}
-                  stroke={chartTheme.colors.tertiary}
+                  stroke={chartTheme.colors.semantic.positive}
                   strokeDasharray="5 5"
                   strokeWidth={2}
                 />
               )}
               {/* Reference lines for climbing categories */}
-              <ReferenceLine yAxisId="vam" y={1500} stroke={chartTheme.colors.primary} strokeDasharray="3 3" label={{ value: 'Pro', fill: chartTheme.colors.primary, fontSize: 10 }} />
-              <ReferenceLine yAxisId="vam" y={1200} stroke={chartTheme.colors.success} strokeDasharray="3 3" label={{ value: 'Elite Amateur', fill: chartTheme.colors.success, fontSize: 10 }} />
-              <ReferenceLine yAxisId="vam" y={900} stroke={chartTheme.colors.info} strokeDasharray="3 3" label={{ value: 'Strong', fill: chartTheme.colors.info, fontSize: 10 }} />
+              <ReferenceLine yAxisId="vam" y={1500} stroke={chartTheme.colors.orange.dark} strokeDasharray="3 3" label={{ value: 'Pro', fill: chartTheme.colors.orange.dark, fontSize: 10 }} />
+              <ReferenceLine yAxisId="vam" y={1200} stroke={chartTheme.colors.orange.primary} strokeDasharray="3 3" label={{ value: 'Elite Amateur', fill: chartTheme.colors.orange.primary, fontSize: 10 }} />
+              <ReferenceLine yAxisId="vam" y={900} stroke={chartTheme.colors.amber.light} strokeDasharray="3 3" label={{ value: 'Strong', fill: chartTheme.colors.amber.light, fontSize: 10 }} />
             </ComposedChart>
           </ResponsiveContainer>
           <div className="chart-info">

@@ -12,6 +12,7 @@ import {
 } from 'recharts'
 import { type StravaActivity, secondsToHMS } from '~/lib/strava'
 import { calculateWeeklySummaries, estimateFTP } from '~/lib/performance'
+import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
 
 interface WeeklyProgressProps {
   activities: StravaActivity[]
@@ -35,17 +36,16 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
 
       <ResponsiveContainer width="100%" height={300}>
         <ComposedChart data={weeklyData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-          <XAxis dataKey="week" stroke="#888" fontSize={12} />
-          <YAxis yAxisId="left" stroke="#888" fontSize={12} />
-          <YAxis yAxisId="right" orientation="right" stroke="#888" fontSize={12} />
+          <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+          <XAxis dataKey="week" stroke={chartTheme.axis} fontSize={12} />
+          <YAxis yAxisId="left" stroke={chartTheme.axis} fontSize={12} />
+          <YAxis yAxisId="right" orientation="right" stroke={chartTheme.axis} fontSize={12} />
           <Tooltip
-            contentStyle={{ backgroundColor: '#1a1a1a', border: '1px solid #333' }}
+            {...tooltipStyle}
             formatter={(value: number, name: string) => {
-              if (name === 'totalTime') return [secondsToHMS(value), 'Time']
-              if (name === 'totalTSS') return [value, 'TSS']
-              if (name === 'totalDistance') return [`${value} km`, 'Distance']
-              if (name === 'avgPower') return [`${value} W`, 'Avg Power']
+              if (name === 'Training Stress') return [value, 'TSS']
+              if (name === 'Distance (km)') return [`${value} km`, 'Distance']
+              if (name === 'Avg Power (W)') return [`${value} W`, 'Avg Power']
               return [value, name]
             }}
           />
@@ -53,14 +53,14 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
           <Bar
             yAxisId="left"
             dataKey="totalTSS"
-            fill="#fc4c02"
+            fill={chartTheme.colors.orange.primary}
             name="Training Stress"
             radius={[4, 4, 0, 0]}
           />
           <Bar
             yAxisId="left"
             dataKey="totalDistance"
-            fill="#3b82f6"
+            fill={chartTheme.colors.amber.primary}
             name="Distance (km)"
             radius={[4, 4, 0, 0]}
           />
@@ -68,9 +68,9 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
             yAxisId="right"
             type="monotone"
             dataKey="avgPower"
-            stroke="#22c55e"
+            stroke={chartTheme.colors.orange.light}
             strokeWidth={2}
-            dot={{ r: 4 }}
+            dot={{ r: 4, fill: chartTheme.colors.orange.light }}
             name="Avg Power (W)"
           />
         </ComposedChart>

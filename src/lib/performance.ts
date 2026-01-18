@@ -1,5 +1,6 @@
 import { startOfWeek, addWeeks, format } from 'date-fns'
 import { type StravaActivity } from './strava'
+import { zoneColors } from './chart-theme'
 
 // Estimate FTP from activities (95% of best 20-min power)
 export function estimateFTP(activities: StravaActivity[]): number | null {
@@ -35,13 +36,13 @@ export interface PowerZone {
 
 export function getPowerZones(ftp: number): PowerZone[] {
   return [
-    { name: 'Recovery', min: 0, max: Math.round(ftp * 0.55), color: '#9ca3af' },
-    { name: 'Endurance', min: Math.round(ftp * 0.55), max: Math.round(ftp * 0.75), color: '#3b82f6' },
-    { name: 'Tempo', min: Math.round(ftp * 0.75), max: Math.round(ftp * 0.9), color: '#22c55e' },
-    { name: 'Threshold', min: Math.round(ftp * 0.9), max: Math.round(ftp * 1.05), color: '#eab308' },
-    { name: 'VO2max', min: Math.round(ftp * 1.05), max: Math.round(ftp * 1.2), color: '#f97316' },
-    { name: 'Anaerobic', min: Math.round(ftp * 1.2), max: Math.round(ftp * 1.5), color: '#ef4444' },
-    { name: 'Neuromuscular', min: Math.round(ftp * 1.5), max: 9999, color: '#dc2626' },
+    { name: 'Recovery', min: 0, max: Math.round(ftp * 0.55), color: zoneColors[0] },
+    { name: 'Endurance', min: Math.round(ftp * 0.55), max: Math.round(ftp * 0.75), color: zoneColors[1] },
+    { name: 'Tempo', min: Math.round(ftp * 0.75), max: Math.round(ftp * 0.9), color: zoneColors[2] },
+    { name: 'Threshold', min: Math.round(ftp * 0.9), max: Math.round(ftp * 1.05), color: zoneColors[3] },
+    { name: 'VO2max', min: Math.round(ftp * 1.05), max: Math.round(ftp * 1.2), color: zoneColors[4] },
+    { name: 'Anaerobic', min: Math.round(ftp * 1.2), max: Math.round(ftp * 1.5), color: zoneColors[5] },
+    { name: 'Neuromuscular', min: Math.round(ftp * 1.5), max: 9999, color: zoneColors[6] },
   ]
 }
 
