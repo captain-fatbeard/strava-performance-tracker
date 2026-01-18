@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { type StravaActivity, type StravaAthlete, metersToKm } from '~/lib/strava'
 import { estimateFTP } from '~/lib/performance'
+import { getStoredSettings, setStoredSettings } from '~/lib/settings-store'
 import { PerformanceCharts } from './PerformanceCharts'
 import { ActivityList } from './ActivityList'
 import { StatsCards } from './StatsCards'
@@ -29,10 +30,24 @@ const timeRangeToDays: Record<TimeRange, number> = {
 type ActivityType = 'all' | 'Ride' | 'Run' | 'VirtualRide'
 
 export function Dashboard({ athlete, activities, onLogout }: DashboardProps) {
-  const [timeRange, setTimeRange] = useState<TimeRange>('90d')
-  const [activityType, setActivityType] = useState<ActivityType>('all')
+  const [timeRange, setTimeRange] = useState<TimeRange>(() => {
+    const stored = getStoredSettings()
+    return (stored.timeRange as TimeRange) || '90d'
+  })
+  const [activityType, setActivityType] = useState<ActivityType>(() => {
+    const stored = getStoredSettings()
+    return (stored.activityType as ActivityType) || 'all'
+  })
   const [activeTab, setActiveTab] = useState<'overview' | 'fitness' | 'trends' | 'activities'>('overview')
-  const [weight, setWeight] = useState<number>(75)
+  const [weight, setWeight] = useState<number>(() => {
+    const stored = getStoredSettings()
+    return stored.weight || 75
+  })
+
+  // Persist settings to localStorage
+  useEffect(() => {
+    setStoredSettings({ weight, timeRange, activityType })
+  }, [weight, timeRange, activityType])
 
   const filteredActivities = useMemo(() => {
     let filtered = activities
