@@ -236,8 +236,8 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
               }}
             />
             <Legend />
-            <Bar yAxisId="left" dataKey="distance" fill={chartTheme.colors.secondary} radius={[4, 4, 0, 0]} name="Distance (km)" />
-            <Bar yAxisId="right" dataKey="hours" fill={chartTheme.colors.success} radius={[4, 4, 0, 0]} name="Hours" />
+            <Bar yAxisId="left" dataKey="distance" fill={chartTheme.colors.primary} radius={[4, 4, 0, 0]} name="Distance (km)" />
+            <Bar yAxisId="right" dataKey="hours" fill={chartTheme.colors.info} radius={[4, 4, 0, 0]} name="Hours" />
           </BarChart>
         </ResponsiveContainer>
       </div>
