@@ -22,7 +22,10 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
   const ftp = useMemo(() => estimateFTP(activities) || 200, [activities])
 
   const weeklyData = useMemo(
-    () => calculateWeeklySummaries(activities, ftp, 12),
+    () => calculateWeeklySummaries(activities, ftp, 12).map(week => ({
+      ...week,
+      totalHours: Math.round(week.totalTime / 360) / 10, // Convert to hours with 1 decimal
+    })),
     [activities, ftp]
   )
 
@@ -45,6 +48,7 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
             formatter={(value: number, name: string) => {
               if (name === 'Training Stress') return [value, 'TSS']
               if (name === 'Distance (km)') return [`${value} km`, 'Distance']
+              if (name === 'Time (hrs)') return [`${value} hrs`, 'Time']
               if (name === 'Avg Power (W)') return [`${value} W`, 'Avg Power']
               return [value, name]
             }}
@@ -63,6 +67,15 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
             fill={chartTheme.colors.amber.primary}
             name="Distance (km)"
             radius={[4, 4, 0, 0]}
+          />
+          <Line
+            yAxisId="right"
+            type="monotone"
+            dataKey="totalHours"
+            stroke={chartTheme.colors.orange.lighter}
+            strokeWidth={2}
+            dot={{ r: 4, fill: chartTheme.colors.orange.lighter }}
+            name="Time (hrs)"
           />
           <Line
             yAxisId="right"
