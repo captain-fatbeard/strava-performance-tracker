@@ -73,6 +73,23 @@ body {
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
+.btn-primary {
+  background: var(--strava-orange);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.btn-primary:hover {
+  background: #e34402;
+}
+
 /* Strava Login Button */
 .strava-login-btn {
   display: flex;
@@ -228,7 +245,7 @@ body {
   padding-bottom: 0;
 }
 
-.dashboard-tabs button {
+.dashboard-tabs a {
   background: transparent;
   border: none;
   color: var(--text-secondary);
@@ -237,17 +254,18 @@ body {
   cursor: pointer;
   position: relative;
   transition: color 0.2s;
+  text-decoration: none;
 }
 
-.dashboard-tabs button:hover {
+.dashboard-tabs a:hover {
   color: var(--text-primary);
 }
 
-.dashboard-tabs button.active {
+.dashboard-tabs a.active {
   color: var(--strava-orange);
 }
 
-.dashboard-tabs button.active::after {
+.dashboard-tabs a.active::after {
   content: '';
   position: absolute;
   bottom: -1px;

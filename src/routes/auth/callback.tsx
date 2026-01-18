@@ -35,7 +35,7 @@ function AuthCallback() {
           athlete: result.athlete,
         })
 
-        navigate({ to: '/' })
+        navigate({ to: '/overview' })
       } catch (err) {
         console.error('Auth error:', err)
         setError('Failed to complete authentication')
