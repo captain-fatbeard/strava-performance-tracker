@@ -4,16 +4,23 @@ import { FitnessChart } from '~/components/FitnessChart'
 import { AdvancedMetrics } from '~/components/AdvancedMetrics'
 import { EfficiencyChart } from '~/components/EfficiencyChart'
 import { PowerZonesChart } from '~/components/PowerZonesChart'
+import { FatBurningStats } from '~/components/FatBurningStats'
 
 export const Route = createFileRoute('/_dashboard/fitness')({
   component: FitnessPage,
 })
 
 function FitnessPage() {
-  const { filteredActivities, weight, timeRangeDays } = useDashboard()
+  const { filteredActivities, weight, maxHR, restingHR, timeRangeDays } = useDashboard()
 
   return (
     <>
+      <FatBurningStats
+        activities={filteredActivities}
+        weight={weight}
+        maxHR={maxHR}
+        restingHR={restingHR}
+      />
       <FitnessChart activities={filteredActivities} days={timeRangeDays} />
       <AdvancedMetrics activities={filteredActivities} weight={weight} />
       <EfficiencyChart activities={filteredActivities} weight={weight} />

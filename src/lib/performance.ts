@@ -484,3 +484,245 @@ export function calculateWeeklySummaries(
 
   return summaries.reverse()
 }
+
+// ==========================================
+// Fat Burning & Heart Rate Zone Calculations
+// ==========================================
+
+export interface HRZone {
+  name: string
+  min: number
+  max: number
+  fatBurnRatio: number // Percentage of calories from fat at this zone
+  color: string
+}
+
+// Calculate HR zones using Karvonen formula (Heart Rate Reserve method)
+// More accurate than simple % of max HR
+export function getHRZones(maxHR: number, restingHR: number): HRZone[] {
+  const hrr = maxHR - restingHR // Heart Rate Reserve
+
+  return [
+    {
+      name: 'Zone 1 (Recovery)',
+      min: Math.round(restingHR + hrr * 0.5),
+      max: Math.round(restingHR + hrr * 0.6),
+      fatBurnRatio: 0.85, // 85% of calories from fat
+      color: '#71717a',
+    },
+    {
+      name: 'Zone 2 (Fat Burn)',
+      min: Math.round(restingHR + hrr * 0.6),
+      max: Math.round(restingHR + hrr * 0.7),
+      fatBurnRatio: 0.65, // 65% of calories from fat - optimal fat burning
+      color: '#22c55e',
+    },
+    {
+      name: 'Zone 3 (Aerobic)',
+      min: Math.round(restingHR + hrr * 0.7),
+      max: Math.round(restingHR + hrr * 0.8),
+      fatBurnRatio: 0.45, // 45% from fat
+      color: '#f59e0b',
+    },
+    {
+      name: 'Zone 4 (Threshold)',
+      min: Math.round(restingHR + hrr * 0.8),
+      max: Math.round(restingHR + hrr * 0.9),
+      fatBurnRatio: 0.25, // 25% from fat
+      color: '#f97316',
+    },
+    {
+      name: 'Zone 5 (Max)',
+      min: Math.round(restingHR + hrr * 0.9),
+      max: maxHR,
+      fatBurnRatio: 0.1, // 10% from fat
+      color: '#ef4444',
+    },
+  ]
+}
+
+// Get which HR zone a given heart rate falls into
+export function getHRZoneForBPM(hr: number, maxHR: number, restingHR: number): HRZone | null {
+  const zones = getHRZones(maxHR, restingHR)
+  return zones.find((z) => hr >= z.min && hr < z.max) || null
+}
+
+// Estimate calories burned based on HR, duration, weight, and gender
+// Using simplified Keytel formula
+export function estimateCaloriesBurned(
+  avgHR: number,
+  durationSeconds: number,
+  weight: number,
+  age: number = 35,
+  isMale: boolean = true
+): number {
+  const durationMinutes = durationSeconds / 60
+
+  if (isMale) {
+    // Male formula
+    return Math.round(
+      durationMinutes *
+        (0.6309 * avgHR + 0.1988 * weight + 0.2017 * age - 55.0969) / 4.184
+    )
+  } else {
+    // Female formula
+    return Math.round(
+      durationMinutes *
+        (0.4472 * avgHR - 0.1263 * weight + 0.074 * age - 20.4022) / 4.184
+    )
+  }
+}
+
+// Estimate fat burned in grams based on calories and intensity
+// Fat provides ~9 calories per gram
+export function estimateFatBurned(
+  calories: number,
+  avgHR: number,
+  maxHR: number,
+  restingHR: number
+): number {
+  const zone = getHRZoneForBPM(avgHR, maxHR, restingHR)
+  const fatRatio = zone?.fatBurnRatio || 0.4 // Default to 40% if zone not found
+
+  const fatCalories = calories * fatRatio
+  const fatGrams = fatCalories / 9 // 9 calories per gram of fat
+
+  return Math.round(fatGrams)
+}
+
+// Calculate intensity as percentage of heart rate reserve
+export function calculateIntensity(avgHR: number, maxHR: number, restingHR: number): number {
+  const hrr = maxHR - restingHR
+  return Math.round(((avgHR - restingHR) / hrr) * 100)
+}
+
+// Fat burning stats for a single activity
+export interface ActivityFatStats {
+  activityId: number
+  name: string
+  date: string
+  duration: number
+  avgHR: number
+  calories: number
+  fatBurned: number
+  fatRatio: number
+  intensity: number
+  zone: string
+  isOptimalFatBurn: boolean
+}
+
+// Calculate fat burning stats for a single activity
+export function calculateActivityFatStats(
+  activity: StravaActivity,
+  weight: number,
+  maxHR: number,
+  restingHR: number
+): ActivityFatStats | null {
+  if (!activity.average_heartrate) return null
+
+  const avgHR = activity.average_heartrate
+  const duration = activity.moving_time
+  const calories = activity.kilojoules
+    ? Math.round(activity.kilojoules * 0.25) // Convert kJ to estimated calories burned
+    : estimateCaloriesBurned(avgHR, duration, weight)
+
+  const fatBurned = estimateFatBurned(calories, avgHR, maxHR, restingHR)
+  const zone = getHRZoneForBPM(avgHR, maxHR, restingHR)
+  const intensity = calculateIntensity(avgHR, maxHR, restingHR)
+
+  return {
+    activityId: activity.id,
+    name: activity.name,
+    date: activity.start_date_local,
+    duration,
+    avgHR,
+    calories,
+    fatBurned,
+    fatRatio: zone?.fatBurnRatio || 0.4,
+    intensity,
+    zone: zone?.name || 'Unknown',
+    isOptimalFatBurn: intensity >= 60 && intensity <= 70,
+  }
+}
+
+// Aggregate fat burning stats
+export interface FatBurningSummary {
+  totalCalories: number
+  totalFatBurned: number // grams
+  avgFatRatio: number
+  zone2Time: number // seconds in Zone 2 (fat burning zone)
+  zone2Percentage: number
+  totalTime: number
+  activitiesInZone2: number
+  totalActivitiesWithHR: number
+  weeklyFatBurn: { week: string; fatBurned: number; zone2Time: number }[]
+  optimalFatBurnActivities: number
+}
+
+// Calculate comprehensive fat burning summary
+export function calculateFatBurningSummary(
+  activities: StravaActivity[],
+  weight: number,
+  maxHR: number,
+  restingHR: number
+): FatBurningSummary {
+  const activitiesWithHR = activities.filter((a) => a.average_heartrate)
+
+  let totalCalories = 0
+  let totalFatBurned = 0
+  let zone2Time = 0
+  let totalTime = 0
+  let activitiesInZone2 = 0
+  let optimalFatBurnActivities = 0
+  let totalFatRatio = 0
+
+  const weeklyFatMap = new Map<string, { fatBurned: number; zone2Time: number }>()
+
+  activitiesWithHR.forEach((activity) => {
+    const stats = calculateActivityFatStats(activity, weight, maxHR, restingHR)
+    if (!stats) return
+
+    totalCalories += stats.calories
+    totalFatBurned += stats.fatBurned
+    totalTime += stats.duration
+    totalFatRatio += stats.fatRatio
+
+    if (stats.isOptimalFatBurn) {
+      zone2Time += stats.duration
+      activitiesInZone2++
+      optimalFatBurnActivities++
+    }
+
+    // Weekly aggregation
+    const weekStart = format(
+      startOfWeek(new Date(activity.start_date), { weekStartsOn: 1 }),
+      'MMM d'
+    )
+    const existing = weeklyFatMap.get(weekStart) || { fatBurned: 0, zone2Time: 0 }
+    weeklyFatMap.set(weekStart, {
+      fatBurned: existing.fatBurned + stats.fatBurned,
+      zone2Time: existing.zone2Time + (stats.isOptimalFatBurn ? stats.duration : 0),
+    })
+  })
+
+  const weeklyFatBurn = Array.from(weeklyFatMap.entries())
+    .map(([week, data]) => ({
+      week,
+      fatBurned: data.fatBurned,
+      zone2Time: Math.round(data.zone2Time / 60), // Convert to minutes
+    }))
+    .slice(-12)
+
+  return {
+    totalCalories,
+    totalFatBurned,
+    avgFatRatio: activitiesWithHR.length > 0 ? totalFatRatio / activitiesWithHR.length : 0,
+    zone2Time,
+    zone2Percentage: totalTime > 0 ? Math.round((zone2Time / totalTime) * 100) : 0,
+    totalTime,
+    activitiesInZone2,
+    totalActivitiesWithHR: activitiesWithHR.length,
+    weeklyFatBurn,
+    optimalFatBurnActivities,
+  }
+}

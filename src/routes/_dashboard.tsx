@@ -36,10 +36,18 @@ function DashboardLayout() {
     const stored = getStoredSettings()
     return stored.weight || 75
   })
+  const [maxHR, setMaxHR] = useState<number>(() => {
+    const stored = getStoredSettings()
+    return stored.maxHR || 185
+  })
+  const [restingHR, setRestingHR] = useState<number>(() => {
+    const stored = getStoredSettings()
+    return stored.restingHR || 60
+  })
 
   useEffect(() => {
-    setStoredSettings({ weight, timeRange, activityType })
-  }, [weight, timeRange, activityType])
+    setStoredSettings({ weight, maxHR, restingHR, timeRange, activityType })
+  }, [weight, maxHR, restingHR, timeRange, activityType])
 
   useEffect(() => {
     async function init() {
@@ -199,6 +207,10 @@ function DashboardLayout() {
     setActivityType,
     weight,
     setWeight,
+    maxHR,
+    setMaxHR,
+    restingHR,
+    setRestingHR,
     timeRangeDays: timeRangeToDays[timeRange],
   }
 
@@ -255,6 +267,28 @@ function DashboardLayout() {
               max="150"
               value={weight}
               onChange={(e) => setWeight(Number(e.target.value))}
+            />
+          </div>
+
+          <div className="filter-group">
+            <label>Max HR: {maxHR} bpm</label>
+            <input
+              type="range"
+              min="150"
+              max="220"
+              value={maxHR}
+              onChange={(e) => setMaxHR(Number(e.target.value))}
+            />
+          </div>
+
+          <div className="filter-group">
+            <label>Resting HR: {restingHR} bpm</label>
+            <input
+              type="range"
+              min="35"
+              max="90"
+              value={restingHR}
+              onChange={(e) => setRestingHR(Number(e.target.value))}
             />
           </div>
         </div>

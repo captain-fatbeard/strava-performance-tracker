@@ -1072,3 +1072,199 @@ body {
   background: rgba(249, 115, 22, 0.3);
   color: var(--text-primary);
 }
+
+/* Fat Burning Stats */
+.fat-burn-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.fat-card {
+  text-align: center;
+  padding: 1.25rem;
+}
+
+.fat-card.highlight {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.05));
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.fat-card .stat-sublabel {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
+
+.fatmax-indicator {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2rem;
+  padding: 1.5rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.fatmax-range {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem 2rem;
+  background: rgba(34, 197, 94, 0.1);
+  border-radius: var(--radius-md);
+}
+
+.fatmax-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.fatmax-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #22c55e;
+}
+
+.fatmax-info p {
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.fatmax-tips {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fatmax-tips .tip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.tip-icon {
+  font-size: 1rem;
+}
+
+.zone-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+}
+
+.zone-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.zone-item .zone-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.zone-item .zone-name {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.zone-item .zone-range {
+  color: var(--text-muted);
+}
+
+.zone-item .zone-fat {
+  color: #22c55e;
+  font-weight: 500;
+}
+
+.fat-activities-table {
+  overflow-x: auto;
+}
+
+.fat-activities-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.fat-activities-table th {
+  text-align: left;
+  padding: 0.75rem;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-weight: 500;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.fat-activities-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+}
+
+.fat-activities-table tr.optimal {
+  background: rgba(34, 197, 94, 0.05);
+}
+
+.fat-activities-table .activity-name {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fat-activities-table .fat-value {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.intensity-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+}
+
+.zone-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.zone-badge.fat-burn {
+  background: rgba(34, 197, 94, 0.2);
+  color: #22c55e;
+}
+
+@media (max-width: 768px) {
+  .fatmax-indicator {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .fatmax-range {
+    padding: 1rem;
+  }
+
+  .zone-legend {
+    flex-direction: column;
+  }
+}
