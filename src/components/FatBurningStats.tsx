@@ -8,17 +8,16 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
-  PieChart,
-  Pie,
   Cell,
   ComposedChart,
   Line,
 } from 'recharts'
 import { type StravaActivity, secondsToHMS } from '~/lib/strava'
 import {
-  calculateFatBurningSummary,
+  calculateCompleteFatBurningSummary,
   getHRZones,
   calculateActivityFatStats,
+  calculateBMR,
 } from '~/lib/performance'
 import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
 
@@ -27,6 +26,9 @@ interface FatBurningStatsProps {
   weight: number
   maxHR: number
   restingHR: number
+  age: number
+  gender: 'male' | 'female'
+  periodDays: number
 }
 
 export function FatBurningStats({
@@ -34,10 +36,15 @@ export function FatBurningStats({
   weight,
   maxHR,
   restingHR,
+  age,
+  gender,
+  periodDays,
 }: FatBurningStatsProps) {
   const summary = useMemo(
-    () => calculateFatBurningSummary(activities, weight, maxHR, restingHR),
-    [activities, weight, maxHR, restingHR]
+    () => calculateCompleteFatBurningSummary(
+      activities, weight, maxHR, restingHR, age, gender, periodDays
+    ),
+    [activities, weight, maxHR, restingHR, age, gender, periodDays]
   )
 
   const hrZones = useMemo(
@@ -77,44 +84,100 @@ export function FatBurningStats({
       .filter(Boolean)
   }, [activities, weight, maxHR, restingHR])
 
-  if (summary.totalActivitiesWithHR === 0) {
-    return (
-      <div className="chart-section">
-        <h3>Fat Burning Stats</h3>
-        <div className="no-data">
-          Need activities with heart rate data to calculate fat burning stats.
-        </div>
-      </div>
-    )
-  }
-
   const fatMaxZone = hrZones[1] // Zone 2 is optimal for fat burning
 
   return (
     <div className="charts-container">
-      {/* Summary Cards */}
+      {/* Total Fat Burn Summary - Including Resting */}
       <div className="chart-section">
-        <h3>Fat Burning Summary</h3>
+        <div className="chart-header">
+          <h3>Total Fat Burning</h3>
+          <span className="ftp-badge">Last {periodDays} days</span>
+        </div>
         <div className="fat-burn-cards">
-          <div className="stat-card fat-card">
-            <div className="stat-value">{summary.totalFatBurned}g</div>
+          <div className="stat-card fat-card total">
+            <div className="stat-value">{(summary.totalFatBurnWithResting / 1000).toFixed(2)} kg</div>
             <div className="stat-label">Total Fat Burned</div>
-            <div className="stat-sublabel">≈ {(summary.totalFatBurned / 1000).toFixed(2)} kg</div>
+            <div className="stat-sublabel">{summary.totalFatBurnWithResting}g (resting + activity)</div>
           </div>
+          <div className="stat-card fat-card">
+            <div className="stat-value">{(summary.periodRestingFatBurn / 1000).toFixed(2)} kg</div>
+            <div className="stat-label">Resting Fat Burn</div>
+            <div className="stat-sublabel">{summary.dailyRestingFatBurn}g/day × {periodDays} days</div>
+          </div>
+          <div className="stat-card fat-card highlight">
+            <div className="stat-value">{(summary.totalFatBurned / 1000).toFixed(2)} kg</div>
+            <div className="stat-label">Activity Fat Burn</div>
+            <div className="stat-sublabel">{summary.totalFatBurned}g from {summary.totalActivitiesWithHR} activities</div>
+          </div>
+          <div className="stat-card fat-card">
+            <div className="stat-value">{summary.bmr}</div>
+            <div className="stat-label">BMR (cal/day)</div>
+            <div className="stat-sublabel">Basal Metabolic Rate</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Daily Breakdown */}
+      <div className="chart-section">
+        <h3>Daily Fat Burn Breakdown</h3>
+        <div className="daily-fat-breakdown">
+          <div className="breakdown-item">
+            <div className="breakdown-icon">😴</div>
+            <div className="breakdown-content">
+              <div className="breakdown-label">Resting (BMR)</div>
+              <div className="breakdown-value">{summary.dailyRestingFatBurn}g/day</div>
+              <div className="breakdown-detail">~77% of BMR calories come from fat while at rest</div>
+            </div>
+          </div>
+          <div className="breakdown-item">
+            <div className="breakdown-icon">+</div>
+            <div className="breakdown-content">
+              <div className="breakdown-label">Average Daily Activity</div>
+              <div className="breakdown-value">
+                {periodDays > 0 ? Math.round(summary.totalFatBurned / periodDays) : 0}g/day
+              </div>
+              <div className="breakdown-detail">From your {summary.totalActivitiesWithHR} recorded activities</div>
+            </div>
+          </div>
+          <div className="breakdown-item total">
+            <div className="breakdown-icon">=</div>
+            <div className="breakdown-content">
+              <div className="breakdown-label">Estimated Daily Total</div>
+              <div className="breakdown-value">
+                {summary.dailyRestingFatBurn + (periodDays > 0 ? Math.round(summary.totalFatBurned / periodDays) : 0)}g/day
+              </div>
+              <div className="breakdown-detail">
+                ≈ {((summary.dailyRestingFatBurn + (periodDays > 0 ? Math.round(summary.totalFatBurned / periodDays) : 0)) * 7 / 1000).toFixed(2)} kg/week
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Activity-Only Stats */}
+      <div className="chart-section">
+        <h3>Activity Fat Burning Stats</h3>
+        <div className="fat-burn-cards">
           <div className="stat-card fat-card">
             <div className="stat-value">{Math.round(summary.avgFatRatio * 100)}%</div>
             <div className="stat-label">Avg Fat Burn Ratio</div>
-            <div className="stat-sublabel">of calories from fat</div>
+            <div className="stat-sublabel">of exercise calories from fat</div>
           </div>
           <div className="stat-card fat-card highlight">
             <div className="stat-value">{secondsToHMS(summary.zone2Time)}</div>
             <div className="stat-label">Time in Fat Burn Zone</div>
-            <div className="stat-sublabel">{summary.zone2Percentage}% of total training</div>
+            <div className="stat-sublabel">{summary.zone2Percentage}% of training time</div>
           </div>
           <div className="stat-card fat-card">
             <div className="stat-value">{summary.totalCalories.toLocaleString()}</div>
-            <div className="stat-label">Total Calories</div>
-            <div className="stat-sublabel">{summary.totalActivitiesWithHR} activities</div>
+            <div className="stat-label">Activity Calories</div>
+            <div className="stat-sublabel">{summary.totalActivitiesWithHR} activities with HR</div>
+          </div>
+          <div className="stat-card fat-card">
+            <div className="stat-value">{summary.optimalFatBurnActivities}</div>
+            <div className="stat-label">Zone 2 Workouts</div>
+            <div className="stat-sublabel">Optimal fat burning sessions</div>
           </div>
         </div>
       </div>
@@ -200,12 +263,12 @@ export function FatBurningStats({
         </div>
       </div>
 
-      {/* Weekly Fat Burn Trend */}
-      {summary.weeklyFatBurn.length > 0 && (
+      {/* Weekly Fat Burn Trend - Stacked */}
+      {summary.weeklyTotalFatBurn.length > 0 && (
         <div className="chart-section">
-          <h3>Weekly Fat Burn Trend</h3>
+          <h3>Weekly Fat Burn (Activity + Resting)</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={summary.weeklyFatBurn}>
+            <ComposedChart data={summary.weeklyTotalFatBurn}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
               <XAxis dataKey="week" stroke={chartTheme.axis} fontSize={12} />
               <YAxis
@@ -224,7 +287,8 @@ export function FatBurningStats({
               <Tooltip
                 {...tooltipStyle}
                 formatter={(value: number, name: string) => {
-                  if (name === 'Fat Burned') return [`${value}g`, 'Fat Burned']
+                  if (name === 'Activity Fat') return [`${value}g`, 'From Activities']
+                  if (name === 'Resting Fat') return [`${value}g`, 'From Resting']
                   if (name === 'Zone 2 Time') return [`${value} min`, 'Zone 2 Time']
                   return [value, name]
                 }}
@@ -232,9 +296,17 @@ export function FatBurningStats({
               <Legend />
               <Bar
                 yAxisId="fat"
-                dataKey="fatBurned"
+                dataKey="restingFatBurn"
+                stackId="fat"
+                fill={chartTheme.colors.neutral[500]}
+                name="Resting Fat"
+              />
+              <Bar
+                yAxisId="fat"
+                dataKey="activityFatBurn"
+                stackId="fat"
                 fill={chartTheme.colors.orange.primary}
-                name="Fat Burned"
+                name="Activity Fat"
                 radius={[4, 4, 0, 0]}
               />
               <Line
@@ -305,17 +377,16 @@ export function FatBurningStats({
       <div className="chart-section">
         <div className="fitness-legend">
           <p>
-            <strong>Fat Burning Zone (Zone 2)</strong> = 60-70% of heart rate reserve.
-            At this intensity, ~65% of calories come from fat oxidation.
+            <strong>BMR (Basal Metabolic Rate)</strong> = Calories your body burns at rest,
+            calculated using Mifflin-St Jeor formula based on your weight, age, and gender.
           </p>
           <p>
-            <strong>Fat Burned (grams)</strong> = Estimated based on calories burned ×
-            fat ratio at your average HR intensity. 1g fat ≈ 9 calories.
+            <strong>Resting Fat Burn</strong> = ~77% of BMR calories come from fat while sleeping/resting.
+            This is your baseline fat burning that happens 24/7.
           </p>
           <p>
-            <strong>Intensity %</strong> = Your average HR as percentage of heart rate
-            reserve (max HR - resting HR). Adjust your Max HR and Resting HR in settings
-            for accurate calculations.
+            <strong>Activity Fat Burn</strong> = Fat burned during exercise, varies by intensity.
+            Zone 2 (60-70% effort) maximizes fat as fuel source (~65% of calories from fat).
           </p>
         </div>
       </div>

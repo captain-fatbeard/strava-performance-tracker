@@ -726,3 +726,132 @@ export function calculateFatBurningSummary(
     optimalFatBurnActivities,
   }
 }
+
+// ==========================================
+// BMR & Resting Fat Burn Calculations
+// ==========================================
+
+// Calculate BMR using Mifflin-St Jeor formula (most accurate for most people)
+// Returns calories per day
+export function calculateBMR(
+  weight: number,
+  age: number,
+  gender: 'male' | 'female',
+  heightCm: number = 175 // Default height, can be added to settings later
+): number {
+  if (gender === 'male') {
+    // Men: BMR = (10 × weight in kg) + (6.25 × height in cm) − (5 × age in years) + 5
+    return Math.round(10 * weight + 6.25 * heightCm - 5 * age + 5)
+  } else {
+    // Women: BMR = (10 × weight in kg) + (6.25 × height in cm) − (5 × age in years) − 161
+    return Math.round(10 * weight + 6.25 * heightCm - 5 * age - 161)
+  }
+}
+
+// Calculate TDEE (Total Daily Energy Expenditure) based on activity level
+export type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active' | 'veryActive'
+
+export function calculateTDEE(bmr: number, activityLevel: ActivityLevel = 'light'): number {
+  const multipliers: Record<ActivityLevel, number> = {
+    sedentary: 1.2,    // Little or no exercise
+    light: 1.375,      // Light exercise 1-3 days/week
+    moderate: 1.55,    // Moderate exercise 3-5 days/week
+    active: 1.725,     // Hard exercise 6-7 days/week
+    veryActive: 1.9,   // Very hard exercise & physical job
+  }
+  return Math.round(bmr * multipliers[activityLevel])
+}
+
+// At rest, body burns approximately 70-85% of calories from fat
+// This is called the Respiratory Exchange Ratio (RER) at rest
+const RESTING_FAT_RATIO = 0.77 // 77% of resting calories from fat
+
+// Calculate daily resting fat burn in grams
+export function calculateDailyRestingFatBurn(bmr: number): number {
+  const fatCalories = bmr * RESTING_FAT_RATIO
+  const fatGrams = fatCalories / 9 // 9 calories per gram of fat
+  return Math.round(fatGrams)
+}
+
+// Calculate total daily fat burn (resting + activity)
+export interface DailyFatBurn {
+  restingFatBurn: number      // grams from BMR
+  activityFatBurn: number     // grams from exercise
+  totalFatBurn: number        // total grams
+  restingCalories: number     // BMR calories
+  activityCalories: number    // exercise calories
+  totalCalories: number       // total calories
+}
+
+export function calculateDailyFatBurn(
+  bmr: number,
+  activityCalories: number,
+  activityFatBurn: number
+): DailyFatBurn {
+  const restingFatBurn = calculateDailyRestingFatBurn(bmr)
+
+  return {
+    restingFatBurn,
+    activityFatBurn,
+    totalFatBurn: restingFatBurn + activityFatBurn,
+    restingCalories: bmr,
+    activityCalories,
+    totalCalories: bmr + activityCalories,
+  }
+}
+
+// Extended summary including resting metabolism
+export interface CompleteFatBurningSummary extends FatBurningSummary {
+  bmr: number
+  dailyRestingFatBurn: number
+  weeklyRestingFatBurn: number
+  periodRestingFatBurn: number  // For the selected time period
+  periodDays: number
+  totalFatBurnWithResting: number
+  weeklyTotalFatBurn: {
+    week: string
+    activityFatBurn: number
+    restingFatBurn: number
+    totalFatBurn: number
+    zone2Time: number
+  }[]
+}
+
+export function calculateCompleteFatBurningSummary(
+  activities: StravaActivity[],
+  weight: number,
+  maxHR: number,
+  restingHR: number,
+  age: number,
+  gender: 'male' | 'female',
+  periodDays: number
+): CompleteFatBurningSummary {
+  // Get activity-based stats
+  const activityStats = calculateFatBurningSummary(activities, weight, maxHR, restingHR)
+
+  // Calculate BMR and resting fat burn
+  const bmr = calculateBMR(weight, age, gender)
+  const dailyRestingFatBurn = calculateDailyRestingFatBurn(bmr)
+  const weeklyRestingFatBurn = dailyRestingFatBurn * 7
+  const periodRestingFatBurn = dailyRestingFatBurn * periodDays
+
+  // Combine weekly data with resting fat burn
+  const weeklyTotalFatBurn = activityStats.weeklyFatBurn.map((week) => ({
+    week: week.week,
+    activityFatBurn: week.fatBurned,
+    restingFatBurn: weeklyRestingFatBurn,
+    totalFatBurn: week.fatBurned + weeklyRestingFatBurn,
+    zone2Time: week.zone2Time,
+  }))
+
+  return {
+    ...activityStats,
+    bmr,
+    dailyRestingFatBurn,
+    weeklyRestingFatBurn,
+    periodRestingFatBurn,
+    periodDays,
+    totalFatBurnWithResting: activityStats.totalFatBurned + periodRestingFatBurn,
+    weeklyTotalFatBurn,
+  }
+}

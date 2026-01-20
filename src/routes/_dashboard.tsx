@@ -44,10 +44,18 @@ function DashboardLayout() {
     const stored = getStoredSettings()
     return stored.restingHR || 60
   })
+  const [age, setAge] = useState<number>(() => {
+    const stored = getStoredSettings()
+    return stored.age || 35
+  })
+  const [gender, setGender] = useState<'male' | 'female'>(() => {
+    const stored = getStoredSettings()
+    return stored.gender || 'male'
+  })
 
   useEffect(() => {
-    setStoredSettings({ weight, maxHR, restingHR, timeRange, activityType })
-  }, [weight, maxHR, restingHR, timeRange, activityType])
+    setStoredSettings({ weight, maxHR, restingHR, age, gender, timeRange, activityType })
+  }, [weight, maxHR, restingHR, age, gender, timeRange, activityType])
 
   useEffect(() => {
     async function init() {
@@ -211,6 +219,10 @@ function DashboardLayout() {
     setMaxHR,
     restingHR,
     setRestingHR,
+    age,
+    setAge,
+    gender,
+    setGender,
     timeRangeDays: timeRangeToDays[timeRange],
   }
 
@@ -290,6 +302,28 @@ function DashboardLayout() {
               value={restingHR}
               onChange={(e) => setRestingHR(Number(e.target.value))}
             />
+          </div>
+
+          <div className="filter-group">
+            <label>Age: {age}</label>
+            <input
+              type="range"
+              min="18"
+              max="80"
+              value={age}
+              onChange={(e) => setAge(Number(e.target.value))}
+            />
+          </div>
+
+          <div className="filter-group">
+            <label>Gender</label>
+            <select
+              value={gender}
+              onChange={(e) => setGender(e.target.value as 'male' | 'female')}
+            >
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
           </div>
         </div>
 

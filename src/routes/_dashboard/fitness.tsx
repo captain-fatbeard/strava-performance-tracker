@@ -11,7 +11,7 @@ export const Route = createFileRoute('/_dashboard/fitness')({
 })
 
 function FitnessPage() {
-  const { filteredActivities, weight, maxHR, restingHR, timeRangeDays } = useDashboard()
+  const { filteredActivities, weight, maxHR, restingHR, age, gender, timeRangeDays } = useDashboard()
 
   return (
     <>
@@ -20,6 +20,9 @@ function FitnessPage() {
         weight={weight}
         maxHR={maxHR}
         restingHR={restingHR}
+        age={age}
+        gender={gender}
+        periodDays={timeRangeDays}
       />
       <FitnessChart activities={filteredActivities} days={timeRangeDays} />
       <AdvancedMetrics activities={filteredActivities} weight={weight} />

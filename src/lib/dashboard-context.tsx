@@ -38,6 +38,10 @@ export interface DashboardContextType {
   setMaxHR: (maxHR: number) => void
   restingHR: number
   setRestingHR: (restingHR: number) => void
+  age: number
+  setAge: (age: number) => void
+  gender: 'male' | 'female'
+  setGender: (gender: 'male' | 'female') => void
   timeRangeDays: number
 }
 

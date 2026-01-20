@@ -4,6 +4,8 @@ export interface AppSettings {
   weight: number
   maxHR: number
   restingHR: number
+  age: number
+  gender: 'male' | 'female'
   timeRange: '30d' | '90d' | '6m' | '1y' | 'all'
   activityType: 'all' | 'Ride' | 'Run' | 'VirtualRide'
 }
@@ -12,6 +14,8 @@ const defaultSettings: AppSettings = {
   weight: 75,
   maxHR: 185,      // Default estimate, user should adjust
   restingHR: 60,   // Default estimate, user should adjust
+  age: 35,
+  gender: 'male',
   timeRange: '90d',
   activityType: 'all',
 }
