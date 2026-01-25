@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
-import { getStoredAuth } from '~/lib/auth-store'
+import { storage } from '~/lib/storage'
 import { getStravaAuthUrl } from '~/lib/server-functions'
 import { LoginButton } from '~/components/LoginButton'
 
@@ -13,12 +13,20 @@ function Home() {
   const [isChecking, setIsChecking] = useState(true)
 
   useEffect(() => {
-    const auth = getStoredAuth()
-    if (auth.tokens && auth.athlete) {
-      navigate({ to: '/overview' })
-    } else {
-      setIsChecking(false)
+    async function checkAuth() {
+      const [tokens, athlete] = await Promise.all([
+        storage.auth.getTokens(),
+        storage.auth.getAthlete(),
+      ])
+
+      if (tokens && athlete) {
+        navigate({ to: '/overview' })
+      } else {
+        setIsChecking(false)
+      }
     }
+
+    checkAuth()
   }, [navigate])
 
   const handleLogin = async () => {

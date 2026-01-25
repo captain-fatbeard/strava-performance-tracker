@@ -1,8 +1,8 @@
 import { createContext, useContext } from 'react'
 import { type StravaActivity, type StravaAthlete } from './strava'
+import { type TimeRange, type ActivityType, type Gender } from './storage'
 
-export type TimeRange = '30d' | '90d' | '6m' | '1y' | 'all'
-export type ActivityType = 'all' | 'Ride' | 'Run' | 'VirtualRide'
+export type { TimeRange, ActivityType, Gender }
 
 export const timeRangeToDays: Record<TimeRange, number> = {
   '30d': 30,
@@ -41,8 +41,8 @@ export interface DashboardContextType {
   setRestingHR: (restingHR: number) => void
   age: number
   setAge: (age: number) => void
-  gender: 'male' | 'female'
-  setGender: (gender: 'male' | 'female') => void
+  gender: Gender
+  setGender: (gender: Gender) => void
   timeRangeDays: number
   excludedActivityIds: number[]
   toggleActivityExclusion: (activityId: number) => void

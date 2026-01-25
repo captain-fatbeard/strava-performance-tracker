@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { handleStravaCallback } from '~/lib/server-functions'
-import { setStoredAuth } from '~/lib/auth-store'
+import { storage } from '~/lib/storage'
 
 export const Route = createFileRoute('/auth/callback')({
   component: AuthCallback,
@@ -26,14 +26,14 @@ function AuthCallback() {
       try {
         const result = await handleStravaCallback({ data: { code } })
 
-        setStoredAuth({
-          tokens: {
+        await Promise.all([
+          storage.auth.setTokens({
             access_token: result.access_token,
             refresh_token: result.refresh_token,
             expires_at: result.expires_at,
-          },
-          athlete: result.athlete,
-        })
+          }),
+          storage.auth.setAthlete(result.athlete),
+        ])
 
         navigate({ to: '/overview' })
       } catch (err) {

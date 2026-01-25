@@ -1,4 +1,3 @@
-export { Dashboard } from './Dashboard'
 export { LoginButton } from './LoginButton'
 export { StatsCards } from './StatsCards'
 export { ActivityList } from './ActivityList'

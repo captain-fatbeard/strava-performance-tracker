@@ -1,14 +1,11 @@
 import { createFileRoute, Outlet, Link, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState, useMemo } from 'react'
-import { getStoredAuth, isTokenExpired, setStoredAuth, clearStoredAuth } from '~/lib/auth-store'
-import { getStoredSettings, setStoredSettings } from '~/lib/settings-store'
+import { useEffect, useState, useMemo, useRef } from 'react'
+import { storage, DEFAULT_SETTINGS, type TimeRange, type ActivityType } from '~/lib/storage'
 import { refreshStravaToken, fetchAllStravaActivities } from '~/lib/server-functions'
 import { type StravaActivity, type StravaAthlete, metersToKm } from '~/lib/strava'
 import { estimateFTP } from '~/lib/performance'
 import {
   DashboardContext,
-  type TimeRange,
-  type ActivityType,
   type DashboardContextType,
   timeRangeToDays,
 } from '~/lib/dashboard-context'
@@ -24,69 +21,78 @@ function DashboardLayout() {
   const [activities, setActivities] = useState<StravaActivity[]>([])
   const [error, setError] = useState<string | null>(null)
 
-  const [timeRange, setTimeRange] = useState<TimeRange>(() => {
-    const stored = getStoredSettings()
-    return (stored.timeRange as TimeRange) || '90d'
-  })
-  const [activityType, setActivityType] = useState<ActivityType>(() => {
-    const stored = getStoredSettings()
-    return (stored.activityType as ActivityType) || 'all'
-  })
-  const [weight, setWeight] = useState<number>(() => {
-    const stored = getStoredSettings()
-    return stored.weight || 75
-  })
-  const [maxHR, setMaxHR] = useState<number>(() => {
-    const stored = getStoredSettings()
-    return stored.maxHR || 185
-  })
-  const [restingHR, setRestingHR] = useState<number>(() => {
-    const stored = getStoredSettings()
-    return stored.restingHR || 60
-  })
-  const [age, setAge] = useState<number>(() => {
-    const stored = getStoredSettings()
-    return stored.age || 35
-  })
-  const [gender, setGender] = useState<'male' | 'female'>(() => {
-    const stored = getStoredSettings()
-    return stored.gender || 'male'
-  })
-  const [excludedActivityIds, setExcludedActivityIds] = useState<number[]>(() => {
-    const stored = getStoredSettings()
-    return stored.excludedActivityIds || []
-  })
+  const [timeRange, setTimeRange] = useState<TimeRange>(DEFAULT_SETTINGS.timeRange)
+  const [activityType, setActivityType] = useState<ActivityType>(DEFAULT_SETTINGS.activityType)
+  const [weight, setWeight] = useState<number>(DEFAULT_SETTINGS.weight)
+  const [maxHR, setMaxHR] = useState<number>(DEFAULT_SETTINGS.maxHR)
+  const [restingHR, setRestingHR] = useState<number>(DEFAULT_SETTINGS.restingHR)
+  const [age, setAge] = useState<number>(DEFAULT_SETTINGS.age)
+  const [gender, setGender] = useState<'male' | 'female'>(DEFAULT_SETTINGS.gender)
+  const [excludedActivityIds, setExcludedActivityIds] = useState<number[]>(
+    DEFAULT_SETTINGS.excludedActivityIds
+  )
 
+  // Track if settings have been loaded to avoid overwriting on mount
+  const settingsLoaded = useRef(false)
+
+  // Persist settings changes (only after initial load)
   useEffect(() => {
-    setStoredSettings({ weight, maxHR, restingHR, age, gender, timeRange, activityType, excludedActivityIds })
+    if (!settingsLoaded.current) return
+
+    storage.settings.update({
+      weight,
+      maxHR,
+      restingHR,
+      age,
+      gender,
+      timeRange,
+      activityType,
+      excludedActivityIds,
+    })
   }, [weight, maxHR, restingHR, age, gender, timeRange, activityType, excludedActivityIds])
 
   useEffect(() => {
     async function init() {
-      const auth = getStoredAuth()
+      // Load stored settings
+      const settings = await storage.settings.get()
+      setTimeRange(settings.timeRange)
+      setActivityType(settings.activityType)
+      setWeight(settings.weight)
+      setMaxHR(settings.maxHR)
+      setRestingHR(settings.restingHR)
+      setAge(settings.age)
+      setGender(settings.gender)
+      setExcludedActivityIds(settings.excludedActivityIds)
+      settingsLoaded.current = true
 
-      if (!auth.tokens || !auth.athlete) {
+      // Check auth
+      const [tokens, storedAthlete] = await Promise.all([
+        storage.auth.getTokens(),
+        storage.auth.getAthlete(),
+      ])
+
+      if (!tokens || !storedAthlete) {
         navigate({ to: '/' })
         return
       }
 
       try {
-        let tokens = auth.tokens
+        let currentTokens = tokens
 
-        if (isTokenExpired(tokens)) {
+        if (await storage.auth.isTokenExpired()) {
           const newTokens = await refreshStravaToken({ data: { refreshToken: tokens.refresh_token } })
-          tokens = newTokens
-          setStoredAuth({ tokens, athlete: auth.athlete })
+          currentTokens = newTokens
+          await storage.auth.setTokens(newTokens)
         }
 
-        setAthlete(auth.athlete)
+        setAthlete(storedAthlete)
 
         const oneYearAgo = new Date()
         oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
 
         const fetchedActivities = await fetchAllStravaActivities({
           data: {
-            accessToken: tokens.access_token,
+            accessToken: currentTokens.access_token,
             afterDate: oneYearAgo.toISOString(),
           },
         })
@@ -95,7 +101,7 @@ function DashboardLayout() {
       } catch (err) {
         console.error('Error loading data:', err)
         setError('Failed to load data. Please try logging in again.')
-        clearStoredAuth()
+        await storage.auth.clear()
       } finally {
         setIsLoading(false)
       }
@@ -104,8 +110,8 @@ function DashboardLayout() {
     init()
   }, [navigate])
 
-  const handleLogout = () => {
-    clearStoredAuth()
+  const handleLogout = async () => {
+    await storage.auth.clear()
     navigate({ to: '/' })
   }
 
