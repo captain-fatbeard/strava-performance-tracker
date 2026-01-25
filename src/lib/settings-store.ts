@@ -8,6 +8,7 @@ export interface AppSettings {
   gender: 'male' | 'female'
   timeRange: '30d' | '90d' | '6m' | '1y' | 'all'
   activityType: 'all' | 'Ride' | 'Run' | 'VirtualRide'
+  excludedActivityIds: number[]
 }
 
 const defaultSettings: AppSettings = {
@@ -18,6 +19,7 @@ const defaultSettings: AppSettings = {
   gender: 'male',
   timeRange: '90d',
   activityType: 'all',
+  excludedActivityIds: [],
 }
 
 export function getStoredSettings(): AppSettings {

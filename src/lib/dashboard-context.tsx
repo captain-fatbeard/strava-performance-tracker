@@ -16,6 +16,7 @@ export interface DashboardContextType {
   athlete: StravaAthlete
   activities: StravaActivity[]
   filteredActivities: StravaActivity[]
+  statsActivities: StravaActivity[]
   stats: {
     totalActivities: number
     totalDistance: number
@@ -43,6 +44,8 @@ export interface DashboardContextType {
   gender: 'male' | 'female'
   setGender: (gender: 'male' | 'female') => void
   timeRangeDays: number
+  excludedActivityIds: number[]
+  toggleActivityExclusion: (activityId: number) => void
 }
 
 export const DashboardContext = createContext<DashboardContextType | null>(null)

@@ -7,7 +7,7 @@ export const Route = createFileRoute('/_dashboard/trends')({
 })
 
 function TrendsPage() {
-  const { filteredActivities } = useDashboard()
+  const { statsActivities } = useDashboard()
 
-  return <PerformanceCharts activities={filteredActivities} showAllCharts />
+  return <PerformanceCharts activities={statsActivities} showAllCharts />
 }

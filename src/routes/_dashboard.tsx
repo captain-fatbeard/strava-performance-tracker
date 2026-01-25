@@ -52,10 +52,14 @@ function DashboardLayout() {
     const stored = getStoredSettings()
     return stored.gender || 'male'
   })
+  const [excludedActivityIds, setExcludedActivityIds] = useState<number[]>(() => {
+    const stored = getStoredSettings()
+    return stored.excludedActivityIds || []
+  })
 
   useEffect(() => {
-    setStoredSettings({ weight, maxHR, restingHR, age, gender, timeRange, activityType })
-  }, [weight, maxHR, restingHR, age, gender, timeRange, activityType])
+    setStoredSettings({ weight, maxHR, restingHR, age, gender, timeRange, activityType, excludedActivityIds })
+  }, [weight, maxHR, restingHR, age, gender, timeRange, activityType, excludedActivityIds])
 
   useEffect(() => {
     async function init() {
@@ -105,6 +109,14 @@ function DashboardLayout() {
     navigate({ to: '/' })
   }
 
+  const toggleActivityExclusion = (activityId: number) => {
+    setExcludedActivityIds((prev) =>
+      prev.includes(activityId)
+        ? prev.filter((id) => id !== activityId)
+        : [...prev, activityId]
+    )
+  }
+
   const filteredActivities = useMemo(() => {
     let filtered = activities
 
@@ -144,18 +156,22 @@ function DashboardLayout() {
     )
   }, [activities, timeRange, activityType])
 
+  const statsActivities = useMemo(() => {
+    return filteredActivities.filter((a) => !excludedActivityIds.includes(a.id))
+  }, [filteredActivities, excludedActivityIds])
+
   const stats = useMemo(() => {
-    const rides = filteredActivities.filter(
+    const rides = statsActivities.filter(
       (a) => a.type === 'Ride' || a.type === 'VirtualRide'
     )
-    const runs = filteredActivities.filter((a) => a.type === 'Run')
+    const runs = statsActivities.filter((a) => a.type === 'Run')
 
-    const totalDistance = filteredActivities.reduce((sum, a) => sum + a.distance, 0)
-    const totalElevation = filteredActivities.reduce(
+    const totalDistance = statsActivities.reduce((sum, a) => sum + a.distance, 0)
+    const totalElevation = statsActivities.reduce(
       (sum, a) => sum + a.total_elevation_gain,
       0
     )
-    const totalTime = filteredActivities.reduce((sum, a) => sum + a.moving_time, 0)
+    const totalTime = statsActivities.reduce((sum, a) => sum + a.moving_time, 0)
 
     const avgPower =
       rides.length > 0
@@ -164,16 +180,16 @@ function DashboardLayout() {
         : 0
 
     const avgHR =
-      filteredActivities.length > 0
-        ? filteredActivities.reduce((sum, a) => sum + (a.average_heartrate || 0), 0) /
-          filteredActivities.filter((a) => a.average_heartrate).length
+      statsActivities.length > 0
+        ? statsActivities.reduce((sum, a) => sum + (a.average_heartrate || 0), 0) /
+          statsActivities.filter((a) => a.average_heartrate).length
         : 0
 
     const ftp = estimateFTP(rides) || 0
     const wattsPerKilo = ftp > 0 && weight > 0 ? ftp / weight : 0
 
     return {
-      totalActivities: filteredActivities.length,
+      totalActivities: statsActivities.length,
       totalDistance: metersToKm(totalDistance),
       totalElevation,
       totalTime,
@@ -184,7 +200,7 @@ function DashboardLayout() {
       ftp,
       wattsPerKilo,
     }
-  }, [filteredActivities, weight])
+  }, [statsActivities, weight])
 
   if (isLoading) {
     return (
@@ -208,6 +224,7 @@ function DashboardLayout() {
     athlete,
     activities,
     filteredActivities,
+    statsActivities,
     stats,
     timeRange,
     setTimeRange,
@@ -224,6 +241,8 @@ function DashboardLayout() {
     gender,
     setGender,
     timeRangeDays: timeRangeToDays[timeRange],
+    excludedActivityIds,
+    toggleActivityExclusion,
   }
 
   return (

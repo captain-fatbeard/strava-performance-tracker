@@ -9,13 +9,13 @@ export const Route = createFileRoute('/_dashboard/overview')({
 })
 
 function OverviewPage() {
-  const { filteredActivities, stats } = useDashboard()
+  const { statsActivities, stats } = useDashboard()
 
   return (
     <>
       <StatsCards stats={stats} />
-      <PersonalRecords activities={filteredActivities} />
-      <WeeklyProgress activities={filteredActivities} />
+      <PersonalRecords activities={statsActivities} />
+      <WeeklyProgress activities={statsActivities} />
     </>
   )
 }

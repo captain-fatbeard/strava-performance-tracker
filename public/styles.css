@@ -588,6 +588,45 @@ body {
   color: var(--text-muted);
 }
 
+/* Excluded Activities */
+.activity-list tr.excluded td {
+  opacity: 0.5;
+}
+
+.activity-list tr.excluded .activity-name {
+  text-decoration: line-through;
+}
+
+.exclude-btn {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 0.375rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.exclude-btn:hover {
+  background: var(--bg-elevated);
+  border-color: var(--text-muted);
+  color: var(--text-primary);
+}
+
+.exclude-btn.excluded {
+  background: var(--danger-muted);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: var(--danger);
+}
+
+.exclude-btn.excluded:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: var(--danger);
+}
+
 /* Recharts tooltip styling */
 .recharts-tooltip-wrapper {
   outline: none;
