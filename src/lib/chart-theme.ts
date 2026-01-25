@@ -1,80 +1,130 @@
-// Cohesive chart theme using orange/amber palette with subtle variations
+// Chart theme with distinct, high-contrast color palette
 
 export const chartTheme = {
   // Grid and axes
-  grid: '#27272a',
-  axis: '#52525b',
+  grid: '#1e2e2e',
+  axis: '#5f7a7a',
 
   // Tooltip
   tooltip: {
-    background: '#18181b',
-    border: '#3f3f46',
-    text: '#fafafa',
+    background: '#111919',
+    border: '#2a3f3f',
+    text: '#f0fdfa',
   },
 
-  // Orange/Amber palette - primary data colors
+  // Distinct color palette - each color is visually different
   colors: {
-    // Main series - warm orange tones
-    orange: {
-      primary: '#f97316',   // Main orange
-      light: '#fb923c',     // Lighter orange
-      lighter: '#fdba74',   // Even lighter
-      dark: '#ea580c',      // Darker orange
-      muted: '#c2410c',     // Muted/deep orange
+    // Primary - Teal (main brand color)
+    primary: {
+      main: '#14b8a6',
+      light: '#2dd4bf',
+      lighter: '#5eead4',
+      dark: '#0d9488',
+      muted: '#0f766e',
     },
-    // Secondary series - warm amber/yellow tones
+    // Secondary - Violet (high contrast with teal)
+    secondary: {
+      main: '#8b5cf6',
+      light: '#a78bfa',
+      dark: '#7c3aed',
+    },
+    // Tertiary - Rose/Pink
+    tertiary: {
+      main: '#f472b6',
+      light: '#f9a8d4',
+      dark: '#ec4899',
+    },
+    // Fourth - Amber/Gold (muted warm contrast)
     amber: {
-      primary: '#f59e0b',   // Main amber
-      light: '#fbbf24',     // Lighter amber
-      dark: '#d97706',      // Darker amber
+      main: '#d4a574',
+      light: '#e2bc94',
+      dark: '#c49460',
     },
-    // Neutral grays for backgrounds/secondary data
+    // Fifth - Sky Blue
+    sky: {
+      main: '#38bdf8',
+      light: '#7dd3fc',
+      dark: '#0ea5e9',
+    },
+    // Sixth - Coral/Orange
+    coral: {
+      main: '#fb7185',
+      light: '#fda4af',
+      dark: '#f43f5e',
+    },
+    // Neutral grays
     neutral: {
-      50: '#fafafa',
-      100: '#f4f4f5',
-      200: '#e4e4e7',
-      300: '#d4d4d8',
-      400: '#a1a1aa',
-      500: '#71717a',
-      600: '#52525b',
-      700: '#3f3f46',
-      800: '#27272a',
+      50: '#f0fdfa',
+      100: '#ccfbf1',
+      200: '#99f6e4',
+      300: '#5eead4',
+      400: '#99b3b3',
+      500: '#5f7a7a',
+      600: '#3d5555',
+      700: '#2a3f3f',
+      800: '#1e2e2e',
     },
-    // Minimal accent colors - only for specific semantic meaning
+    // Semantic colors
     semantic: {
-      positive: '#10b981',  // Teal-green for positive/form
-      negative: '#ef4444',  // Red for negative/danger
-      info: '#6366f1',      // Indigo for reference lines
+      positive: '#34d399',
+      negative: '#f87171',
+      warning: '#fbbf24',
+      info: '#38bdf8',
     },
   },
 
   // Fill colors with transparency
   fills: {
-    orange: {
-      primary: 'rgba(249, 115, 22, 0.2)',
-      light: 'rgba(251, 146, 60, 0.2)',
-      lighter: 'rgba(253, 186, 116, 0.15)',
+    primary: {
+      main: 'rgba(20, 184, 166, 0.25)',
+      light: 'rgba(45, 212, 191, 0.2)',
+      lighter: 'rgba(94, 234, 212, 0.15)',
+    },
+    secondary: {
+      main: 'rgba(139, 92, 246, 0.25)',
+      light: 'rgba(167, 139, 250, 0.2)',
+    },
+    tertiary: {
+      main: 'rgba(244, 114, 182, 0.25)',
+      light: 'rgba(249, 168, 212, 0.2)',
     },
     amber: {
-      primary: 'rgba(245, 158, 11, 0.2)',
-      light: 'rgba(251, 191, 36, 0.15)',
+      main: 'rgba(212, 165, 116, 0.25)',
+      light: 'rgba(226, 188, 148, 0.2)',
+    },
+    sky: {
+      main: 'rgba(56, 189, 248, 0.25)',
+      light: 'rgba(125, 211, 252, 0.2)',
+    },
+    coral: {
+      main: 'rgba(251, 113, 133, 0.25)',
+      light: 'rgba(253, 164, 175, 0.2)',
     },
     semantic: {
-      positive: 'rgba(16, 185, 129, 0.2)',
-      negative: 'rgba(239, 68, 68, 0.2)',
+      positive: 'rgba(52, 211, 153, 0.2)',
+      negative: 'rgba(248, 113, 113, 0.2)',
     },
   },
 }
 
-// Power zone colors - gradient from cool to hot
+// Power zone colors - subtle progression
 export const zoneColors = [
-  '#71717a', // Z1 - Recovery (gray)
-  '#a1a1aa', // Z2 - Endurance (light gray)
-  '#fbbf24', // Z3 - Tempo (amber)
-  '#f59e0b', // Z4 - Threshold (dark amber)
-  '#f97316', // Z5 - VO2max (orange)
-  '#ea580c', // Z6 - Anaerobic (dark orange)
-  '#c2410c', // Z7 - Neuromuscular (deep orange)
+  '#4a5568', // Z1 - Recovery (cool gray)
+  '#5a7a6b', // Z2 - Endurance (muted green-gray)
+  '#6a7a5a', // Z3 - Tempo (olive gray)
+  '#7a7a5a', // Z4 - Threshold (warm gray)
+  '#8a6a5a', // Z5 - VO2max (muted brown)
+  '#8a5a6a', // Z6 - Anaerobic (muted mauve)
+  '#7a5a6a', // Z7 - Neuromuscular (dusty rose)
+]
+
+// HR zone colors - subtle, muted progression
+export const hrZoneColors = [
+  '#4a5568', // Z1 - Recovery (cool gray)
+  '#5a7a6b', // Z2 - Fat Burn (muted green-gray)
+  '#7a7a5a', // Z3 - Aerobic (warm gray)
+  '#8a6a5a', // Z4 - Threshold (muted brown)
+  '#7a5a6a', // Z5 - Maximum (muted mauve)
 ]
 
 // Tooltip style object for Recharts
@@ -82,9 +132,9 @@ export const tooltipStyle = {
   contentStyle: {
     backgroundColor: chartTheme.tooltip.background,
     border: `1px solid ${chartTheme.tooltip.border}`,
-    borderRadius: '8px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-    padding: '12px',
+    borderRadius: '10px',
+    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+    padding: '12px 16px',
   },
   labelStyle: {
     color: chartTheme.tooltip.text,
@@ -92,7 +142,7 @@ export const tooltipStyle = {
     marginBottom: '8px',
   },
   itemStyle: {
-    color: chartTheme.colors.neutral[300],
-    padding: '2px 0',
+    color: chartTheme.colors.neutral[400],
+    padding: '3px 0',
   },
 }

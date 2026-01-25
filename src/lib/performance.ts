@@ -508,35 +508,35 @@ export function getHRZones(maxHR: number, restingHR: number): HRZone[] {
       min: Math.round(restingHR + hrr * 0.5),
       max: Math.round(restingHR + hrr * 0.6),
       fatBurnRatio: 0.85, // 85% of calories from fat
-      color: '#71717a',
+      color: '#4a5568',
     },
     {
       name: 'Zone 2 (Fat Burn)',
       min: Math.round(restingHR + hrr * 0.6),
       max: Math.round(restingHR + hrr * 0.7),
       fatBurnRatio: 0.65, // 65% of calories from fat - optimal fat burning
-      color: '#22c55e',
+      color: '#5a7a6b',
     },
     {
       name: 'Zone 3 (Aerobic)',
       min: Math.round(restingHR + hrr * 0.7),
       max: Math.round(restingHR + hrr * 0.8),
       fatBurnRatio: 0.45, // 45% from fat
-      color: '#f59e0b',
+      color: '#7a7a5a',
     },
     {
       name: 'Zone 4 (Threshold)',
       min: Math.round(restingHR + hrr * 0.8),
       max: Math.round(restingHR + hrr * 0.9),
       fatBurnRatio: 0.25, // 25% from fat
-      color: '#f97316',
+      color: '#8a6a5a',
     },
     {
       name: 'Zone 5 (Max)',
       min: Math.round(restingHR + hrr * 0.9),
       max: maxHR,
       fatBurnRatio: 0.1, // 10% from fat
-      color: '#ef4444',
+      color: '#7a5a6a',
     },
   ]
 }

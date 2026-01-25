@@ -307,7 +307,7 @@ function DashboardLayout() {
             />
           </div>
 
-          <div className="filter-group">
+          <div className="filter-group weight-slider">
             <label>Max HR: {maxHR} bpm</label>
             <input
               type="range"
@@ -318,7 +318,7 @@ function DashboardLayout() {
             />
           </div>
 
-          <div className="filter-group">
+          <div className="filter-group weight-slider">
             <label>Resting HR: {restingHR} bpm</label>
             <input
               type="range"
@@ -329,7 +329,7 @@ function DashboardLayout() {
             />
           </div>
 
-          <div className="filter-group">
+          <div className="filter-group weight-slider">
             <label>Age: {age}</label>
             <input
               type="range"

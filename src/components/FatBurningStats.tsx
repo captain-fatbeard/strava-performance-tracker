@@ -186,7 +186,7 @@ export function FatBurningStats({
       <div className="chart-section">
         <div className="chart-header">
           <h3>Your FatMax Zone</h3>
-          <span className="ftp-badge" style={{ backgroundColor: '#22c55e' }}>
+          <span className="ftp-badge" style={{ backgroundColor: '#34d399' }}>
             Optimal Fat Burning
           </span>
         </div>
@@ -298,14 +298,14 @@ export function FatBurningStats({
                 yAxisId="fat"
                 dataKey="restingFatBurn"
                 stackId="fat"
-                fill={chartTheme.colors.neutral[500]}
+                fill={chartTheme.colors.neutral[600]}
                 name="Resting Fat"
               />
               <Bar
                 yAxisId="fat"
                 dataKey="activityFatBurn"
                 stackId="fat"
-                fill={chartTheme.colors.orange.primary}
+                fill={chartTheme.colors.neutral[500]}
                 name="Activity Fat"
                 radius={[4, 4, 0, 0]}
               />
@@ -313,9 +313,9 @@ export function FatBurningStats({
                 yAxisId="time"
                 type="monotone"
                 dataKey="zone2Time"
-                stroke="#22c55e"
+                stroke={chartTheme.colors.primary.main}
                 strokeWidth={2}
-                dot={{ r: 4, fill: '#22c55e' }}
+                dot={{ r: 4, fill: chartTheme.colors.primary.main }}
                 name="Zone 2 Time"
               />
             </ComposedChart>
@@ -349,9 +349,9 @@ export function FatBurningStats({
                         className="intensity-badge"
                         style={{
                           backgroundColor: stats!.isOptimalFatBurn
-                            ? '#22c55e'
+                            ? '#34d399'
                             : stats!.intensity > 80
-                              ? '#f97316'
+                              ? '#14b8a6'
                               : '#71717a',
                         }}
                       >

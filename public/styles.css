@@ -5,41 +5,47 @@
 }
 
 :root {
-  /* Primary brand colors */
-  --accent: #f97316;
-  --accent-light: #fb923c;
-  --accent-dark: #ea580c;
+  /* Primary brand colors - Teal/Cyan */
+  --accent: #14b8a6;
+  --accent-light: #2dd4bf;
+  --accent-lighter: #5eead4;
+  --accent-dark: #0d9488;
+  --accent-muted: #0f766e;
 
-  /* Background colors - subtle blue undertone */
-  --bg-primary: #09090b;
-  --bg-secondary: #18181b;
-  --bg-tertiary: #27272a;
-  --bg-elevated: #3f3f46;
+  /* Secondary accent - Cyan for highlights */
+  --accent-secondary: #06b6d4;
+  --accent-secondary-light: #22d3ee;
+
+  /* Background colors - deep slate with subtle teal undertone */
+  --bg-primary: #0a0f0f;
+  --bg-secondary: #111919;
+  --bg-tertiary: #1a2424;
+  --bg-elevated: #243333;
 
   /* Text colors */
-  --text-primary: #fafafa;
-  --text-secondary: #a1a1aa;
-  --text-muted: #71717a;
+  --text-primary: #f0fdfa;
+  --text-secondary: #99b3b3;
+  --text-muted: #5f7a7a;
 
   /* Border and dividers */
-  --border-color: #3f3f46;
-  --border-subtle: #27272a;
+  --border-color: #2a3f3f;
+  --border-subtle: #1e2e2e;
 
   /* Semantic colors */
-  --success: #22c55e;
-  --success-muted: rgba(34, 197, 94, 0.15);
-  --warning: #eab308;
-  --warning-muted: rgba(234, 179, 8, 0.15);
-  --danger: #ef4444;
-  --danger-muted: rgba(239, 68, 68, 0.15);
-  --info: #3b82f6;
-  --info-muted: rgba(59, 130, 246, 0.15);
+  --success: #34d399;
+  --success-muted: rgba(52, 211, 153, 0.15);
+  --warning: #fbbf24;
+  --warning-muted: rgba(251, 191, 36, 0.15);
+  --danger: #f87171;
+  --danger-muted: rgba(248, 113, 113, 0.15);
+  --info: #38bdf8;
+  --info-muted: rgba(56, 189, 248, 0.15);
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
-  --shadow-glow: 0 0 20px rgba(249, 115, 22, 0.3);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.6), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(20, 184, 166, 0.4);
 
   /* Transitions */
   --transition-fast: 150ms ease;
@@ -126,7 +132,7 @@ body {
   cursor: pointer;
   text-decoration: none;
   transition: all var(--transition-normal);
-  box-shadow: var(--shadow-md), 0 0 20px rgba(249, 115, 22, 0.2);
+  box-shadow: var(--shadow-md), 0 0 20px rgba(20, 184, 166, 0.2);
 }
 
 .btn-primary:hover {
@@ -148,7 +154,7 @@ body {
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all var(--transition-normal);
-  box-shadow: var(--shadow-md), 0 0 30px rgba(249, 115, 22, 0.25);
+  box-shadow: var(--shadow-md), 0 0 30px rgba(20, 184, 166, 0.25);
 }
 
 .strava-login-btn:hover {
@@ -258,7 +264,7 @@ body {
 .filter-group select:focus {
   outline: none;
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
 }
 
 /* Weight Slider */
@@ -286,12 +292,12 @@ body {
   border-radius: 50%;
   cursor: pointer;
   transition: all var(--transition-fast);
-  box-shadow: 0 2px 6px rgba(249, 115, 22, 0.4);
+  box-shadow: 0 2px 6px rgba(20, 184, 166, 0.4);
 }
 
 .weight-slider input[type="range"]::-webkit-slider-thumb:hover {
   transform: scale(1.15);
-  box-shadow: 0 2px 10px rgba(249, 115, 22, 0.6);
+  box-shadow: 0 2px 10px rgba(20, 184, 166, 0.6);
 }
 
 .weight-slider input[type="range"]::-moz-range-thumb {
@@ -378,8 +384,8 @@ body {
 
 .stat-card.highlight {
   border-color: var(--accent);
-  background: linear-gradient(135deg, rgba(249, 115, 22, 0.08) 0%, var(--bg-secondary) 100%);
-  box-shadow: 0 0 30px rgba(249, 115, 22, 0.1);
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.08) 0%, var(--bg-secondary) 100%);
+  box-shadow: 0 0 30px rgba(20, 184, 166, 0.1);
 }
 
 .stat-value {
@@ -738,7 +744,7 @@ body {
   border-radius: 9999px;
   font-size: 0.875rem;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
+  box-shadow: 0 2px 8px rgba(20, 184, 166, 0.3);
 }
 
 .zones-container {
@@ -943,7 +949,7 @@ body {
 
 .metric-card.vo2max {
   border-color: var(--accent);
-  background: linear-gradient(135deg, rgba(249, 115, 22, 0.1) 0%, var(--bg-tertiary) 100%);
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.1) 0%, var(--bg-tertiary) 100%);
 }
 
 .metric-icon {
@@ -1000,7 +1006,7 @@ body {
 }
 
 .metric-badge.elite {
-  background: rgba(249, 115, 22, 0.2);
+  background: rgba(20, 184, 166, 0.2);
   color: var(--accent);
 }
 
@@ -1108,7 +1114,7 @@ body {
 
 /* Selection */
 ::selection {
-  background: rgba(249, 115, 22, 0.3);
+  background: rgba(20, 184, 166, 0.3);
   color: var(--text-primary);
 }
 
@@ -1126,13 +1132,13 @@ body {
 }
 
 .fat-card.highlight {
-  background: linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(34, 197, 94, 0.05));
-  border-color: rgba(34, 197, 94, 0.3);
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.15), rgba(52, 211, 153, 0.05));
+  border-color: rgba(52, 211, 153, 0.3);
 }
 
 .fat-card.total {
-  background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.05));
-  border-color: rgba(249, 115, 22, 0.3);
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.15), rgba(20, 184, 166, 0.05));
+  border-color: rgba(20, 184, 166, 0.3);
 }
 
 /* Daily Fat Breakdown */
@@ -1155,8 +1161,8 @@ body {
 }
 
 .breakdown-item.total {
-  background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.05));
-  border: 1px solid rgba(249, 115, 22, 0.3);
+  background: linear-gradient(135deg, rgba(20, 184, 166, 0.15), rgba(20, 184, 166, 0.05));
+  border: 1px solid rgba(20, 184, 166, 0.3);
 }
 
 .breakdown-icon {
@@ -1204,7 +1210,7 @@ body {
   padding: 1.5rem;
   background: var(--bg-secondary);
   border-radius: var(--radius-md);
-  border: 1px solid rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(52, 211, 153, 0.2);
 }
 
 .fatmax-range {
@@ -1213,7 +1219,7 @@ body {
   align-items: center;
   justify-content: center;
   padding: 1rem 2rem;
-  background: rgba(34, 197, 94, 0.1);
+  background: rgba(52, 211, 153, 0.1);
   border-radius: var(--radius-md);
 }
 
@@ -1226,7 +1232,7 @@ body {
 .fatmax-value {
   font-size: 1.75rem;
   font-weight: 700;
-  color: #22c55e;
+  color: #34d399;
 }
 
 .fatmax-info p {
@@ -1286,7 +1292,7 @@ body {
 }
 
 .zone-item .zone-fat {
-  color: #22c55e;
+  color: #34d399;
   font-weight: 500;
 }
 
@@ -1316,7 +1322,7 @@ body {
 }
 
 .fat-activities-table tr.optimal {
-  background: rgba(34, 197, 94, 0.05);
+  background: rgba(52, 211, 153, 0.05);
 }
 
 .fat-activities-table .activity-name {
@@ -1350,8 +1356,8 @@ body {
 }
 
 .zone-badge.fat-burn {
-  background: rgba(34, 197, 94, 0.2);
-  color: #22c55e;
+  background: rgba(52, 211, 153, 0.2);
+  color: #34d399;
 }
 
 @media (max-width: 768px) {

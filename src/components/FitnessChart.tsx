@@ -42,11 +42,11 @@ export function FitnessChart({ activities, days = 90 }: FitnessChartProps) {
   const latestData = fitnessData[fitnessData.length - 1]
   const formStatus =
     latestData.tsb > 15
-      ? { label: 'Fresh', color: chartTheme.colors.semantic.positive }
+      ? { label: 'Fresh', color: chartTheme.colors.amber.main }
       : latestData.tsb > 0
-        ? { label: 'Optimal', color: chartTheme.colors.amber.primary }
+        ? { label: 'Optimal', color: chartTheme.colors.amber.light }
         : latestData.tsb > -15
-          ? { label: 'Tired', color: chartTheme.colors.orange.primary }
+          ? { label: 'Tired', color: chartTheme.colors.neutral[400] }
           : { label: 'Overreached', color: chartTheme.colors.semantic.negative }
 
   return (
@@ -56,11 +56,11 @@ export function FitnessChart({ activities, days = 90 }: FitnessChartProps) {
         <div className="fitness-stats">
           <span className="fitness-stat">
             <span className="label">CTL</span>
-            <span className="value" style={{ color: chartTheme.colors.orange.primary }}>{latestData.ctl}</span>
+            <span className="value" style={{ color: chartTheme.colors.primary.main }}>{latestData.ctl}</span>
           </span>
           <span className="fitness-stat">
             <span className="label">ATL</span>
-            <span className="value" style={{ color: chartTheme.colors.amber.primary }}>{latestData.atl}</span>
+            <span className="value" style={{ color: chartTheme.colors.secondary.main }}>{latestData.atl}</span>
           </span>
           <span className="fitness-stat">
             <span className="label">Form</span>
@@ -99,24 +99,24 @@ export function FitnessChart({ activities, days = 90 }: FitnessChartProps) {
           <Area
             type="monotone"
             dataKey="ctl"
-            stroke={chartTheme.colors.orange.primary}
-            fill={chartTheme.fills.orange.primary}
+            stroke={chartTheme.colors.primary.main}
+            fill={chartTheme.fills.primary.main}
             name="Fitness (CTL)"
             strokeWidth={2}
           />
           <Area
             type="monotone"
             dataKey="atl"
-            stroke={chartTheme.colors.amber.primary}
-            fill={chartTheme.fills.amber.primary}
+            stroke={chartTheme.colors.secondary.main}
+            fill={chartTheme.fills.secondary.main}
             name="Fatigue (ATL)"
             strokeWidth={2}
           />
           <Area
             type="monotone"
             dataKey="tsb"
-            stroke={chartTheme.colors.semantic.positive}
-            fill={chartTheme.fills.semantic.positive}
+            stroke={chartTheme.colors.amber.main}
+            fill={chartTheme.fills.amber.main}
             name="Form (TSB)"
             strokeWidth={2}
           />

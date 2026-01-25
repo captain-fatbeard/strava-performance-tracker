@@ -7,7 +7,6 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
   Bar,
   AreaChart,
   Area,
@@ -144,19 +143,19 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
               <Line
                 type="monotone"
                 dataKey="avgPower"
-                stroke={chartTheme.colors.orange.primary}
+                stroke={chartTheme.colors.primary.main}
                 strokeWidth={2}
-                dot={{ r: 4, fill: chartTheme.colors.orange.primary }}
-                activeDot={{ r: 6, stroke: chartTheme.colors.orange.primary, strokeWidth: 2 }}
+                dot={{ r: 4, fill: chartTheme.colors.primary.main }}
+                activeDot={{ r: 6, stroke: chartTheme.colors.primary.main, strokeWidth: 2 }}
                 name="Avg Power"
               />
               {powerTrendData.some((d) => d.normalizedPower > 0) && (
                 <Line
                   type="monotone"
                   dataKey="normalizedPower"
-                  stroke={chartTheme.colors.amber.primary}
+                  stroke={chartTheme.colors.secondary.main}
                   strokeWidth={2}
-                  dot={{ r: 3, fill: chartTheme.colors.amber.primary }}
+                  dot={{ r: 3, fill: chartTheme.colors.secondary.main }}
                   name="Normalized Power"
                 />
               )}
@@ -166,7 +165,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
                     { x: powerTrendData[0]?.date, y: powerTrendLine.startValue },
                     { x: powerTrendData[powerTrendData.length - 1]?.date, y: powerTrendLine.endValue },
                   ]}
-                  stroke={chartTheme.colors.semantic.positive}
+                  stroke={chartTheme.colors.amber.main}
                   strokeDasharray="5 5"
                   strokeWidth={2}
                 />
@@ -193,16 +192,16 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
                 <Area
                   type="monotone"
                   dataKey="maxHR"
-                  stroke={chartTheme.colors.orange.dark}
-                  fill={chartTheme.fills.orange.primary}
+                  stroke={chartTheme.colors.secondary.main}
+                  fill={chartTheme.fills.secondary.main}
                   strokeWidth={2}
                   name="Max HR"
                 />
                 <Area
                   type="monotone"
                   dataKey="avgHR"
-                  stroke={chartTheme.colors.amber.primary}
-                  fill={chartTheme.fills.amber.primary}
+                  stroke={chartTheme.colors.primary.main}
+                  fill={chartTheme.fills.primary.main}
                   strokeWidth={2}
                   name="Avg HR"
                 />
@@ -216,23 +215,31 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
       <div className="chart-section">
         <h3>Weekly Volume</h3>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={weeklyVolumeData}>
+          <ComposedChart data={weeklyVolumeData}>
             <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
             <XAxis dataKey="week" stroke={chartTheme.axis} fontSize={12} />
-            <YAxis yAxisId="left" stroke={chartTheme.axis} fontSize={12} />
-            <YAxis yAxisId="right" orientation="right" stroke={chartTheme.axis} fontSize={12} />
+            <YAxis yAxisId="left" stroke={chartTheme.axis} fontSize={12} unit=" km" />
+            <YAxis yAxisId="right" orientation="right" stroke={chartTheme.axis} fontSize={12} unit=" hrs" />
             <Tooltip
               {...tooltipStyle}
               formatter={(value: number, name: string) => {
-                if (name === 'Distance (km)') return [`${value} km`, 'Distance']
-                if (name === 'Hours') return [`${value} hrs`, 'Time']
+                if (name === 'Distance') return [`${value} km`, 'Distance']
+                if (name === 'Time') return [`${value} hrs`, 'Time']
                 return [value, name]
               }}
             />
             <Legend />
-            <Bar yAxisId="left" dataKey="distance" fill={chartTheme.colors.orange.primary} radius={[4, 4, 0, 0]} name="Distance (km)" />
-            <Bar yAxisId="right" dataKey="hours" fill={chartTheme.colors.orange.lighter} radius={[4, 4, 0, 0]} name="Hours" />
-          </BarChart>
+            <Bar yAxisId="left" dataKey="distance" fill={chartTheme.colors.neutral[600]} radius={[4, 4, 0, 0]} name="Distance" />
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="hours"
+              stroke={chartTheme.colors.primary.main}
+              strokeWidth={2}
+              dot={{ r: 4, fill: chartTheme.colors.primary.main }}
+              name="Time"
+            />
+          </ComposedChart>
         </ResponsiveContainer>
       </div>
 
@@ -265,20 +272,19 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
                 yAxisId="speed"
                 type="monotone"
                 dataKey="speed"
-                stroke={chartTheme.colors.orange.primary}
+                stroke={chartTheme.colors.primary.main}
                 strokeWidth={2}
-                dot={{ r: 3, fill: chartTheme.colors.orange.primary }}
+                dot={{ r: 3, fill: chartTheme.colors.primary.main }}
                 name="Avg Speed"
               />
               <Line
                 yAxisId="speed"
                 type="monotone"
                 dataKey="maxSpeed"
-                stroke={chartTheme.colors.amber.light}
-                strokeWidth={1}
-                dot={{ r: 2, fill: chartTheme.colors.amber.light }}
+                stroke={chartTheme.colors.secondary.main}
+                strokeWidth={2}
+                dot={{ r: 3, fill: chartTheme.colors.secondary.main }}
                 name="Max Speed"
-                strokeDasharray="3 3"
               />
             </ComposedChart>
           </ResponsiveContainer>

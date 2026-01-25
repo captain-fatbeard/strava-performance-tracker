@@ -57,14 +57,14 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
           <Bar
             yAxisId="left"
             dataKey="totalTSS"
-            fill={chartTheme.colors.orange.primary}
+            fill={chartTheme.colors.neutral[600]}
             name="Training Stress"
             radius={[4, 4, 0, 0]}
           />
           <Bar
             yAxisId="left"
             dataKey="totalDistance"
-            fill={chartTheme.colors.amber.primary}
+            fill={chartTheme.colors.neutral[500]}
             name="Distance (km)"
             radius={[4, 4, 0, 0]}
           />
@@ -72,18 +72,18 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
             yAxisId="right"
             type="monotone"
             dataKey="totalHours"
-            stroke={chartTheme.colors.orange.lighter}
+            stroke={chartTheme.colors.primary.main}
             strokeWidth={2}
-            dot={{ r: 4, fill: chartTheme.colors.orange.lighter }}
+            dot={{ r: 4, fill: chartTheme.colors.primary.main }}
             name="Time (hrs)"
           />
           <Line
             yAxisId="right"
             type="monotone"
             dataKey="avgPower"
-            stroke={chartTheme.colors.orange.light}
+            stroke={chartTheme.colors.secondary.main}
             strokeWidth={2}
-            dot={{ r: 4, fill: chartTheme.colors.orange.light }}
+            dot={{ r: 4, fill: chartTheme.colors.secondary.main }}
             name="Avg Power (W)"
           />
         </ComposedChart>
