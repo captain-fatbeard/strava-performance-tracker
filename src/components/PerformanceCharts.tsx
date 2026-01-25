@@ -14,8 +14,8 @@ import {
   ReferenceLine,
   ComposedChart,
 } from 'recharts'
-import { format, startOfWeek, parseISO } from 'date-fns'
-import { type StravaActivity, metersToKm } from '~/lib/strava'
+import { format } from 'date-fns'
+import { type StravaActivity } from '~/lib/strava'
 import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
 
 interface PerformanceChartsProps {
@@ -72,31 +72,6 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
       name: activity.name,
       type: activity.type,
     }))
-  }, [activities])
-
-  const weeklyVolumeData = useMemo(() => {
-    const weekMap = new Map<string, { distance: number; elevation: number; time: number; count: number }>()
-
-    activities.forEach((activity) => {
-      const weekStart = format(startOfWeek(parseISO(activity.start_date), { weekStartsOn: 1 }), 'MMM d')
-      const existing = weekMap.get(weekStart) || { distance: 0, elevation: 0, time: 0, count: 0 }
-      weekMap.set(weekStart, {
-        distance: existing.distance + metersToKm(activity.distance),
-        elevation: existing.elevation + activity.total_elevation_gain,
-        time: existing.time + activity.moving_time / 3600,
-        count: existing.count + 1,
-      })
-    })
-
-    return Array.from(weekMap.entries())
-      .map(([week, data]) => ({
-        week,
-        distance: Math.round(data.distance),
-        elevation: Math.round(data.elevation),
-        hours: Math.round(data.time * 10) / 10,
-        activities: data.count,
-      }))
-      .slice(-12)
   }, [activities])
 
   const speedTrendData = useMemo(() => {
@@ -210,38 +185,6 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
           )}
         </div>
       )}
-
-      {/* Weekly Volume */}
-      <div className="chart-section">
-        <h3>Weekly Volume</h3>
-        <ResponsiveContainer width="100%" height={300}>
-          <ComposedChart data={weeklyVolumeData}>
-            <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
-            <XAxis dataKey="week" stroke={chartTheme.axis} fontSize={12} />
-            <YAxis yAxisId="left" stroke={chartTheme.axis} fontSize={12} unit=" km" />
-            <YAxis yAxisId="right" orientation="right" stroke={chartTheme.axis} fontSize={12} unit=" hrs" />
-            <Tooltip
-              {...tooltipStyle}
-              formatter={(value: number, name: string) => {
-                if (name === 'Distance') return [`${value} km`, 'Distance']
-                if (name === 'Time') return [`${value} hrs`, 'Time']
-                return [value, name]
-              }}
-            />
-            <Legend />
-            <Bar yAxisId="left" dataKey="distance" fill={chartTheme.colors.neutral[600]} radius={[4, 4, 0, 0]} name="Distance" />
-            <Line
-              yAxisId="right"
-              type="monotone"
-              dataKey="hours"
-              stroke={chartTheme.colors.primary.main}
-              strokeWidth={2}
-              dot={{ r: 4, fill: chartTheme.colors.primary.main }}
-              name="Time"
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
 
       {/* Speed & Elevation Trend */}
       {showAllCharts && (
