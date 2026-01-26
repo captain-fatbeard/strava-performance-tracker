@@ -20,6 +20,7 @@ function DashboardLayout() {
   const [athlete, setAthlete] = useState<StravaAthlete | null>(null)
   const [activities, setActivities] = useState<StravaActivity[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const [timeRange, setTimeRange] = useState<TimeRange>(DEFAULT_SETTINGS.timeRange)
   const [activityType, setActivityType] = useState<ActivityType>(DEFAULT_SETTINGS.activityType)
@@ -261,115 +262,158 @@ function DashboardLayout() {
               {athlete.firstname} {athlete.lastname}
             </span>
           </div>
-          <div className="header-right">
+          <button
+            className="sidebar-toggle"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label="Toggle settings"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </header>
+
+        {sidebarOpen && (
+          <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+        )}
+
+        <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+          <div className="sidebar-header">
+            <h2>Settings</h2>
+            <button
+              className="sidebar-close"
+              onClick={() => setSidebarOpen(false)}
+              aria-label="Close settings"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <div className="sidebar-content">
+            <div className="sidebar-section">
+              <h3>Filters</h3>
+              <div className="filter-group">
+                <label>Time Range</label>
+                <select
+                  value={timeRange}
+                  onChange={(e) => setTimeRange(e.target.value as TimeRange)}
+                >
+                  <option value="30d">Last 30 days</option>
+                  <option value="90d">Last 90 days</option>
+                  <option value="6m">Last 6 months</option>
+                  <option value="1y">Last year</option>
+                  <option value="all">All time</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <label>Activity Type</label>
+                <select
+                  value={activityType}
+                  onChange={(e) => setActivityType(e.target.value as ActivityType)}
+                >
+                  <option value="all">All activities</option>
+                  <option value="Ride">Cycling (incl. Zwift)</option>
+                  <option value="Run">Running</option>
+                  <option value="VirtualRide">Zwift only</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="sidebar-section">
+              <h3>User Profile</h3>
+              <div className="filter-group weight-slider">
+                <label>Weight: {weight} kg</label>
+                <input
+                  type="range"
+                  min="40"
+                  max="150"
+                  value={weight}
+                  onChange={(e) => setWeight(Number(e.target.value))}
+                />
+              </div>
+
+              <div className="filter-group weight-slider">
+                <label>Max HR: {maxHR} bpm</label>
+                <input
+                  type="range"
+                  min="150"
+                  max="220"
+                  value={maxHR}
+                  onChange={(e) => setMaxHR(Number(e.target.value))}
+                />
+              </div>
+
+              <div className="filter-group weight-slider">
+                <label>Resting HR: {restingHR} bpm</label>
+                <input
+                  type="range"
+                  min="35"
+                  max="90"
+                  value={restingHR}
+                  onChange={(e) => setRestingHR(Number(e.target.value))}
+                />
+              </div>
+
+              <div className="filter-group weight-slider">
+                <label>Age: {age}</label>
+                <input
+                  type="range"
+                  min="18"
+                  max="80"
+                  value={age}
+                  onChange={(e) => setAge(Number(e.target.value))}
+                />
+              </div>
+
+              <div className="filter-group">
+                <label>Gender</label>
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value as 'male' | 'female')}
+                >
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="sidebar-footer">
             <button onClick={handleLogout} className="logout-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
               Logout
             </button>
           </div>
-        </header>
+        </aside>
 
-        <div className="filters">
-          <div className="filter-group">
-            <label>Time Range</label>
-            <select
-              value={timeRange}
-              onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-            >
-              <option value="30d">Last 30 days</option>
-              <option value="90d">Last 90 days</option>
-              <option value="6m">Last 6 months</option>
-              <option value="1y">Last year</option>
-              <option value="all">All time</option>
-            </select>
-          </div>
+        <div className="dashboard-main">
+          <nav className="dashboard-tabs">
+            <Link to="/overview" activeProps={{ className: 'active' }}>
+              Overview
+            </Link>
+            <Link to="/fitness" activeProps={{ className: 'active' }}>
+              Fitness
+            </Link>
+            <Link to="/trends" activeProps={{ className: 'active' }}>
+              Trends
+            </Link>
+            <Link to="/activities" activeProps={{ className: 'active' }}>
+              Activities
+            </Link>
+          </nav>
 
-          <div className="filter-group">
-            <label>Activity Type</label>
-            <select
-              value={activityType}
-              onChange={(e) => setActivityType(e.target.value as ActivityType)}
-            >
-              <option value="all">All activities</option>
-              <option value="Ride">Cycling (incl. Zwift)</option>
-              <option value="Run">Running</option>
-              <option value="VirtualRide">Zwift only</option>
-            </select>
-          </div>
-
-          <div className="filter-group weight-slider">
-            <label>Weight: {weight} kg</label>
-            <input
-              type="range"
-              min="40"
-              max="150"
-              value={weight}
-              onChange={(e) => setWeight(Number(e.target.value))}
-            />
-          </div>
-
-          <div className="filter-group weight-slider">
-            <label>Max HR: {maxHR} bpm</label>
-            <input
-              type="range"
-              min="150"
-              max="220"
-              value={maxHR}
-              onChange={(e) => setMaxHR(Number(e.target.value))}
-            />
-          </div>
-
-          <div className="filter-group weight-slider">
-            <label>Resting HR: {restingHR} bpm</label>
-            <input
-              type="range"
-              min="35"
-              max="90"
-              value={restingHR}
-              onChange={(e) => setRestingHR(Number(e.target.value))}
-            />
-          </div>
-
-          <div className="filter-group weight-slider">
-            <label>Age: {age}</label>
-            <input
-              type="range"
-              min="18"
-              max="80"
-              value={age}
-              onChange={(e) => setAge(Number(e.target.value))}
-            />
-          </div>
-
-          <div className="filter-group">
-            <label>Gender</label>
-            <select
-              value={gender}
-              onChange={(e) => setGender(e.target.value as 'male' | 'female')}
-            >
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-            </select>
-          </div>
+          <main className="dashboard-content">
+            <Outlet />
+          </main>
         </div>
-
-        <nav className="dashboard-tabs">
-          <Link to="/overview" activeProps={{ className: 'active' }}>
-            Overview
-          </Link>
-          <Link to="/fitness" activeProps={{ className: 'active' }}>
-            Fitness
-          </Link>
-          <Link to="/trends" activeProps={{ className: 'active' }}>
-            Trends
-          </Link>
-          <Link to="/activities" activeProps={{ className: 'active' }}>
-            Activities
-          </Link>
-        </nav>
-
-        <main className="dashboard-content">
-          <Outlet />
-        </main>
       </div>
     </DashboardContext.Provider>
   )
