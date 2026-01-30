@@ -1,8 +1,8 @@
 {
-  "name": "strava-performance-tracker",
+  "name": "formlab",
   "version": "1.0.0",
   "type": "module",
-  "description": "Track your Strava performance metrics over time",
+  "description": "Analyze your fitness form and training metrics",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

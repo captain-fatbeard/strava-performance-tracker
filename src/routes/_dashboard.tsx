@@ -257,7 +257,22 @@ function DashboardLayout() {
       <div className="dashboard">
         <header className="dashboard-header">
           <div className="header-left">
-            <h1>Performance Tracker</h1>
+            <div className="brand">
+              <svg className="logo" width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <rect width="32" height="32" rx="8" fill="url(#logo-gradient)"/>
+                <path d="M8 22L12 14L16 18L20 10L24 16" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="12" cy="14" r="2" fill="white"/>
+                <circle cx="16" cy="18" r="2" fill="white"/>
+                <circle cx="20" cy="10" r="2" fill="white"/>
+                <defs>
+                  <linearGradient id="logo-gradient" x1="0" y1="0" x2="32" y2="32">
+                    <stop stopColor="#14b8a6"/>
+                    <stop offset="1" stopColor="#0891b2"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <h1>FormLab</h1>
+            </div>
             <span className="athlete-name">
               {athlete.firstname} {athlete.lastname}
             </span>
