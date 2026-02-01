@@ -1,5 +1,5 @@
 import { createFileRoute, Outlet, Link, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState, useMemo, useRef } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { storage, DEFAULT_SETTINGS, type TimeRange, type ActivityType } from '~/lib/storage'
 import { refreshStravaToken, fetchAllStravaActivities } from '~/lib/server-functions'
 import { type StravaActivity, type StravaAthlete, metersToKm } from '~/lib/strava'
@@ -9,6 +9,13 @@ import {
   type DashboardContextType,
   timeRangeToDays,
 } from '~/lib/dashboard-context'
+import {
+  fetchWeightEntries,
+  addWeightEntry as addWeightEntryToDb,
+  deleteWeightEntry as deleteWeightEntryFromDb,
+  isSupabaseConfigured,
+  type WeightEntry,
+} from '~/lib/storage/supabase-client'
 
 export const Route = createFileRoute('/_dashboard')({
   component: DashboardLayout,
@@ -32,6 +39,9 @@ function DashboardLayout() {
   const [excludedActivityIds, setExcludedActivityIds] = useState<number[]>(
     DEFAULT_SETTINGS.excludedActivityIds
   )
+
+  // Weight tracking state
+  const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([])
 
   // Track if settings have been loaded to avoid overwriting on mount
   const settingsLoaded = useRef(false)
@@ -123,6 +133,38 @@ function DashboardLayout() {
         : [...prev, activityId]
     )
   }
+
+  // Load weight entries when athlete is available
+  useEffect(() => {
+    if (athlete && isSupabaseConfigured()) {
+      fetchWeightEntries(athlete.id).then(setWeightEntries)
+    }
+  }, [athlete])
+
+  const handleAddWeightEntry = useCallback(
+    async (weightValue: number, recordedAt: Date): Promise<boolean> => {
+      if (!athlete) return false
+      const entry = await addWeightEntryToDb(athlete.id, weightValue, recordedAt)
+      if (entry) {
+        setWeightEntries((prev) =>
+          [entry, ...prev].sort(
+            (a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime()
+          )
+        )
+        return true
+      }
+      return false
+    },
+    [athlete]
+  )
+
+  const handleDeleteWeightEntry = useCallback(async (id: string): Promise<boolean> => {
+    const success = await deleteWeightEntryFromDb(id)
+    if (success) {
+      setWeightEntries((prev) => prev.filter((e) => e.id !== id))
+    }
+    return success
+  }, [])
 
   const filteredActivities = useMemo(() => {
     let filtered = activities
@@ -250,6 +292,9 @@ function DashboardLayout() {
     timeRangeDays: timeRangeToDays[timeRange],
     excludedActivityIds,
     toggleActivityExclusion,
+    weightEntries,
+    addWeightEntry: handleAddWeightEntry,
+    deleteWeightEntry: handleDeleteWeightEntry,
   }
 
   return (

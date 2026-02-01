@@ -118,3 +118,109 @@ export async function upsertUserSettings(
 export function isSupabaseConfigured(): boolean {
   return supabase !== null
 }
+
+// Weight entry types
+export interface WeightEntry {
+  id: string
+  athleteId: number
+  weight: number
+  recordedAt: string
+  createdAt: string
+}
+
+interface WeightEntryRow {
+  id: string
+  athlete_id: number
+  weight: number
+  recorded_at: string
+  created_at: string
+}
+
+function rowToWeightEntry(row: WeightEntryRow): WeightEntry {
+  return {
+    id: row.id,
+    athleteId: row.athlete_id,
+    weight: Number(row.weight),
+    recordedAt: row.recorded_at,
+    createdAt: row.created_at,
+  }
+}
+
+export async function fetchWeightEntries(athleteId: number): Promise<WeightEntry[]> {
+  if (!supabase) {
+    return []
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('weight_entries')
+      .select('*')
+      .eq('athlete_id', athleteId)
+      .order('recorded_at', { ascending: false })
+
+    if (error) {
+      console.warn('Supabase fetch weight entries error:', error.message)
+      return []
+    }
+
+    return (data as WeightEntryRow[]).map(rowToWeightEntry)
+  } catch (err) {
+    console.warn('Supabase fetch weight entries error:', err)
+    return []
+  }
+}
+
+export async function addWeightEntry(
+  athleteId: number,
+  weight: number,
+  recordedAt: Date
+): Promise<WeightEntry | null> {
+  if (!supabase) {
+    return null
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('weight_entries')
+      .insert({
+        athlete_id: athleteId,
+        weight,
+        recorded_at: recordedAt.toISOString(),
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.warn('Supabase add weight entry error:', error.message)
+      return null
+    }
+
+    return rowToWeightEntry(data as WeightEntryRow)
+  } catch (err) {
+    console.warn('Supabase add weight entry error:', err)
+    return null
+  }
+}
+
+export async function deleteWeightEntry(id: string): Promise<boolean> {
+  if (!supabase) {
+    return false
+  }
+
+  try {
+    const { error } = await supabase
+      .from('weight_entries')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.warn('Supabase delete weight entry error:', error.message)
+      return false
+    }
+
+    return true
+  } catch (err) {
+    console.warn('Supabase delete weight entry error:', err)
+    return false
+  }
+}

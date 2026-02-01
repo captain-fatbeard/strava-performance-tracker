@@ -1,8 +1,10 @@
 import { createContext, useContext } from 'react'
 import { type StravaActivity, type StravaAthlete } from './strava'
 import { type TimeRange, type ActivityType, type Gender } from './storage'
+import type { WeightEntry } from './storage/supabase-client'
 
 export type { TimeRange, ActivityType, Gender }
+export type { WeightEntry }
 
 export const timeRangeToDays: Record<TimeRange, number> = {
   '30d': 30,
@@ -46,6 +48,9 @@ export interface DashboardContextType {
   timeRangeDays: number
   excludedActivityIds: number[]
   toggleActivityExclusion: (activityId: number) => void
+  weightEntries: WeightEntry[]
+  addWeightEntry: (weight: number, recordedAt: Date) => Promise<boolean>
+  deleteWeightEntry: (id: string) => Promise<boolean>
 }
 
 export const DashboardContext = createContext<DashboardContextType | null>(null)
