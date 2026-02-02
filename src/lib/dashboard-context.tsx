@@ -36,7 +36,6 @@ export interface DashboardContextType {
   activityType: ActivityType
   setActivityType: (type: ActivityType) => void
   weight: number
-  setWeight: (weight: number) => void
   maxHR: number
   setMaxHR: (maxHR: number) => void
   restingHR: number

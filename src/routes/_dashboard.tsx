@@ -31,7 +31,6 @@ function DashboardLayout() {
 
   const [timeRange, setTimeRange] = useState<TimeRange>(DEFAULT_SETTINGS.timeRange)
   const [activityType, setActivityType] = useState<ActivityType>(DEFAULT_SETTINGS.activityType)
-  const [weight, setWeight] = useState<number>(DEFAULT_SETTINGS.weight)
   const [maxHR, setMaxHR] = useState<number>(DEFAULT_SETTINGS.maxHR)
   const [restingHR, setRestingHR] = useState<number>(DEFAULT_SETTINGS.restingHR)
   const [age, setAge] = useState<number>(DEFAULT_SETTINGS.age)
@@ -43,6 +42,12 @@ function DashboardLayout() {
   // Weight tracking state
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([])
 
+  // Derive weight from most recent weight entry
+  const weight = useMemo(() => {
+    if (weightEntries.length === 0) return 75 // Default weight
+    return weightEntries[0].weight // Already sorted by recorded_at DESC
+  }, [weightEntries])
+
   // Track if settings have been loaded to avoid overwriting on mount
   const settingsLoaded = useRef(false)
 
@@ -51,7 +56,6 @@ function DashboardLayout() {
     if (!settingsLoaded.current) return
 
     storage.settings.update({
-      weight,
       maxHR,
       restingHR,
       age,
@@ -60,7 +64,7 @@ function DashboardLayout() {
       activityType,
       excludedActivityIds,
     })
-  }, [weight, maxHR, restingHR, age, gender, timeRange, activityType, excludedActivityIds])
+  }, [maxHR, restingHR, age, gender, timeRange, activityType, excludedActivityIds])
 
   useEffect(() => {
     async function init() {
@@ -68,7 +72,6 @@ function DashboardLayout() {
       const settings = await storage.settings.get()
       setTimeRange(settings.timeRange)
       setActivityType(settings.activityType)
-      setWeight(settings.weight)
       setMaxHR(settings.maxHR)
       setRestingHR(settings.restingHR)
       setAge(settings.age)
@@ -280,7 +283,6 @@ function DashboardLayout() {
     activityType,
     setActivityType,
     weight,
-    setWeight,
     maxHR,
     setMaxHR,
     restingHR,
@@ -385,17 +387,6 @@ function DashboardLayout() {
 
             <div className="sidebar-section">
               <h3>User Profile</h3>
-              <div className="filter-group weight-slider">
-                <label>Weight: {weight} kg</label>
-                <input
-                  type="range"
-                  min="40"
-                  max="150"
-                  value={weight}
-                  onChange={(e) => setWeight(Number(e.target.value))}
-                />
-              </div>
-
               <div className="filter-group weight-slider">
                 <label>Max HR: {maxHR} bpm</label>
                 <input

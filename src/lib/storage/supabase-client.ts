@@ -1,20 +1,33 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import type { AppSettings, TimeRange, ActivityType, Gender } from './types'
 import { DEFAULT_SETTINGS } from './types'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+// Get env vars - try both Vite style and Node style for SSR compatibility
+function getEnvVar(key: string): string | undefined {
+  // Try Vite-style first (works in client and during Vite build)
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    const value = import.meta.env[key]
+    if (value) return value
+  }
+  // Fall back to process.env for SSR/Node
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key]
+  }
+  return undefined
+}
+
+const supabaseUrl = getEnvVar('VITE_SUPABASE_URL')
+const supabaseAnonKey = getEnvVar('VITE_SUPABASE_ANON_KEY')
 
 // Only create client if credentials are configured
-const supabase =
-  supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('your-project')
-    ? createClient(supabaseUrl, supabaseAnonKey)
-    : null
+let supabase: SupabaseClient | null = null
+if (supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('your-project')) {
+  supabase = createClient(supabaseUrl, supabaseAnonKey)
+}
 
 // Database row type (snake_case column names)
 interface UserSettingsRow {
   athlete_id: number
-  weight: number
   max_hr: number
   resting_hr: number
   age: number
@@ -29,7 +42,6 @@ interface UserSettingsRow {
 // Map database row to AppSettings
 function rowToSettings(row: UserSettingsRow): AppSettings {
   return {
-    weight: row.weight,
     maxHR: row.max_hr,
     restingHR: row.resting_hr,
     age: row.age,
@@ -47,7 +59,6 @@ function settingsToRow(
 ): Omit<UserSettingsRow, 'created_at' | 'updated_at'> {
   return {
     athlete_id: athleteId,
-    weight: settings.weight,
     max_hr: settings.maxHR,
     resting_hr: settings.restingHR,
     age: settings.age,

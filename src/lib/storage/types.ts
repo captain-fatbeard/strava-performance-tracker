@@ -9,7 +9,6 @@ export type ActivityType = 'all' | 'Ride' | 'Run' | 'VirtualRide'
 export type Gender = 'male' | 'female'
 
 export interface AppSettings {
-  weight: number
   maxHR: number
   restingHR: number
   age: number
@@ -20,7 +19,6 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  weight: 75,
   maxHR: 185,
   restingHR: 60,
   age: 35,

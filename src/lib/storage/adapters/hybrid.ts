@@ -13,7 +13,6 @@ let hasSyncedThisSession = false
 
 // Keys that map to settings (synced to cloud)
 const SETTINGS_KEYS = new Set([
-  STORAGE_KEYS.USER_WEIGHT,
   STORAGE_KEYS.USER_MAX_HR,
   STORAGE_KEYS.USER_RESTING_HR,
   STORAGE_KEYS.USER_AGE,
@@ -29,9 +28,8 @@ function isSettingsKey(key: string): boolean {
 
 // Helper to load all settings from localStorage
 async function loadLocalSettings(): Promise<AppSettings> {
-  const [weight, maxHR, restingHR, age, gender, timeRange, activityType, excludedActivityIds] =
+  const [maxHR, restingHR, age, gender, timeRange, activityType, excludedActivityIds] =
     await Promise.all([
-      localStorageAdapter.get<number>(STORAGE_KEYS.USER_WEIGHT),
       localStorageAdapter.get<number>(STORAGE_KEYS.USER_MAX_HR),
       localStorageAdapter.get<number>(STORAGE_KEYS.USER_RESTING_HR),
       localStorageAdapter.get<number>(STORAGE_KEYS.USER_AGE),
@@ -42,7 +40,6 @@ async function loadLocalSettings(): Promise<AppSettings> {
     ])
 
   return {
-    weight: weight ?? DEFAULT_SETTINGS.weight,
     maxHR: maxHR ?? DEFAULT_SETTINGS.maxHR,
     restingHR: restingHR ?? DEFAULT_SETTINGS.restingHR,
     age: age ?? DEFAULT_SETTINGS.age,
@@ -56,7 +53,6 @@ async function loadLocalSettings(): Promise<AppSettings> {
 // Helper to save all settings to localStorage
 async function saveLocalSettings(settings: AppSettings): Promise<void> {
   await Promise.all([
-    localStorageAdapter.set(STORAGE_KEYS.USER_WEIGHT, settings.weight),
     localStorageAdapter.set(STORAGE_KEYS.USER_MAX_HR, settings.maxHR),
     localStorageAdapter.set(STORAGE_KEYS.USER_RESTING_HR, settings.restingHR),
     localStorageAdapter.set(STORAGE_KEYS.USER_AGE, settings.age),

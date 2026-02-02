@@ -4,7 +4,6 @@ export const STORAGE_KEYS = {
   AUTH_ATHLETE: 'strava:auth:athlete',
 
   // User settings keys
-  USER_WEIGHT: 'strava:user:weight',
   USER_MAX_HR: 'strava:user:maxHR',
   USER_RESTING_HR: 'strava:user:restingHR',
   USER_AGE: 'strava:user:age',

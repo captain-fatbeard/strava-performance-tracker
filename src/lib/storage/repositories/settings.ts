@@ -4,9 +4,8 @@ import { STORAGE_KEYS } from '../keys'
 
 export function createSettingsRepository(adapter: StorageAdapter): SettingsRepository {
   async function loadSettings(): Promise<AppSettings> {
-    const [weight, maxHR, restingHR, age, gender, timeRange, activityType, excludedActivityIds] =
+    const [maxHR, restingHR, age, gender, timeRange, activityType, excludedActivityIds] =
       await Promise.all([
-        adapter.get<number>(STORAGE_KEYS.USER_WEIGHT),
         adapter.get<number>(STORAGE_KEYS.USER_MAX_HR),
         adapter.get<number>(STORAGE_KEYS.USER_RESTING_HR),
         adapter.get<number>(STORAGE_KEYS.USER_AGE),
@@ -17,7 +16,6 @@ export function createSettingsRepository(adapter: StorageAdapter): SettingsRepos
       ])
 
     return {
-      weight: weight ?? DEFAULT_SETTINGS.weight,
       maxHR: maxHR ?? DEFAULT_SETTINGS.maxHR,
       restingHR: restingHR ?? DEFAULT_SETTINGS.restingHR,
       age: age ?? DEFAULT_SETTINGS.age,
@@ -36,9 +34,6 @@ export function createSettingsRepository(adapter: StorageAdapter): SettingsRepos
     async update(partial: Partial<AppSettings>): Promise<AppSettings> {
       const updates: Promise<void>[] = []
 
-      if (partial.weight !== undefined) {
-        updates.push(adapter.set(STORAGE_KEYS.USER_WEIGHT, partial.weight))
-      }
       if (partial.maxHR !== undefined) {
         updates.push(adapter.set(STORAGE_KEYS.USER_MAX_HR, partial.maxHR))
       }
@@ -67,7 +62,6 @@ export function createSettingsRepository(adapter: StorageAdapter): SettingsRepos
 
     async clear(): Promise<void> {
       await Promise.all([
-        adapter.remove(STORAGE_KEYS.USER_WEIGHT),
         adapter.remove(STORAGE_KEYS.USER_MAX_HR),
         adapter.remove(STORAGE_KEYS.USER_RESTING_HR),
         adapter.remove(STORAGE_KEYS.USER_AGE),
