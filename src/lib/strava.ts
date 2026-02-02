@@ -101,7 +101,7 @@ export async function exchangeCodeForTokens(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      client_id: clientId,
+      client_id: Number(clientId),
       client_secret: clientSecret,
       code,
       grant_type: 'authorization_code',
@@ -124,7 +124,7 @@ export async function refreshAccessToken(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      client_id: clientId,
+      client_id: Number(clientId),
       client_secret: clientSecret,
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
