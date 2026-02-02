@@ -1,5 +1,11 @@
 {
+  "buildCommand": "pnpm build && cp -r dist/client/* public/",
+  "functions": {
+    "api/[[...path]].ts": {
+      "includeFiles": "dist/server/**/*"
+    }
+  },
   "rewrites": [
-    { "source": "/(.*)", "destination": "/" }
+    { "source": "/((?!assets|favicon|styles).*)", "destination": "/api/[[...path]]" }
   ]
 }
