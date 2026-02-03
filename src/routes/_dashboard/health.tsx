@@ -9,7 +9,7 @@ export const Route = createFileRoute('/_dashboard/health')({
 
 function HealthPage() {
   const {
-    filteredActivities,
+    statsActivities,
     weight,
     maxHR,
     restingHR,
@@ -29,7 +29,7 @@ function HealthPage() {
         onDeleteEntry={deleteWeightEntry}
       />
       <FatBurningStats
-        activities={filteredActivities}
+        activities={statsActivities}
         weight={weight}
         maxHR={maxHR}
         restingHR={restingHR}

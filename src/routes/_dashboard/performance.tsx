@@ -9,13 +9,13 @@ export const Route = createFileRoute('/_dashboard/performance')({
 })
 
 function PerformancePage() {
-  const { filteredActivities, statsActivities, weight } = useDashboard()
+  const { statsActivities, weight } = useDashboard()
 
   return (
     <div className="performance-page">
       <AdvancedMetrics activities={statsActivities} weight={weight} />
-      <EfficiencyChart activities={filteredActivities} weight={weight} />
-      <PerformanceCharts activities={filteredActivities} showAllCharts />
+      <EfficiencyChart activities={statsActivities} weight={weight} />
+      <PerformanceCharts activities={statsActivities} showAllCharts />
     </div>
   )
 }
