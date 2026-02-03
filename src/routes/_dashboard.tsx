@@ -213,22 +213,28 @@ function DashboardLayout() {
   }, [filteredActivities, excludedActivityIds])
 
   const stats = useMemo(() => {
-    const rides = statsActivities.filter(
+    // Counts and totals use all filtered activities
+    const rides = filteredActivities.filter(
       (a) => a.type === 'Ride' || a.type === 'VirtualRide'
     )
-    const runs = statsActivities.filter((a) => a.type === 'Run')
+    const runs = filteredActivities.filter((a) => a.type === 'Run')
 
-    const totalDistance = statsActivities.reduce((sum, a) => sum + a.distance, 0)
-    const totalElevation = statsActivities.reduce(
+    const totalDistance = filteredActivities.reduce((sum, a) => sum + a.distance, 0)
+    const totalElevation = filteredActivities.reduce(
       (sum, a) => sum + a.total_elevation_gain,
       0
     )
-    const totalTime = statsActivities.reduce((sum, a) => sum + a.moving_time, 0)
+    const totalTime = filteredActivities.reduce((sum, a) => sum + a.moving_time, 0)
+
+    // Performance metrics use statsActivities (excludes excluded activities)
+    const statsRides = statsActivities.filter(
+      (a) => a.type === 'Ride' || a.type === 'VirtualRide'
+    )
 
     const avgPower =
-      rides.length > 0
-        ? rides.reduce((sum, a) => sum + (a.average_watts || 0), 0) /
-          rides.filter((a) => a.average_watts).length
+      statsRides.length > 0
+        ? statsRides.reduce((sum, a) => sum + (a.average_watts || 0), 0) /
+          statsRides.filter((a) => a.average_watts).length
         : 0
 
     const avgHR =
@@ -237,11 +243,11 @@ function DashboardLayout() {
           statsActivities.filter((a) => a.average_heartrate).length
         : 0
 
-    const ftp = estimateFTP(rides) || 0
+    const ftp = estimateFTP(statsRides) || 0
     const wattsPerKilo = ftp > 0 && weight > 0 ? ftp / weight : 0
 
     return {
-      totalActivities: statsActivities.length,
+      totalActivities: filteredActivities.length,
       totalDistance: metersToKm(totalDistance),
       totalElevation,
       totalTime,
@@ -252,7 +258,7 @@ function DashboardLayout() {
       ftp,
       wattsPerKilo,
     }
-  }, [statsActivities, weight])
+  }, [filteredActivities, statsActivities, weight])
 
   if (isLoading) {
     return (
