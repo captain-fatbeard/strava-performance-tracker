@@ -450,11 +450,14 @@ function DashboardLayout() {
             <Link to="/overview" activeProps={{ className: 'active' }}>
               Overview
             </Link>
-            <Link to="/fitness" activeProps={{ className: 'active' }}>
-              Fitness
+            <Link to="/training" activeProps={{ className: 'active' }}>
+              Training
             </Link>
-            <Link to="/trends" activeProps={{ className: 'active' }}>
-              Trends
+            <Link to="/health" activeProps={{ className: 'active' }}>
+              Health
+            </Link>
+            <Link to="/performance" activeProps={{ className: 'active' }}>
+              Performance
             </Link>
             <Link to="/activities" activeProps={{ className: 'active' }}>
               Activities
