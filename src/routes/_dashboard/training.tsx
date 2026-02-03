@@ -9,13 +9,13 @@ export const Route = createFileRoute('/_dashboard/training')({
 })
 
 function TrainingPage() {
-  const { statsActivities, timeRangeDays } = useDashboard()
+  const { filteredActivities, timeRangeDays } = useDashboard()
 
   return (
     <div className="training-page">
-      <FitnessChart activities={statsActivities} days={timeRangeDays} />
-      <PowerZonesChart activities={statsActivities} />
-      <WeeklyProgress activities={statsActivities} />
+      <FitnessChart activities={filteredActivities} days={timeRangeDays} />
+      <PowerZonesChart activities={filteredActivities} />
+      <WeeklyProgress activities={filteredActivities} />
     </div>
   )
 }
