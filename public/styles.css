@@ -577,6 +577,15 @@ body {
   color: var(--text-muted);
 }
 
+/* Page layouts */
+.performance-page,
+.training-page,
+.health-page {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
 /* Charts */
 .charts-container {
   display: flex;
