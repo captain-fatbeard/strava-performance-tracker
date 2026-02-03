@@ -213,7 +213,6 @@ function DashboardLayout() {
   }, [filteredActivities, excludedActivityIds])
 
   const stats = useMemo(() => {
-    // Counts and totals use all filtered activities
     const rides = filteredActivities.filter(
       (a) => a.type === 'Ride' || a.type === 'VirtualRide'
     )
@@ -226,24 +225,19 @@ function DashboardLayout() {
     )
     const totalTime = filteredActivities.reduce((sum, a) => sum + a.moving_time, 0)
 
-    // Performance metrics use statsActivities (excludes excluded activities)
-    const statsRides = statsActivities.filter(
-      (a) => a.type === 'Ride' || a.type === 'VirtualRide'
-    )
-
     const avgPower =
-      statsRides.length > 0
-        ? statsRides.reduce((sum, a) => sum + (a.average_watts || 0), 0) /
-          statsRides.filter((a) => a.average_watts).length
+      rides.length > 0
+        ? rides.reduce((sum, a) => sum + (a.average_watts || 0), 0) /
+          rides.filter((a) => a.average_watts).length
         : 0
 
     const avgHR =
-      statsActivities.length > 0
-        ? statsActivities.reduce((sum, a) => sum + (a.average_heartrate || 0), 0) /
-          statsActivities.filter((a) => a.average_heartrate).length
+      filteredActivities.length > 0
+        ? filteredActivities.reduce((sum, a) => sum + (a.average_heartrate || 0), 0) /
+          filteredActivities.filter((a) => a.average_heartrate).length
         : 0
 
-    const ftp = estimateFTP(statsRides) || 0
+    const ftp = estimateFTP(rides) || 0
     const wattsPerKilo = ftp > 0 && weight > 0 ? ftp / weight : 0
 
     return {
@@ -258,7 +252,7 @@ function DashboardLayout() {
       ftp,
       wattsPerKilo,
     }
-  }, [filteredActivities, statsActivities, weight])
+  }, [filteredActivities, weight])
 
   if (isLoading) {
     return (
