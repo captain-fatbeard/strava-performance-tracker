@@ -7,16 +7,16 @@
     "dev": "vite",
     "build": "vite build",
     "start": "node .output/server/index.mjs",
-    "db:migrate": "npx supabase db push",
-    "db:reset": "npx supabase db reset",
-    "db:diff": "npx supabase db diff"
+    "db:push": "supabase db push",
+    "db:reset": "supabase db reset",
+    "db:diff": "supabase db diff"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.16.1",
   "dependencies": {
-    "@supabase/supabase-js": "^2.93.1",
+    "@supabase/supabase-js": "^2.94.0",
     "@tanstack/react-query": "^5.90.16",
     "@tanstack/react-router": "^1.147.3",
     "date-fns": "^4.1.0",
