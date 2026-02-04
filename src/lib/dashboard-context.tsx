@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 import { type StravaActivity, type StravaAthlete } from './strava'
-import { type TimeRange, type ActivityType, type Gender } from './storage'
+import { type TimeRange, type ActivityType, type Gender } from './storage/supabase-client'
 import type { WeightEntry } from './storage/supabase-client'
 
 export type { TimeRange, ActivityType, Gender }

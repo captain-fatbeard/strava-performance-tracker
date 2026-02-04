@@ -1,6 +1,11 @@
 import { createFileRoute, Outlet, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
-import { storage, DEFAULT_SETTINGS, type TimeRange, type ActivityType } from '~/lib/storage'
+import { storage } from '~/lib/storage'
+import {
+  DEFAULT_SETTINGS,
+  type TimeRange,
+  type ActivityType,
+} from '~/lib/storage/supabase-client'
 import { refreshStravaToken, fetchAllStravaActivities } from '~/lib/server-functions'
 import { type StravaActivity, type StravaAthlete, metersToKm } from '~/lib/strava'
 import { estimateFTP } from '~/lib/performance'
@@ -13,6 +18,11 @@ import {
   fetchWeightEntries,
   addWeightEntry as addWeightEntryToDb,
   deleteWeightEntry as deleteWeightEntryFromDb,
+  fetchUserSettings,
+  upsertUserSettings,
+  fetchExcludedActivityIds,
+  addExcludedActivity,
+  removeExcludedActivity,
   isSupabaseConfigured,
   type WeightEntry,
 } from '~/lib/storage/supabase-client'
@@ -35,9 +45,7 @@ function DashboardLayout() {
   const [restingHR, setRestingHR] = useState<number>(DEFAULT_SETTINGS.restingHR)
   const [age, setAge] = useState<number>(DEFAULT_SETTINGS.age)
   const [gender, setGender] = useState<'male' | 'female'>(DEFAULT_SETTINGS.gender)
-  const [excludedActivityIds, setExcludedActivityIds] = useState<number[]>(
-    DEFAULT_SETTINGS.excludedActivityIds
-  )
+  const [excludedActivityIds, setExcludedActivityIds] = useState<number[]>([])
 
   // Weight tracking state
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([])
@@ -51,35 +59,30 @@ function DashboardLayout() {
   // Track if settings have been loaded to avoid overwriting on mount
   const settingsLoaded = useRef(false)
 
-  // Persist settings changes (only after initial load)
+  // Persist settings changes to database (only after initial load)
   useEffect(() => {
-    if (!settingsLoaded.current) return
+    if (!settingsLoaded.current || !athlete) return
 
-    storage.settings.update({
-      maxHR,
-      restingHR,
-      age,
-      gender,
-      timeRange,
-      activityType,
-      excludedActivityIds,
-    })
-  }, [maxHR, restingHR, age, gender, timeRange, activityType, excludedActivityIds])
+    // Debounce to avoid rapid API calls during slider drags
+    const timeoutId = setTimeout(() => {
+      if (isSupabaseConfigured()) {
+        upsertUserSettings(athlete.id, {
+          maxHR,
+          restingHR,
+          age,
+          gender,
+          timeRange,
+          activityType,
+        })
+      }
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
+  }, [athlete, maxHR, restingHR, age, gender, timeRange, activityType])
 
   useEffect(() => {
     async function init() {
-      // Load stored settings
-      const settings = await storage.settings.get()
-      setTimeRange(settings.timeRange)
-      setActivityType(settings.activityType)
-      setMaxHR(settings.maxHR)
-      setRestingHR(settings.restingHR)
-      setAge(settings.age)
-      setGender(settings.gender)
-      setExcludedActivityIds(settings.excludedActivityIds)
-      settingsLoaded.current = true
-
-      // Check auth
+      // First check auth - we need athlete ID for settings
       const [tokens, storedAthlete] = await Promise.all([
         storage.auth.getTokens(),
         storage.auth.getAthlete(),
@@ -90,6 +93,26 @@ function DashboardLayout() {
         return
       }
 
+      setAthlete(storedAthlete)
+
+      // Load settings and excluded activities from Supabase (requires athlete ID)
+      if (isSupabaseConfigured()) {
+        const [settings, excludedIds] = await Promise.all([
+          fetchUserSettings(storedAthlete.id),
+          fetchExcludedActivityIds(storedAthlete.id),
+        ])
+        if (settings) {
+          setTimeRange(settings.timeRange)
+          setActivityType(settings.activityType)
+          setMaxHR(settings.maxHR)
+          setRestingHR(settings.restingHR)
+          setAge(settings.age)
+          setGender(settings.gender)
+        }
+        setExcludedActivityIds(excludedIds)
+      }
+      settingsLoaded.current = true
+
       try {
         let currentTokens = tokens
 
@@ -98,8 +121,6 @@ function DashboardLayout() {
           currentTokens = newTokens
           await storage.auth.setTokens(newTokens)
         }
-
-        setAthlete(storedAthlete)
 
         const oneYearAgo = new Date()
         oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
@@ -129,13 +150,30 @@ function DashboardLayout() {
     navigate({ to: '/' })
   }
 
-  const toggleActivityExclusion = (activityId: number) => {
-    setExcludedActivityIds((prev) =>
-      prev.includes(activityId)
-        ? prev.filter((id) => id !== activityId)
-        : [...prev, activityId]
-    )
-  }
+  const toggleActivityExclusion = useCallback(
+    (activityId: number) => {
+      if (!athlete) return
+
+      const isCurrentlyExcluded = excludedActivityIds.includes(activityId)
+
+      // Optimistic update
+      setExcludedActivityIds((prev) =>
+        isCurrentlyExcluded
+          ? prev.filter((id) => id !== activityId)
+          : [...prev, activityId]
+      )
+
+      // Persist to Supabase
+      if (isSupabaseConfigured()) {
+        if (isCurrentlyExcluded) {
+          removeExcludedActivity(athlete.id, activityId)
+        } else {
+          addExcludedActivity(athlete.id, activityId)
+        }
+      }
+    },
+    [athlete, excludedActivityIds]
+  )
 
   // Load weight entries when athlete is available
   useEffect(() => {

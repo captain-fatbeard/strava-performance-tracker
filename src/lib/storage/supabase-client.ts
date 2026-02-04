@@ -1,15 +1,34 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import type { AppSettings, TimeRange, ActivityType, Gender } from './types'
-import { DEFAULT_SETTINGS } from './types'
+
+// Types
+export type TimeRange = '30d' | '90d' | '6m' | '1y' | 'all'
+export type ActivityType = 'all' | 'Ride' | 'Run' | 'VirtualRide'
+export type Gender = 'male' | 'female'
+
+export interface AppSettings {
+  maxHR: number
+  restingHR: number
+  age: number
+  gender: Gender
+  timeRange: TimeRange
+  activityType: ActivityType
+}
+
+export const DEFAULT_SETTINGS: AppSettings = {
+  maxHR: 185,
+  restingHR: 60,
+  age: 35,
+  gender: 'male',
+  timeRange: '90d',
+  activityType: 'all',
+}
 
 // Get env vars - try both Vite style and Node style for SSR compatibility
 function getEnvVar(key: string): string | undefined {
-  // Try Vite-style first (works in client and during Vite build)
   if (typeof import.meta !== 'undefined' && import.meta.env) {
     const value = import.meta.env[key]
     if (value) return value
   }
-  // Fall back to process.env for SSR/Node
   if (typeof process !== 'undefined' && process.env) {
     return process.env[key]
   }
@@ -25,7 +44,11 @@ if (supabaseUrl && supabaseAnonKey && !supabaseUrl.includes('your-project')) {
   supabase = createClient(supabaseUrl, supabaseAnonKey)
 }
 
-// Database row type (snake_case column names)
+export function isSupabaseConfigured(): boolean {
+  return supabase !== null
+}
+
+// Database row types
 interface UserSettingsRow {
   athlete_id: number
   max_hr: number
@@ -34,12 +57,10 @@ interface UserSettingsRow {
   gender: 'male' | 'female'
   time_range: TimeRange
   activity_type: ActivityType
-  excluded_activity_ids: number[]
   created_at: string
   updated_at: string
 }
 
-// Map database row to AppSettings
 function rowToSettings(row: UserSettingsRow): AppSettings {
   return {
     maxHR: row.max_hr,
@@ -48,31 +69,12 @@ function rowToSettings(row: UserSettingsRow): AppSettings {
     gender: row.gender as Gender,
     timeRange: row.time_range as TimeRange,
     activityType: row.activity_type as ActivityType,
-    excludedActivityIds: row.excluded_activity_ids ?? [],
   }
 }
 
-// Map AppSettings to database row (partial, for upsert)
-function settingsToRow(
-  athleteId: number,
-  settings: AppSettings
-): Omit<UserSettingsRow, 'created_at' | 'updated_at'> {
-  return {
-    athlete_id: athleteId,
-    max_hr: settings.maxHR,
-    resting_hr: settings.restingHR,
-    age: settings.age,
-    gender: settings.gender,
-    time_range: settings.timeRange,
-    activity_type: settings.activityType,
-    excluded_activity_ids: settings.excludedActivityIds,
-  }
-}
-
+// User Settings
 export async function fetchUserSettings(athleteId: number): Promise<AppSettings | null> {
-  if (!supabase) {
-    return null
-  }
+  if (!supabase) return null
 
   try {
     const { data, error } = await supabase
@@ -82,10 +84,7 @@ export async function fetchUserSettings(athleteId: number): Promise<AppSettings 
       .single()
 
     if (error) {
-      // PGRST116 = "No rows returned" - not an error, just no data yet
-      if (error.code === 'PGRST116') {
-        return null
-      }
+      if (error.code === 'PGRST116') return null
       console.warn('Supabase fetch error:', error.message)
       return null
     }
@@ -101,14 +100,18 @@ export async function upsertUserSettings(
   athleteId: number,
   settings: AppSettings
 ): Promise<boolean> {
-  if (!supabase) {
-    return false
-  }
+  if (!supabase) return false
 
   try {
     const { error } = await supabase.from('user_settings').upsert(
       {
-        ...settingsToRow(athleteId, settings),
+        athlete_id: athleteId,
+        max_hr: settings.maxHR,
+        resting_hr: settings.restingHR,
+        age: settings.age,
+        gender: settings.gender,
+        time_range: settings.timeRange,
+        activity_type: settings.activityType,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'athlete_id' }
@@ -126,11 +129,7 @@ export async function upsertUserSettings(
   }
 }
 
-export function isSupabaseConfigured(): boolean {
-  return supabase !== null
-}
-
-// Weight entry types
+// Weight Entries
 export interface WeightEntry {
   id: string
   athleteId: number
@@ -158,9 +157,7 @@ function rowToWeightEntry(row: WeightEntryRow): WeightEntry {
 }
 
 export async function fetchWeightEntries(athleteId: number): Promise<WeightEntry[]> {
-  if (!supabase) {
-    return []
-  }
+  if (!supabase) return []
 
   try {
     const { data, error } = await supabase
@@ -186,9 +183,7 @@ export async function addWeightEntry(
   weight: number,
   recordedAt: Date
 ): Promise<WeightEntry | null> {
-  if (!supabase) {
-    return null
-  }
+  if (!supabase) return null
 
   try {
     const { data, error } = await supabase
@@ -214,9 +209,7 @@ export async function addWeightEntry(
 }
 
 export async function deleteWeightEntry(id: string): Promise<boolean> {
-  if (!supabase) {
-    return false
-  }
+  if (!supabase) return false
 
   try {
     const { error } = await supabase
@@ -232,6 +225,78 @@ export async function deleteWeightEntry(id: string): Promise<boolean> {
     return true
   } catch (err) {
     console.warn('Supabase delete weight entry error:', err)
+    return false
+  }
+}
+
+// Excluded Activities
+export async function fetchExcludedActivityIds(athleteId: number): Promise<number[]> {
+  if (!supabase) return []
+
+  try {
+    const { data, error } = await supabase
+      .from('excluded_activities')
+      .select('activity_id')
+      .eq('athlete_id', athleteId)
+
+    if (error) {
+      console.warn('Supabase fetch excluded activities error:', error.message)
+      return []
+    }
+
+    return (data as { activity_id: number }[]).map((row) => row.activity_id)
+  } catch (err) {
+    console.warn('Supabase fetch excluded activities error:', err)
+    return []
+  }
+}
+
+export async function addExcludedActivity(
+  athleteId: number,
+  activityId: number
+): Promise<boolean> {
+  if (!supabase) return false
+
+  try {
+    const { error } = await supabase.from('excluded_activities').insert({
+      athlete_id: athleteId,
+      activity_id: activityId,
+    })
+
+    if (error) {
+      if (error.code === '23505') return true // Duplicate, already excluded
+      console.warn('Supabase add excluded activity error:', error.message)
+      return false
+    }
+
+    return true
+  } catch (err) {
+    console.warn('Supabase add excluded activity error:', err)
+    return false
+  }
+}
+
+export async function removeExcludedActivity(
+  athleteId: number,
+  activityId: number
+): Promise<boolean> {
+  if (!supabase) return false
+
+  try {
+    const { error } = await supabase
+      .from('excluded_activities')
+      .delete()
+      .eq('athlete_id', athleteId)
+      .eq('activity_id', activityId)
+
+    if (error) {
+      console.warn('Supabase remove excluded activity error:', error.message)
+      return false
+    }
+
+    return true
+  } catch (err) {
+    console.warn('Supabase remove excluded activity error:', err)
     return false
   }
 }
