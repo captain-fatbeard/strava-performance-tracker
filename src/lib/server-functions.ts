@@ -16,16 +16,21 @@ const getEnv = () => ({
   STRAVA_CLIENT_ID: process.env.STRAVA_CLIENT_ID || '',
   STRAVA_CLIENT_SECRET: process.env.STRAVA_CLIENT_SECRET || '',
   APP_URL: process.env.APP_URL || 'http://localhost:3000',
+  PROD_URL: process.env.PROD_URL || '',
 })
 
 export const getStravaAuthUrl = createServerFn({ method: 'GET' }).handler(async () => {
   const env = getEnv()
-  const redirectUri = `${env.APP_URL}/auth/callback`
+  const isLocalDev = env.PROD_URL && env.APP_URL.includes('localhost')
+  const redirectUri = isLocalDev
+    ? `${env.PROD_URL}/auth/callback`
+    : `${env.APP_URL}/auth/callback`
   const params = new URLSearchParams({
     client_id: env.STRAVA_CLIENT_ID,
     redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'read,activity:read_all,profile:read_all',
+    ...(isLocalDev && { state: `dev_redirect:${env.APP_URL}` }),
   })
   return `https://www.strava.com/oauth/authorize?${params.toString()}`
 })

@@ -8,15 +8,23 @@ export const Route = createFileRoute('/auth/callback')({
   validateSearch: (search: Record<string, unknown>) => ({
     code: search.code as string | undefined,
     error: search.error as string | undefined,
+    state: search.state as string | undefined,
   }),
 })
 
 function AuthCallback() {
-  const { code, error: authError } = Route.useSearch()
+  const { code, error: authError, state } = Route.useSearch()
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(authError || null)
 
   useEffect(() => {
+    // If this is a local dev redirect, forward the code to localhost
+    if (state?.startsWith('dev_redirect:') && code) {
+      const localUrl = state.slice('dev_redirect:'.length)
+      window.location.href = `${localUrl}/auth/callback?code=${code}`
+      return
+    }
+
     async function handleAuth() {
       if (!code) {
         setError('No authorization code received')
