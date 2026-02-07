@@ -38,6 +38,7 @@ function DashboardLayout() {
   const [activities, setActivities] = useState<StravaActivity[]>([])
   const [error, setError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   const [timeRange, setTimeRange] = useState<TimeRange>(DEFAULT_SETTINGS.timeRange)
   const [activityType, setActivityType] = useState<ActivityType>(DEFAULT_SETTINGS.activityType)
@@ -342,7 +343,7 @@ function DashboardLayout() {
       <div className="dashboard">
         <header className="dashboard-header">
           <div className="header-left">
-            <div className="brand">
+            <Link to="/overview" className="brand">
               <svg className="logo" width="32" height="32" viewBox="0 0 32 32" fill="none">
                 <rect width="32" height="32" rx="8" fill="url(#logo-gradient)"/>
                 <path d="M8 22L12 14L16 18L20 10L24 16" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -357,27 +358,96 @@ function DashboardLayout() {
                 </defs>
               </svg>
               <h1>FormLab</h1>
-            </div>
+            </Link>
             <span className="athlete-name">
               {athlete.firstname} {athlete.lastname}
             </span>
           </div>
-          <button
-            className="sidebar-toggle"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            aria-label="Toggle settings"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-              <circle cx="12" cy="12" r="3"/>
-            </svg>
-          </button>
+          <div className="header-right">
+            <button
+              className="sidebar-toggle"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label="Toggle settings"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+            <button
+              className="mobile-nav-toggle"
+              onClick={() => setMobileNavOpen(!mobileNavOpen)}
+              aria-label="Toggle navigation"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            </button>
+          </div>
         </header>
 
+        {/* Mobile nav drawer */}
+        {mobileNavOpen && (
+          <div className="sidebar-overlay" onClick={() => setMobileNavOpen(false)} />
+        )}
+        <aside className={`mobile-nav ${mobileNavOpen ? 'open' : ''}`}>
+          <div className="sidebar-header">
+            <h2>Navigation</h2>
+            <button
+              className="sidebar-close"
+              onClick={() => setMobileNavOpen(false)}
+              aria-label="Close navigation"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <div className="mobile-nav-links">
+            <Link to="/overview" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)}>
+              Overview
+            </Link>
+            <Link to="/training" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)}>
+              Training
+            </Link>
+            <Link to="/health" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)}>
+              Health
+            </Link>
+            <Link to="/performance" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)}>
+              Performance
+            </Link>
+            <Link to="/activities" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)}>
+              Activities
+            </Link>
+          </div>
+          <div className="mobile-nav-footer">
+            <button
+              className="mobile-nav-settings-btn"
+              onClick={() => { setMobileNavOpen(false); setSidebarOpen(true) }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              Settings
+            </button>
+            <button onClick={() => { setMobileNavOpen(false); handleLogout() }} className="logout-btn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              Logout
+            </button>
+          </div>
+        </aside>
+
+        {/* Settings sidebar */}
         {sidebarOpen && (
           <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
         )}
-
         <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
           <div className="sidebar-header">
             <h2>Settings</h2>
@@ -485,21 +555,23 @@ function DashboardLayout() {
 
         <div className="dashboard-main">
           <nav className="dashboard-tabs">
-            <Link to="/overview" activeProps={{ className: 'active' }}>
-              Overview
-            </Link>
-            <Link to="/training" activeProps={{ className: 'active' }}>
-              Training
-            </Link>
-            <Link to="/health" activeProps={{ className: 'active' }}>
-              Health
-            </Link>
-            <Link to="/performance" activeProps={{ className: 'active' }}>
-              Performance
-            </Link>
-            <Link to="/activities" activeProps={{ className: 'active' }}>
-              Activities
-            </Link>
+            <div className="nav-links">
+              <Link to="/overview" activeProps={{ className: 'active' }}>
+                Overview
+              </Link>
+              <Link to="/training" activeProps={{ className: 'active' }}>
+                Training
+              </Link>
+              <Link to="/health" activeProps={{ className: 'active' }}>
+                Health
+              </Link>
+              <Link to="/performance" activeProps={{ className: 'active' }}>
+                Performance
+              </Link>
+              <Link to="/activities" activeProps={{ className: 'active' }}>
+                Activities
+              </Link>
+            </div>
           </nav>
 
           <main className="dashboard-content">

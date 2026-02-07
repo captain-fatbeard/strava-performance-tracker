@@ -192,10 +192,18 @@ body {
   flex-direction: column;
 }
 
-.brand {
+/* Mobile nav toggle - hidden on desktop */
+.mobile-nav-toggle {
+  display: none;
+}
+
+a.brand,
+a.brand:hover,
+a.brand:visited {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  text-decoration: none;
 }
 
 .logo {
@@ -359,6 +367,11 @@ body {
   gap: 0.5rem;
 }
 
+/* Mobile Nav Drawer - hidden on desktop */
+.mobile-nav {
+  display: none;
+}
+
 /* Dashboard Main Content Area */
 .dashboard-main {
   width: 100%;
@@ -472,16 +485,19 @@ body {
 
 /* Tabs */
 .dashboard-tabs {
+  margin-bottom: 2rem;
+}
+
+.nav-links {
   display: flex;
   gap: 0.5rem;
-  margin-bottom: 2rem;
   padding: 0.5rem;
   background: var(--bg-secondary);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-subtle);
 }
 
-.dashboard-tabs a {
+.nav-links a {
   background: transparent;
   border: none;
   color: var(--text-muted);
@@ -495,18 +511,18 @@ body {
   border-radius: var(--radius-md);
 }
 
-.dashboard-tabs a:hover {
+.nav-links a:hover {
   color: var(--text-primary);
   background: var(--bg-tertiary);
 }
 
-.dashboard-tabs a.active {
+.nav-links a.active {
   color: var(--text-primary);
   background: var(--bg-tertiary);
   box-shadow: var(--shadow-sm);
 }
 
-.dashboard-tabs a.active::before {
+.nav-links a.active::before {
   content: '';
   position: absolute;
   bottom: 0.5rem;
@@ -818,6 +834,8 @@ body {
     flex-direction: row;
     align-items: center;
     gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
   }
 
   .header-left h1 {
@@ -825,6 +843,140 @@ body {
   }
 
   .athlete-name {
+    display: none;
+  }
+
+  /* Hide settings gear on mobile - it's in the mobile nav */
+  .sidebar-toggle {
+    display: none;
+  }
+
+  /* Show burger button on mobile */
+  .mobile-nav-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+  }
+
+  .mobile-nav-toggle:hover {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border-color: var(--accent);
+  }
+
+  /* Mobile nav drawer */
+  .mobile-nav {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    right: 0;
+    height: 100vh;
+    width: 280px;
+    background: var(--bg-secondary);
+    border-left: 1px solid var(--border-color);
+    z-index: 50;
+    transform: translateX(100%);
+    transition: transform var(--transition-slow);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .mobile-nav.open {
+    transform: translateX(0);
+  }
+
+  .mobile-nav-links {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1rem;
+    overflow-y: auto;
+  }
+
+  .mobile-nav-links a {
+    display: block;
+    padding: 0.75rem 1rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    position: relative;
+  }
+
+  .mobile-nav-links a:hover {
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+  }
+
+  .mobile-nav-links a.active {
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+  }
+
+  .mobile-nav-links a.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 20px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  .mobile-nav-footer {
+    padding: 1rem;
+    border-top: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .mobile-nav-settings-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.625rem 1rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+    width: 100%;
+  }
+
+  .mobile-nav-settings-btn:hover {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border-color: var(--accent);
+  }
+
+  .mobile-nav-footer .logout-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  /* Hide desktop tabs on mobile */
+  .dashboard-tabs {
     display: none;
   }
 
@@ -847,18 +999,13 @@ body {
   }
 
   .chart-section {
-    padding: 1.25rem;
+    padding: 1rem;
   }
 
-  .dashboard-tabs {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .dashboard-tabs a {
-    white-space: nowrap;
-    padding: 0.625rem 1rem;
-    font-size: 0.8rem;
+  .chart-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
   }
 
   .activity-list {
@@ -867,19 +1014,134 @@ body {
 
   .activity-list th,
   .activity-list td {
-    padding: 0.75rem;
+    padding: 0.625rem 0.5rem;
+  }
+
+  .activity-name {
+    max-width: 140px;
+  }
+
+  .weekly-card-stats .stat-num {
+    font-size: 1.125rem;
+  }
+
+  .weight-stats {
+    gap: 1rem;
+  }
+
+  .fitness-stats {
+    gap: 1rem;
+  }
+
+  /* Recharts containers - prevent overflow */
+  .recharts-responsive-container {
+    min-width: 0;
   }
 }
 
 /* Small screens */
 @media (max-width: 480px) {
-  .sidebar {
+  .dashboard {
+    padding: 0.75rem;
+  }
+
+  .sidebar,
+  .mobile-nav {
     width: 100%;
     max-width: none;
   }
 
   .header-left h1 {
     font-size: 1.1rem;
+  }
+
+  .stats-cards {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .stat-card {
+    padding: 0.875rem;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+  }
+
+  .chart-section {
+    padding: 0.875rem;
+  }
+
+  .chart-section h3 {
+    font-size: 1rem;
+  }
+
+  .weekly-summary-cards {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .weekly-card {
+    padding: 0.875rem;
+  }
+
+  .weekly-card-stats .stat-num {
+    font-size: 1rem;
+  }
+
+  .records-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .record-card {
+    padding: 0.875rem;
+  }
+
+  .record-value {
+    font-size: 1.375rem;
+  }
+
+  .record-unit {
+    font-size: 0.75rem;
+  }
+
+  .record-type {
+    font-size: 0.6rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .record-activity {
+    font-size: 0.75rem;
+  }
+
+  .weight-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .weight-modal-inputs {
+    grid-template-columns: 1fr;
+  }
+
+  .breakdown-item {
+    gap: 0.5rem;
+    padding: 0.75rem;
+  }
+
+  .breakdown-value {
+    font-size: 1rem;
+  }
+
+  .fatmax-range {
+    padding: 0.75rem;
+  }
+
+  .fatmax-value {
+    font-size: 1.5rem;
   }
 }
 
@@ -987,7 +1249,7 @@ body {
 
 .records-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr));
   gap: 1.25rem;
 }
 
@@ -998,6 +1260,8 @@ body {
   padding: 1.5rem;
   text-align: center;
   transition: all var(--transition-normal);
+  min-width: 0;
+  overflow: hidden;
 }
 
 .record-card:hover {
@@ -1023,6 +1287,8 @@ body {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   line-height: 1.1;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .record-unit {
@@ -1036,10 +1302,11 @@ body {
   font-size: 0.875rem;
   color: var(--text-primary);
   margin-top: 0.75rem;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 500;
+  min-width: 0;
 }
 
 .record-date {
