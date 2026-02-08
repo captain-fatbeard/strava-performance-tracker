@@ -22,7 +22,7 @@ function HealthPage() {
   } = useDashboard()
 
   return (
-    <div className="health-page">
+    <div className="flex flex-col gap-8">
       <WeightChart
         entries={weightEntries}
         onAddEntry={addWeightEntry}

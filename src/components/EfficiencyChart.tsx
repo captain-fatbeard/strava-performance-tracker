@@ -22,6 +22,12 @@ interface EfficiencyChartProps {
   weight: number
 }
 
+const trendClasses: Record<string, string> = {
+  improving: 'bg-success-muted text-success',
+  declining: 'bg-danger-muted text-danger',
+  stable: 'bg-warning-muted text-warning',
+}
+
 export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
   // Calculate EF for each ride over time
   const efficiencyData = useMemo(() => {
@@ -159,13 +165,13 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
   const hasNoData = efficiencyData.length === 0
 
   return (
-    <div className="charts-container">
+    <div className="flex flex-col gap-8">
       {/* Efficiency Factor Chart */}
-      <div className="chart-section">
-        <div className="chart-header">
-          <h3>Efficiency Factor Over Time</h3>
+      <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
+        <div className="flex justify-between items-center mb-5 max-md:flex-col max-md:items-start max-md:gap-3">
+          <h3 className="text-lg font-semibold text-text-primary max-[480px]:text-base">Efficiency Factor Over Time</h3>
           {efTrendLine && (
-            <span className={`trend-badge ${efTrendLine.trend}`}>
+            <span className={`text-xs py-1.5 px-3.5 rounded-full font-semibold ${trendClasses[efTrendLine.trend]}`}>
               {efTrendLine.trend === 'improving' && '↑ Improving'}
               {efTrendLine.trend === 'declining' && '↓ Declining'}
               {efTrendLine.trend === 'stable' && '→ Stable'}
@@ -173,7 +179,7 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
           )}
         </div>
         {hasNoData ? (
-          <div className="no-data">
+          <div className="text-text-muted text-center py-16 text-[0.9rem]">
             Need rides with both power and heart rate data to calculate efficiency.
           </div>
         ) : (
@@ -227,9 +233,9 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
                 )}
               </ComposedChart>
             </ResponsiveContainer>
-            <div className="chart-info">
+            <div className="mt-5 p-4 bg-bg-tertiary rounded-[var(--radius-md)] text-[0.8rem] text-text-secondary leading-relaxed">
               <p>
-                <strong>EF = Normalized Power / Avg Heart Rate</strong> — Higher is better!
+                <strong className="text-accent">EF = Normalized Power / Avg Heart Rate</strong> — Higher is better!
                 Track this over time to see aerobic fitness improvements. An improving trend
                 means you're producing more power at the same heart rate.
               </p>
@@ -240,10 +246,10 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
 
       {/* VO2max Trend Chart */}
       {vo2maxData.length > 0 && (
-        <div className="chart-section">
-          <div className="chart-header">
-            <h3>Estimated VO2max Trend</h3>
-            <span className="ftp-badge">Based on rolling FTP @ {weight}kg</span>
+        <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
+          <div className="flex justify-between items-center mb-5 max-md:flex-col max-md:items-start max-md:gap-3">
+            <h3 className="text-lg font-semibold text-text-primary max-[480px]:text-base">Estimated VO2max Trend</h3>
+            <span className="bg-linear-to-br from-accent to-accent-dark text-white py-1.5 px-4 rounded-full text-sm font-semibold shadow-[0_2px_8px_rgba(20,184,166,0.3)]">Based on rolling FTP @ {weight}kg</span>
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={vo2maxData}>
@@ -279,11 +285,11 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
               <ReferenceLine y={45} stroke={chartTheme.colors.neutral[500]} strokeDasharray="3 3" label={{ value: 'Good', fill: chartTheme.colors.neutral[500], fontSize: 10 }} />
             </LineChart>
           </ResponsiveContainer>
-          <div className="chart-info">
+          <div className="mt-5 p-4 bg-bg-tertiary rounded-[var(--radius-md)] text-[0.8rem] text-text-secondary leading-relaxed">
             <p>
-              <strong>VO2max</strong> estimated from your rolling 6-week best power output.
+              <strong className="text-accent">VO2max</strong> estimated from your rolling 6-week best power output.
               Adjust the weight slider to see how body composition affects your estimated VO2max.
-              The formula is: <code>(10.8 × W/kg) + 7</code>
+              The formula is: <code className="bg-bg-secondary px-2 py-0.5 rounded-[var(--radius-sm)] font-mono text-xs">(10.8 × W/kg) + 7</code>
             </p>
           </div>
         </div>
@@ -291,11 +297,11 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
 
       {/* VAM Chart */}
       {vamData.length > 0 && (
-        <div className="chart-section">
-          <div className="chart-header">
-            <h3>VAM (Climbing Speed) Over Time</h3>
+        <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
+          <div className="flex justify-between items-center mb-5 max-md:flex-col max-md:items-start max-md:gap-3">
+            <h3 className="text-lg font-semibold text-text-primary max-[480px]:text-base">VAM (Climbing Speed) Over Time</h3>
             {vamTrendLine && (
-              <span className={`trend-badge ${vamTrendLine.trend}`}>
+              <span className={`text-xs py-1.5 px-3.5 rounded-full font-semibold ${trendClasses[vamTrendLine.trend]}`}>
                 {vamTrendLine.trend === 'improving' && '↑ Improving'}
                 {vamTrendLine.trend === 'declining' && '↓ Declining'}
                 {vamTrendLine.trend === 'stable' && '→ Stable'}
@@ -356,9 +362,9 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
               <ReferenceLine yAxisId="vam" y={900} stroke={chartTheme.colors.neutral[500]} strokeDasharray="3 3" label={{ value: 'Strong', fill: chartTheme.colors.neutral[500], fontSize: 10 }} />
             </ComposedChart>
           </ResponsiveContainer>
-          <div className="chart-info">
+          <div className="mt-5 p-4 bg-bg-tertiary rounded-[var(--radius-md)] text-[0.8rem] text-text-secondary leading-relaxed">
             <p>
-              <strong>VAM (Velocità Ascensionale Media)</strong> = Vertical meters climbed per hour.
+              <strong className="text-accent">VAM (Velocità Ascensionale Media)</strong> = Vertical meters climbed per hour.
               Only rides with 100m+ elevation shown. Pro climbers: 1500-1800 m/hr on major climbs.
               Elite amateurs: 1200-1500 m/hr. Strong recreational: 900-1200 m/hr.
             </p>

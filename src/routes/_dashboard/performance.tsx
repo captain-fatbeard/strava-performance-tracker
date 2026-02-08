@@ -12,7 +12,7 @@ function PerformancePage() {
   const { statsActivities, weight } = useDashboard()
 
   return (
-    <div className="performance-page">
+    <div className="flex flex-col gap-8">
       <AdvancedMetrics activities={statsActivities} weight={weight} />
       <EfficiencyChart activities={statsActivities} weight={weight} />
       <PerformanceCharts activities={statsActivities} showAllCharts />

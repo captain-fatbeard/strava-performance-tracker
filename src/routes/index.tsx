@@ -36,15 +36,15 @@ function Home() {
 
   if (isChecking) {
     return (
-      <div className="loading-container">
-        <div className="loading-spinner" />
+      <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-8 text-center bg-[radial-gradient(ellipse_at_top,var(--color-bg-secondary)_0%,var(--color-bg-primary)_70%)]">
+        <div className="size-12 border-3 border-border-subtle border-t-accent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="login-container">
-      <svg className="login-logo" width="64" height="64" viewBox="0 0 32 32" fill="none">
+    <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-8 text-center bg-[radial-gradient(ellipse_at_top,var(--color-bg-secondary)_0%,var(--color-bg-primary)_70%)]">
+      <svg className="mb--2" width="64" height="64" viewBox="0 0 32 32" fill="none">
         <rect width="32" height="32" rx="8" fill="url(#login-logo-gradient)"/>
         <path d="M8 22L12 14L16 18L20 10L24 16" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
         <circle cx="12" cy="14" r="2" fill="white"/>
@@ -57,8 +57,8 @@ function Home() {
           </linearGradient>
         </defs>
       </svg>
-      <h1>FormLab</h1>
-      <p>Analyze your fitness form and training metrics</p>
+      <h1 className="text-5xl font-extrabold bg-linear-to-br from-text-primary to-text-secondary bg-clip-text text-transparent">FormLab</h1>
+      <p className="text-text-secondary text-lg max-w-[400px]">Analyze your fitness form and training metrics</p>
       <LoginButton onClick={handleLogin} />
     </div>
   )

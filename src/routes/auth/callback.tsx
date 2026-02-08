@@ -57,17 +57,17 @@ function AuthCallback() {
 
   if (error) {
     return (
-      <div className="auth-callback">
+      <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-8 text-center bg-[radial-gradient(ellipse_at_top,var(--color-bg-secondary)_0%,var(--color-bg-primary)_70%)]">
         <h1>Authentication Error</h1>
-        <p className="error-message">{error}</p>
+        <p className="text-danger bg-danger-muted px-6 py-4 rounded-[var(--radius-md)] border border-red-500/30">{error}</p>
         <a href="/">Go back home</a>
       </div>
     )
   }
 
   return (
-    <div className="auth-callback">
-      <div className="loading-spinner" />
+    <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-8 text-center bg-[radial-gradient(ellipse_at_top,var(--color-bg-secondary)_0%,var(--color-bg-primary)_70%)]">
+      <div className="size-12 border-3 border-border-subtle border-t-accent rounded-full animate-spin" />
       <p>Completing authentication...</p>
     </div>
   )

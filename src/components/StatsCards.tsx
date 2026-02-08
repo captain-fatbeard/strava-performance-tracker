@@ -17,62 +17,62 @@ interface StatsCardsProps {
 
 export function StatsCards({ stats }: StatsCardsProps) {
   return (
-    <div className="stats-cards">
-      <div className="stat-card">
-        <span className="stat-value">{stats.totalActivities}</span>
-        <span className="stat-label">Activities</span>
-        <span className="stat-detail">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-5 mb-10 max-md:grid-cols-2 max-md:gap-3 max-[480px]:gap-2">
+      <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-6 flex flex-col gap-2 transition-all duration-200 hover:border-border hover:-translate-y-0.5 hover:shadow-md max-md:p-4 max-[480px]:p-3.5">
+        <span className="text-[2rem] font-bold leading-tight bg-linear-to-br from-text-primary to-text-secondary bg-clip-text text-transparent max-md:text-2xl max-[480px]:text-xl">{stats.totalActivities}</span>
+        <span className="text-sm text-text-secondary font-medium">Activities</span>
+        <span className="text-xs text-text-muted">
           {stats.rides} rides, {stats.runs} runs
         </span>
       </div>
 
-      <div className="stat-card">
-        <span className="stat-value">{stats.totalDistance.toFixed(0)}</span>
-        <span className="stat-label">Kilometers</span>
-        <span className="stat-detail">Total distance</span>
+      <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-6 flex flex-col gap-2 transition-all duration-200 hover:border-border hover:-translate-y-0.5 hover:shadow-md max-md:p-4 max-[480px]:p-3.5">
+        <span className="text-[2rem] font-bold leading-tight bg-linear-to-br from-text-primary to-text-secondary bg-clip-text text-transparent max-md:text-2xl max-[480px]:text-xl">{stats.totalDistance.toFixed(0)}</span>
+        <span className="text-sm text-text-secondary font-medium">Kilometers</span>
+        <span className="text-xs text-text-muted">Total distance</span>
       </div>
 
-      <div className="stat-card">
-        <span className="stat-value">{stats.totalElevation.toFixed(0)}</span>
-        <span className="stat-label">Meters climbed</span>
-        <span className="stat-detail">Total elevation</span>
+      <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-6 flex flex-col gap-2 transition-all duration-200 hover:border-border hover:-translate-y-0.5 hover:shadow-md max-md:p-4 max-[480px]:p-3.5">
+        <span className="text-[2rem] font-bold leading-tight bg-linear-to-br from-text-primary to-text-secondary bg-clip-text text-transparent max-md:text-2xl max-[480px]:text-xl">{stats.totalElevation.toFixed(0)}</span>
+        <span className="text-sm text-text-secondary font-medium">Meters climbed</span>
+        <span className="text-xs text-text-muted">Total elevation</span>
       </div>
 
-      <div className="stat-card">
-        <span className="stat-value">{secondsToHMS(stats.totalTime)}</span>
-        <span className="stat-label">Time</span>
-        <span className="stat-detail">Total moving time</span>
+      <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-6 flex flex-col gap-2 transition-all duration-200 hover:border-border hover:-translate-y-0.5 hover:shadow-md max-md:p-4 max-[480px]:p-3.5">
+        <span className="text-[2rem] font-bold leading-tight bg-linear-to-br from-text-primary to-text-secondary bg-clip-text text-transparent max-md:text-2xl max-[480px]:text-xl">{secondsToHMS(stats.totalTime)}</span>
+        <span className="text-sm text-text-secondary font-medium">Time</span>
+        <span className="text-xs text-text-muted">Total moving time</span>
       </div>
 
       {stats.ftp > 0 && (
-        <div className="stat-card highlight">
-          <span className="stat-value">{stats.ftp}</span>
-          <span className="stat-label">Est. FTP</span>
-          <span className="stat-detail">Functional Threshold Power</span>
+        <div className="bg-linear-to-br from-accent/[0.08] to-bg-secondary border border-accent rounded-[var(--radius-lg)] p-6 flex flex-col gap-2 transition-all duration-200 shadow-[0_0_30px_rgba(20,184,166,0.1)] hover:-translate-y-0.5 hover:shadow-md max-md:p-4 max-[480px]:p-3.5">
+          <span className="text-[2rem] font-bold leading-tight bg-linear-to-br from-accent-light to-accent bg-clip-text text-transparent max-md:text-2xl max-[480px]:text-xl">{stats.ftp}</span>
+          <span className="text-sm text-text-secondary font-medium">Est. FTP</span>
+          <span className="text-xs text-text-muted">Functional Threshold Power</span>
         </div>
       )}
 
       {stats.wattsPerKilo > 0 && (
-        <div className="stat-card highlight">
-          <span className="stat-value">{stats.wattsPerKilo.toFixed(2)}</span>
-          <span className="stat-label">W/kg</span>
-          <span className="stat-detail">Watts per kilogram</span>
+        <div className="bg-linear-to-br from-accent/[0.08] to-bg-secondary border border-accent rounded-[var(--radius-lg)] p-6 flex flex-col gap-2 transition-all duration-200 shadow-[0_0_30px_rgba(20,184,166,0.1)] hover:-translate-y-0.5 hover:shadow-md max-md:p-4 max-[480px]:p-3.5">
+          <span className="text-[2rem] font-bold leading-tight bg-linear-to-br from-accent-light to-accent bg-clip-text text-transparent max-md:text-2xl max-[480px]:text-xl">{stats.wattsPerKilo.toFixed(2)}</span>
+          <span className="text-sm text-text-secondary font-medium">W/kg</span>
+          <span className="text-xs text-text-muted">Watts per kilogram</span>
         </div>
       )}
 
       {stats.avgPower > 0 && (
-        <div className="stat-card">
-          <span className="stat-value">{stats.avgPower}</span>
-          <span className="stat-label">Avg Watts</span>
-          <span className="stat-detail">Average power</span>
+        <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-6 flex flex-col gap-2 transition-all duration-200 hover:border-border hover:-translate-y-0.5 hover:shadow-md max-md:p-4 max-[480px]:p-3.5">
+          <span className="text-[2rem] font-bold leading-tight bg-linear-to-br from-text-primary to-text-secondary bg-clip-text text-transparent max-md:text-2xl max-[480px]:text-xl">{stats.avgPower}</span>
+          <span className="text-sm text-text-secondary font-medium">Avg Watts</span>
+          <span className="text-xs text-text-muted">Average power</span>
         </div>
       )}
 
       {stats.avgHR > 0 && (
-        <div className="stat-card">
-          <span className="stat-value">{stats.avgHR}</span>
-          <span className="stat-label">Avg HR</span>
-          <span className="stat-detail">Average heart rate</span>
+        <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-6 flex flex-col gap-2 transition-all duration-200 hover:border-border hover:-translate-y-0.5 hover:shadow-md max-md:p-4 max-[480px]:p-3.5">
+          <span className="text-[2rem] font-bold leading-tight bg-linear-to-br from-text-primary to-text-secondary bg-clip-text text-transparent max-md:text-2xl max-[480px]:text-xl">{stats.avgHR}</span>
+          <span className="text-sm text-text-secondary font-medium">Avg HR</span>
+          <span className="text-xs text-text-muted">Average heart rate</span>
         </div>
       )}
     </div>

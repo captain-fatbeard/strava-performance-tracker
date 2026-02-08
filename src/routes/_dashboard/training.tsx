@@ -12,7 +12,7 @@ function TrainingPage() {
   const { filteredActivities, timeRangeDays } = useDashboard()
 
   return (
-    <div className="training-page">
+    <div className="flex flex-col gap-8">
       <FitnessChart activities={filteredActivities} days={timeRangeDays} />
       <PowerZonesChart activities={filteredActivities} />
       <WeeklyProgress activities={filteredActivities} />

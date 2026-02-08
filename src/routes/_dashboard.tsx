@@ -295,8 +295,8 @@ function DashboardLayout() {
 
   if (isLoading) {
     return (
-      <div className="loading-container">
-        <div className="loading-spinner" />
+      <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-8 text-center bg-[radial-gradient(ellipse_at_top,var(--color-bg-secondary)_0%,var(--color-bg-primary)_70%)]">
+        <div className="size-12 border-3 border-border-subtle border-t-accent rounded-full animate-spin" />
         <p>Loading your data...</p>
       </div>
     )
@@ -304,9 +304,9 @@ function DashboardLayout() {
 
   if (error || !athlete) {
     return (
-      <div className="error-container">
-        <p className="error-message">{error || 'Not authenticated'}</p>
-        <Link to="/" className="btn-primary">Back to Login</Link>
+      <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-8 text-center bg-[radial-gradient(ellipse_at_top,var(--color-bg-secondary)_0%,var(--color-bg-primary)_70%)]">
+        <p className="text-danger bg-danger-muted px-6 py-4 rounded-[var(--radius-md)] border border-red-500/30">{error || 'Not authenticated'}</p>
+        <Link to="/" className="bg-linear-to-br from-accent to-accent-dark text-white border-none py-3.5 px-7 text-[0.9rem] font-semibold rounded-[var(--radius-md)] cursor-pointer no-underline transition-all duration-200 shadow-md hover:-translate-y-0.5 hover:shadow-lg hover:shadow-glow">Back to Login</Link>
       </div>
     )
   }
@@ -340,11 +340,11 @@ function DashboardLayout() {
 
   return (
     <DashboardContext.Provider value={contextValue}>
-      <div className="dashboard">
-        <header className="dashboard-header">
-          <div className="header-left">
-            <Link to="/overview" className="brand">
-              <svg className="logo" width="32" height="32" viewBox="0 0 32 32" fill="none">
+      <div className="max-w-[1440px] mx-auto p-8 relative max-md:p-4 max-[480px]:p-3">
+        <header className="flex justify-between items-center mb-8 pb-6 border-b border-border-subtle max-md:gap-3 max-md:mb-4 max-md:pb-4">
+          <div className="flex flex-col">
+            <Link to="/overview" className="flex items-center gap-3 no-underline">
+              <svg className="shrink-0" width="32" height="32" viewBox="0 0 32 32" fill="none">
                 <rect width="32" height="32" rx="8" fill="url(#logo-gradient)"/>
                 <path d="M8 22L12 14L16 18L20 10L24 16" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                 <circle cx="12" cy="14" r="2" fill="white"/>
@@ -357,15 +357,15 @@ function DashboardLayout() {
                   </linearGradient>
                 </defs>
               </svg>
-              <h1>FormLab</h1>
+              <h1 className="text-[1.75rem] font-bold bg-linear-to-br from-text-primary to-accent-light bg-clip-text text-transparent max-md:text-xl max-[480px]:text-[1.1rem]">FormLab</h1>
             </Link>
-            <span className="athlete-name">
+            <span className="text-text-muted text-sm mt-1 max-md:hidden">
               {athlete.firstname} {athlete.lastname}
             </span>
           </div>
-          <div className="header-right">
+          <div className="flex items-center gap-3">
             <button
-              className="sidebar-toggle"
+              className="flex items-center justify-center bg-bg-tertiary border border-border text-text-secondary size-10 rounded-[var(--radius-md)] cursor-pointer transition-all duration-150 hover:bg-bg-elevated hover:text-text-primary hover:border-accent max-md:hidden"
               onClick={() => setSidebarOpen(!sidebarOpen)}
               aria-label="Toggle settings"
             >
@@ -375,7 +375,7 @@ function DashboardLayout() {
               </svg>
             </button>
             <button
-              className="mobile-nav-toggle"
+              className="hidden max-md:flex items-center justify-center bg-bg-tertiary border border-border text-text-secondary size-10 rounded-[var(--radius-md)] cursor-pointer transition-all duration-150 shrink-0 hover:bg-bg-elevated hover:text-text-primary hover:border-accent"
               onClick={() => setMobileNavOpen(!mobileNavOpen)}
               aria-label="Toggle navigation"
             >
@@ -390,13 +390,13 @@ function DashboardLayout() {
 
         {/* Mobile nav drawer */}
         {mobileNavOpen && (
-          <div className="sidebar-overlay" onClick={() => setMobileNavOpen(false)} />
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 animate-fade-in" onClick={() => setMobileNavOpen(false)} />
         )}
-        <aside className={`mobile-nav ${mobileNavOpen ? 'open' : ''}`}>
-          <div className="sidebar-header">
-            <h2>Navigation</h2>
+        <aside className={`hidden max-md:flex flex-col fixed top-0 right-0 h-screen w-70 bg-bg-secondary border-l border-border z-50 shadow-lg transition-transform duration-300 max-[480px]:w-full ${mobileNavOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+          <div className="flex justify-between items-center p-6 border-b border-border-subtle">
+            <h2 className="text-xl font-semibold text-text-primary">Navigation</h2>
             <button
-              className="sidebar-close"
+              className="flex items-center justify-center bg-bg-tertiary border border-border text-text-secondary size-9 rounded-[var(--radius-sm)] cursor-pointer transition-all duration-150 hover:bg-bg-elevated hover:text-text-primary hover:border-text-muted"
               onClick={() => setMobileNavOpen(false)}
               aria-label="Close navigation"
             >
@@ -405,26 +405,26 @@ function DashboardLayout() {
               </svg>
             </button>
           </div>
-          <div className="mobile-nav-links">
-            <Link to="/overview" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)}>
+          <div className="mobile-nav-links flex-1 flex flex-col gap-1 p-4 overflow-y-auto">
+            <Link to="/overview" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="block py-3 px-4 text-text-secondary no-underline text-[0.9375rem] font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
               Overview
             </Link>
-            <Link to="/training" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)}>
+            <Link to="/training" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="block py-3 px-4 text-text-secondary no-underline text-[0.9375rem] font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
               Training
             </Link>
-            <Link to="/health" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)}>
+            <Link to="/health" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="block py-3 px-4 text-text-secondary no-underline text-[0.9375rem] font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
               Health
             </Link>
-            <Link to="/performance" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)}>
+            <Link to="/performance" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="block py-3 px-4 text-text-secondary no-underline text-[0.9375rem] font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
               Performance
             </Link>
-            <Link to="/activities" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)}>
+            <Link to="/activities" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="block py-3 px-4 text-text-secondary no-underline text-[0.9375rem] font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
               Activities
             </Link>
           </div>
-          <div className="mobile-nav-footer">
+          <div className="p-4 border-t border-border-subtle flex flex-col gap-2">
             <button
-              className="mobile-nav-settings-btn"
+              className="flex items-center gap-2 bg-bg-tertiary border border-border text-text-secondary py-2.5 px-4 rounded-[var(--radius-sm)] cursor-pointer text-sm font-medium transition-all duration-150 w-full hover:bg-bg-elevated hover:text-text-primary hover:border-accent"
               onClick={() => { setMobileNavOpen(false); setSidebarOpen(true) }}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -433,7 +433,7 @@ function DashboardLayout() {
               </svg>
               Settings
             </button>
-            <button onClick={() => { setMobileNavOpen(false); handleLogout() }} className="logout-btn">
+            <button onClick={() => { setMobileNavOpen(false); handleLogout() }} className="bg-bg-tertiary border border-border text-text-secondary py-2.5 px-5 rounded-[var(--radius-sm)] cursor-pointer text-sm font-medium transition-all duration-150 hover:bg-bg-elevated hover:text-text-primary hover:border-text-muted w-full flex items-center justify-center gap-2">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                 <polyline points="16 17 21 12 16 7"/>
@@ -446,13 +446,13 @@ function DashboardLayout() {
 
         {/* Settings sidebar */}
         {sidebarOpen && (
-          <div className="sidebar-overlay" onClick={() => setSidebarOpen(false)} />
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 animate-fade-in" onClick={() => setSidebarOpen(false)} />
         )}
-        <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-          <div className="sidebar-header">
-            <h2>Settings</h2>
+        <aside className={`fixed top-0 right-0 h-screen w-80 bg-bg-secondary border-l border-border z-50 flex flex-col shadow-lg transition-transform duration-300 max-md:w-full max-md:max-w-80 max-[480px]:max-w-none ${sidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+          <div className="flex justify-between items-center p-6 border-b border-border-subtle">
+            <h2 className="text-xl font-semibold text-text-primary">Settings</h2>
             <button
-              className="sidebar-close"
+              className="flex items-center justify-center bg-bg-tertiary border border-border text-text-secondary size-9 rounded-[var(--radius-sm)] cursor-pointer transition-all duration-150 hover:bg-bg-elevated hover:text-text-primary hover:border-text-muted"
               onClick={() => setSidebarOpen(false)}
               aria-label="Close settings"
             >
@@ -462,12 +462,13 @@ function DashboardLayout() {
             </button>
           </div>
 
-          <div className="sidebar-content">
-            <div className="sidebar-section">
-              <h3>Filters</h3>
-              <div className="filter-group">
-                <label>Time Range</label>
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="mb-8">
+              <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold mb-4 pb-2 border-b border-border-subtle">Filters</h3>
+              <div className="flex flex-col gap-2 mb-5">
+                <label className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">Time Range</label>
                 <select
+                  className="custom-select w-full bg-bg-tertiary border border-border text-text-primary py-2.5 pr-10 pl-4 rounded-[var(--radius-sm)] text-sm cursor-pointer transition-all duration-150 hover:border-text-muted focus:outline-none focus:border-accent focus:ring-3 focus:ring-accent/15"
                   value={timeRange}
                   onChange={(e) => setTimeRange(e.target.value as TimeRange)}
                 >
@@ -479,9 +480,10 @@ function DashboardLayout() {
                 </select>
               </div>
 
-              <div className="filter-group">
-                <label>Activity Type</label>
+              <div className="flex flex-col gap-2">
+                <label className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">Activity Type</label>
                 <select
+                  className="custom-select w-full bg-bg-tertiary border border-border text-text-primary py-2.5 pr-10 pl-4 rounded-[var(--radius-sm)] text-sm cursor-pointer transition-all duration-150 hover:border-text-muted focus:outline-none focus:border-accent focus:ring-3 focus:ring-accent/15"
                   value={activityType}
                   onChange={(e) => setActivityType(e.target.value as ActivityType)}
                 >
@@ -493,11 +495,12 @@ function DashboardLayout() {
               </div>
             </div>
 
-            <div className="sidebar-section">
-              <h3>User Profile</h3>
-              <div className="filter-group weight-slider">
-                <label>Max HR: {maxHR} bpm</label>
+            <div>
+              <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold mb-4 pb-2 border-b border-border-subtle">User Profile</h3>
+              <div className="flex flex-col gap-2 mb-5 min-w-[200px]">
+                <label className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">Max HR: {maxHR} bpm</label>
                 <input
+                  className="range-thumb w-full h-1.5 bg-bg-tertiary rounded-sm outline-none cursor-pointer appearance-none"
                   type="range"
                   min="150"
                   max="220"
@@ -506,9 +509,10 @@ function DashboardLayout() {
                 />
               </div>
 
-              <div className="filter-group weight-slider">
-                <label>Resting HR: {restingHR} bpm</label>
+              <div className="flex flex-col gap-2 mb-5 min-w-[200px]">
+                <label className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">Resting HR: {restingHR} bpm</label>
                 <input
+                  className="range-thumb w-full h-1.5 bg-bg-tertiary rounded-sm outline-none cursor-pointer appearance-none"
                   type="range"
                   min="35"
                   max="90"
@@ -517,9 +521,10 @@ function DashboardLayout() {
                 />
               </div>
 
-              <div className="filter-group weight-slider">
-                <label>Age: {age}</label>
+              <div className="flex flex-col gap-2 mb-5 min-w-[200px]">
+                <label className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">Age: {age}</label>
                 <input
+                  className="range-thumb w-full h-1.5 bg-bg-tertiary rounded-sm outline-none cursor-pointer appearance-none"
                   type="range"
                   min="18"
                   max="80"
@@ -528,9 +533,10 @@ function DashboardLayout() {
                 />
               </div>
 
-              <div className="filter-group">
-                <label>Gender</label>
+              <div className="flex flex-col gap-2">
+                <label className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">Gender</label>
                 <select
+                  className="custom-select w-full bg-bg-tertiary border border-border text-text-primary py-2.5 pr-10 pl-4 rounded-[var(--radius-sm)] text-sm cursor-pointer transition-all duration-150 hover:border-text-muted focus:outline-none focus:border-accent focus:ring-3 focus:ring-accent/15"
                   value={gender}
                   onChange={(e) => setGender(e.target.value as 'male' | 'female')}
                 >
@@ -541,8 +547,8 @@ function DashboardLayout() {
             </div>
           </div>
 
-          <div className="sidebar-footer">
-            <button onClick={handleLogout} className="logout-btn">
+          <div className="p-6 border-t border-border-subtle">
+            <button onClick={handleLogout} className="bg-bg-tertiary border border-border text-text-secondary py-2.5 px-5 rounded-[var(--radius-sm)] cursor-pointer text-sm font-medium transition-all duration-150 hover:bg-bg-elevated hover:text-text-primary hover:border-text-muted w-full flex items-center justify-center gap-2">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                 <polyline points="16 17 21 12 16 7"/>
@@ -553,28 +559,28 @@ function DashboardLayout() {
           </div>
         </aside>
 
-        <div className="dashboard-main">
-          <nav className="dashboard-tabs">
-            <div className="nav-links">
-              <Link to="/overview" activeProps={{ className: 'active' }}>
+        <div className="w-full">
+          <nav className="mb-8 max-md:hidden">
+            <div className="nav-links flex gap-2 p-2 bg-bg-secondary rounded-[var(--radius-lg)] border border-border-subtle">
+              <Link to="/overview" activeProps={{ className: 'active' }} className="bg-transparent border-none text-text-muted py-3 px-6 text-sm font-medium cursor-pointer relative transition-all duration-150 no-underline rounded-[var(--radius-md)] hover:text-text-primary hover:bg-bg-tertiary">
                 Overview
               </Link>
-              <Link to="/training" activeProps={{ className: 'active' }}>
+              <Link to="/training" activeProps={{ className: 'active' }} className="bg-transparent border-none text-text-muted py-3 px-6 text-sm font-medium cursor-pointer relative transition-all duration-150 no-underline rounded-[var(--radius-md)] hover:text-text-primary hover:bg-bg-tertiary">
                 Training
               </Link>
-              <Link to="/health" activeProps={{ className: 'active' }}>
+              <Link to="/health" activeProps={{ className: 'active' }} className="bg-transparent border-none text-text-muted py-3 px-6 text-sm font-medium cursor-pointer relative transition-all duration-150 no-underline rounded-[var(--radius-md)] hover:text-text-primary hover:bg-bg-tertiary">
                 Health
               </Link>
-              <Link to="/performance" activeProps={{ className: 'active' }}>
+              <Link to="/performance" activeProps={{ className: 'active' }} className="bg-transparent border-none text-text-muted py-3 px-6 text-sm font-medium cursor-pointer relative transition-all duration-150 no-underline rounded-[var(--radius-md)] hover:text-text-primary hover:bg-bg-tertiary">
                 Performance
               </Link>
-              <Link to="/activities" activeProps={{ className: 'active' }}>
+              <Link to="/activities" activeProps={{ className: 'active' }} className="bg-transparent border-none text-text-muted py-3 px-6 text-sm font-medium cursor-pointer relative transition-all duration-150 no-underline rounded-[var(--radius-md)] hover:text-text-primary hover:bg-bg-tertiary">
                 Activities
               </Link>
             </div>
           </nav>
 
-          <main className="dashboard-content">
+          <main>
             <Outlet />
           </main>
         </div>

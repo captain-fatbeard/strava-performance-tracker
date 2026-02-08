@@ -38,9 +38,9 @@ export function PowerZonesChart({ activities }: PowerZonesChartProps) {
 
   if (!ftp || zoneData.length === 0) {
     return (
-      <div className="chart-section">
-        <h3>Power Zones</h3>
-        <div className="no-data">
+      <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
+        <h3 className="text-lg font-semibold mb-5 text-text-primary max-[480px]:text-base">Power Zones</h3>
+        <div className="text-text-muted text-center py-16 text-[0.9rem]">
           Need rides with power data to show zone distribution.
         </div>
       </div>
@@ -48,14 +48,14 @@ export function PowerZonesChart({ activities }: PowerZonesChartProps) {
   }
 
   return (
-    <div className="chart-section">
-      <div className="chart-header">
-        <h3>Power Zones</h3>
-        <span className="ftp-badge">FTP: {ftp}W</span>
+    <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
+      <div className="flex justify-between items-center mb-5 max-md:flex-col max-md:items-start max-md:gap-3">
+        <h3 className="text-lg font-semibold text-text-primary max-[480px]:text-base">Power Zones</h3>
+        <span className="bg-linear-to-br from-accent to-accent-dark text-white py-1.5 px-4 rounded-full text-sm font-semibold shadow-[0_2px_8px_rgba(20,184,166,0.3)]">FTP: {ftp}W</span>
       </div>
 
-      <div className="zones-container">
-        <div className="zones-chart">
+      <div className="grid grid-cols-2 gap-8 items-start max-md:grid-cols-1">
+        <div>
           <ResponsiveContainer width="100%" height={250}>
             <PieChart>
               <Pie
@@ -88,13 +88,13 @@ export function PowerZonesChart({ activities }: PowerZonesChartProps) {
           </ResponsiveContainer>
         </div>
 
-        <div className="zones-table">
-          <table>
+        <div>
+          <table className="w-full text-sm">
             <thead>
               <tr>
-                <th>Zone</th>
-                <th>Power</th>
-                <th>Time</th>
+                <th className="text-left p-3 text-text-muted font-semibold text-[0.7rem] uppercase tracking-wide border-b border-border">Zone</th>
+                <th className="text-left p-3 text-text-muted font-semibold text-[0.7rem] uppercase tracking-wide border-b border-border">Power</th>
+                <th className="text-left p-3 text-text-muted font-semibold text-[0.7rem] uppercase tracking-wide border-b border-border">Time</th>
               </tr>
             </thead>
             <tbody>
@@ -102,17 +102,17 @@ export function PowerZonesChart({ activities }: PowerZonesChartProps) {
                 const data = zoneData.find((d) => d.zone === zone.name)
                 return (
                   <tr key={zone.name}>
-                    <td>
+                    <td className="p-3 border-b border-border-subtle">
                       <span
-                        className="zone-dot"
+                        className="inline-block size-3 rounded-full mr-2"
                         style={{ backgroundColor: zone.color }}
                       />
                       {zone.name}
                     </td>
-                    <td>
+                    <td className="p-3 border-b border-border-subtle">
                       {zone.min}-{zone.max === 9999 ? '∞' : zone.max}W
                     </td>
-                    <td>{data ? secondsToHMS(data.time) : '-'}</td>
+                    <td className="p-3 border-b border-border-subtle">{data ? secondsToHMS(data.time) : '-'}</td>
                   </tr>
                 )
               })}

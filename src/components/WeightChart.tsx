@@ -67,23 +67,23 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
   const weightChange = entries.length > 1 ? latestEntry.weight - oldestEntry.weight : 0
 
   return (
-    <div className="chart-section">
-      <div className="chart-header">
-        <h3>Weight History</h3>
-        <div className="weight-header-right">
+    <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
+      <div className="flex justify-between items-center mb-5 max-md:flex-col max-md:items-start max-md:gap-3">
+        <h3 className="text-lg font-semibold text-text-primary max-[480px]:text-base">Weight History</h3>
+        <div className="flex items-center gap-6">
           {entries.length > 0 && (
-            <div className="weight-stats">
-              <span className="weight-stat">
-                <span className="label">Current</span>
-                <span className="value" style={{ color: chartTheme.colors.primary.main }}>
+            <div className="flex gap-8 flex-wrap max-md:gap-4">
+              <span className="flex flex-col items-center">
+                <span className="text-[0.7rem] text-text-muted uppercase font-semibold tracking-wide">Current</span>
+                <span className="text-xl font-bold" style={{ color: chartTheme.colors.primary.main }}>
                   {latestEntry.weight.toFixed(1)} kg
                 </span>
               </span>
               {entries.length > 1 && (
-                <span className="weight-stat">
-                  <span className="label">Change</span>
+                <span className="flex flex-col items-center">
+                  <span className="text-[0.7rem] text-text-muted uppercase font-semibold tracking-wide">Change</span>
                   <span
-                    className="value"
+                    className="text-xl font-bold"
                     style={{
                       color: weightChange < 0
                         ? chartTheme.colors.semantic.positive
@@ -99,7 +99,7 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
             </div>
           )}
           <button
-            className="weight-add-btn-icon"
+            className="flex items-center justify-center bg-bg-tertiary border border-border text-text-secondary size-9 rounded-[var(--radius-sm)] cursor-pointer transition-all duration-150 hover:bg-accent hover:border-accent hover:text-white"
             onClick={() => setIsModalOpen(true)}
             aria-label="Add weight entry"
           >
@@ -111,7 +111,7 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
       </div>
 
       {entries.length === 0 ? (
-        <div className="no-data">
+        <div className="text-text-muted text-center py-16 text-[0.9rem]">
           No weight entries yet. Click the + button to add your first entry.
         </div>
       ) : (
@@ -156,12 +156,12 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
 
       {isModalOpen && (
         <>
-          <div className="modal-overlay" onClick={() => setIsModalOpen(false)} />
-          <div className="weight-modal">
-            <div className="weight-modal-header">
-              <h4>Add Weight Entry</h4>
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[100] animate-fade-in" onClick={() => setIsModalOpen(false)} />
+          <div className="modal-center bg-bg-secondary border border-border rounded-[var(--radius-lg)] p-6 w-[90%] max-w-[400px] z-[101] shadow-lg animate-modal-slide-in">
+            <div className="flex justify-between items-center mb-5 pb-4 border-b border-border-subtle">
+              <h4 className="text-lg font-semibold text-text-primary m-0">Add Weight Entry</h4>
               <button
-                className="modal-close"
+                className="flex items-center justify-center bg-bg-tertiary border border-border text-text-secondary size-8 rounded-[var(--radius-sm)] cursor-pointer transition-all duration-150 hover:bg-bg-elevated hover:text-text-primary hover:border-text-muted"
                 onClick={() => setIsModalOpen(false)}
                 aria-label="Close"
               >
@@ -171,10 +171,10 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="weight-modal-form">
-              <div className="weight-modal-inputs">
-                <div className="filter-group">
-                  <label>Weight (kg)</label>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <div className="grid grid-cols-[1fr_1.5fr] gap-3 max-[480px]:grid-cols-1">
+                <div className="flex flex-col gap-2">
+                  <label className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">Weight (kg)</label>
                   <input
                     type="number"
                     step="0.1"
@@ -183,24 +183,24 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
                     value={newWeight}
                     onChange={(e) => setNewWeight(e.target.value)}
                     placeholder="75.0"
-                    className="weight-input"
+                    className="w-full bg-bg-tertiary border border-border text-text-primary py-2.5 px-3.5 rounded-[var(--radius-sm)] text-sm transition-all duration-150 placeholder:text-text-muted hover:border-text-muted focus:outline-none focus:border-accent focus:ring-3 focus:ring-accent/15"
                     autoFocus
                   />
                 </div>
-                <div className="filter-group">
-                  <label>Date & Time</label>
+                <div className="flex flex-col gap-2">
+                  <label className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">Date & Time</label>
                   <input
                     type="datetime-local"
                     value={newWeightDate}
                     onChange={(e) => setNewWeightDate(e.target.value)}
                     max={format(new Date(), "yyyy-MM-dd'T'HH:mm")}
-                    className="weight-input"
+                    className="w-full bg-bg-tertiary border border-border text-text-primary py-2.5 px-3.5 rounded-[var(--radius-sm)] text-sm transition-all duration-150 hover:border-text-muted focus:outline-none focus:border-accent focus:ring-3 focus:ring-accent/15"
                   />
                 </div>
               </div>
               <button
                 type="submit"
-                className="weight-add-btn"
+                className="bg-linear-to-br from-accent to-accent-dark text-white border-none py-2.5 px-4 text-sm font-semibold rounded-[var(--radius-sm)] cursor-pointer transition-all duration-150 hover:not-disabled:-translate-y-px hover:not-disabled:shadow-[0_2px_8px_rgba(20,184,166,0.4)] disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isSubmitting || !newWeight}
               >
                 {isSubmitting ? 'Adding...' : 'Add Entry'}
@@ -208,20 +208,20 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
             </form>
 
             {entries.length > 0 && (
-              <div className="weight-modal-entries">
-                <label>Recent Entries</label>
-                <ul className="weight-entries-list">
+              <div className="mt-5 pt-5 border-t border-border-subtle">
+                <label className="block text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold mb-3">Recent Entries</label>
+                <ul className="list-none flex flex-col gap-2">
                   {entries.slice(0, 5).map((entry) => (
-                    <li key={entry.id} className="weight-entry-item">
-                      <span className="weight-entry-date">
+                    <li key={entry.id} className="flex items-center gap-3 py-2 px-3 bg-bg-tertiary rounded-[var(--radius-sm)] text-sm">
+                      <span className="text-text-secondary min-w-[50px]">
                         {format(new Date(entry.recordedAt), 'MMM d, HH:mm')}
                       </span>
-                      <span className="weight-entry-value">
+                      <span className="flex-1 text-text-primary font-medium">
                         {entry.weight.toFixed(1)} kg
                       </span>
                       <button
                         type="button"
-                        className="weight-entry-delete"
+                        className="bg-transparent border-none text-text-muted p-1 rounded-[var(--radius-sm)] cursor-pointer flex items-center justify-center transition-all duration-150 hover:text-danger hover:bg-danger-muted"
                         onClick={() => onDeleteEntry(entry.id)}
                         aria-label="Delete entry"
                       >

@@ -4,6 +4,7 @@ import {
   HeadContent,
   Scripts,
 } from '@tanstack/react-router'
+import '~/styles/app.css'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -25,10 +26,6 @@ export const Route = createRootRoute({
       {
         rel: 'manifest',
         href: '/manifest.json',
-      },
-      {
-        rel: 'stylesheet',
-        href: '/styles.css',
       },
     ],
   }),

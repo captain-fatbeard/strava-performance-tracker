@@ -15,22 +15,22 @@ export function PersonalRecords({ activities }: PersonalRecordsProps) {
   }
 
   return (
-    <div className="personal-records">
-      <h3>Personal Records</h3>
-      <div className="records-grid">
+    <div className="mb-10">
+      <h3 className="text-lg font-semibold mb-5">Personal Records</h3>
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))] gap-5 max-md:grid-cols-2 max-md:gap-3 max-[480px]:gap-2">
         {records.map((record, index) => (
-          <div key={index} className="record-card">
-            <div className="record-type">{record.type}</div>
-            <div className="record-value">
+          <div key={index} className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-6 text-center transition-all duration-200 min-w-0 overflow-hidden hover:border-border hover:-translate-y-0.5 hover:shadow-md max-[480px]:p-3.5">
+            <div className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold mb-3 max-[480px]:text-[0.6rem] max-[480px]:mb-2">{record.type}</div>
+            <div className="text-4xl font-bold bg-linear-to-br from-accent-light to-accent bg-clip-text text-transparent leading-tight break-words max-md:text-[1.75rem] max-[480px]:text-[1.375rem]">
               {record.type === 'Best Pace (5km+)' ? record.unit : record.value}
               {record.type !== 'Best Pace (5km+)' && (
-                <span className="record-unit">{record.unit}</span>
+                <span className="text-base font-medium text-text-secondary ml-1 max-[480px]:text-xs">{record.unit}</span>
               )}
             </div>
-            <div className="record-activity">
+            <div className="text-sm text-text-primary mt-3 overflow-hidden text-ellipsis whitespace-nowrap font-medium min-w-0 max-[480px]:text-xs">
               {record.activity.name}
             </div>
-            <div className="record-date">
+            <div className="text-xs text-text-muted mt-1">
               {format(new Date(record.date), 'MMM d, yyyy')}
             </div>
           </div>

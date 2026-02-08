@@ -30,9 +30,9 @@ export function FitnessChart({ activities, days = 90 }: FitnessChartProps) {
 
   if (!ftp || fitnessData.length === 0) {
     return (
-      <div className="chart-section">
-        <h3>Fitness & Form</h3>
-        <div className="no-data">
+      <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
+        <h3 className="text-lg font-semibold mb-5 text-text-primary max-[480px]:text-base">Fitness & Form</h3>
+        <div className="text-text-muted text-center py-16 text-[0.9rem]">
           Need more rides with power data to calculate fitness trends.
         </div>
       </div>
@@ -50,21 +50,21 @@ export function FitnessChart({ activities, days = 90 }: FitnessChartProps) {
           : { label: 'Overreached', color: chartTheme.colors.semantic.negative }
 
   return (
-    <div className="chart-section">
-      <div className="chart-header">
-        <h3>Fitness & Form</h3>
-        <div className="fitness-stats">
-          <span className="fitness-stat">
-            <span className="label">CTL</span>
-            <span className="value" style={{ color: chartTheme.colors.primary.main }}>{latestData.ctl}</span>
+    <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
+      <div className="flex justify-between items-center mb-5 max-md:flex-col max-md:items-start max-md:gap-3">
+        <h3 className="text-lg font-semibold text-text-primary max-[480px]:text-base">Fitness & Form</h3>
+        <div className="flex gap-8 flex-wrap max-md:gap-4">
+          <span className="flex flex-col items-center">
+            <span className="text-[0.7rem] text-text-muted uppercase font-semibold tracking-wide">CTL</span>
+            <span className="text-2xl font-bold" style={{ color: chartTheme.colors.primary.main }}>{latestData.ctl}</span>
           </span>
-          <span className="fitness-stat">
-            <span className="label">ATL</span>
-            <span className="value" style={{ color: chartTheme.colors.secondary.main }}>{latestData.atl}</span>
+          <span className="flex flex-col items-center">
+            <span className="text-[0.7rem] text-text-muted uppercase font-semibold tracking-wide">ATL</span>
+            <span className="text-2xl font-bold" style={{ color: chartTheme.colors.secondary.main }}>{latestData.atl}</span>
           </span>
-          <span className="fitness-stat">
-            <span className="label">Form</span>
-            <span className="value" style={{ color: formStatus.color }}>
+          <span className="flex flex-col items-center">
+            <span className="text-[0.7rem] text-text-muted uppercase font-semibold tracking-wide">Form</span>
+            <span className="text-2xl font-bold" style={{ color: formStatus.color }}>
               {latestData.tsb} ({formStatus.label})
             </span>
           </span>
@@ -123,15 +123,15 @@ export function FitnessChart({ activities, days = 90 }: FitnessChartProps) {
         </AreaChart>
       </ResponsiveContainer>
 
-      <div className="fitness-legend">
-        <p>
-          <strong>CTL</strong> (Chronic Training Load) = your fitness level built over ~6 weeks
+      <div className="mt-5 p-5 bg-bg-tertiary rounded-[var(--radius-md)] text-[0.8rem] text-text-secondary leading-relaxed">
+        <p className="mb-2">
+          <strong className="text-accent">CTL</strong> (Chronic Training Load) = your fitness level built over ~6 weeks
+        </p>
+        <p className="mb-2">
+          <strong className="text-accent">ATL</strong> (Acute Training Load) = recent fatigue from the last ~week
         </p>
         <p>
-          <strong>ATL</strong> (Acute Training Load) = recent fatigue from the last ~week
-        </p>
-        <p>
-          <strong>TSB</strong> (Training Stress Balance) = CTL - ATL = your current form
+          <strong className="text-accent">TSB</strong> (Training Stress Balance) = CTL - ATL = your current form
         </p>
       </div>
     </div>

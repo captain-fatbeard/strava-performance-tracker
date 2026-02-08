@@ -34,8 +34,8 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
   }
 
   return (
-    <div className="chart-section">
-      <h3>Weekly Training Load</h3>
+    <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
+      <h3 className="text-lg font-semibold mb-5 text-text-primary max-[480px]:text-base">Weekly Training Load</h3>
 
       <ResponsiveContainer width="100%" height={300}>
         <ComposedChart data={weeklyData}>
@@ -89,26 +89,26 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
         </ComposedChart>
       </ResponsiveContainer>
 
-      <div className="weekly-summary-cards">
+      <div className="grid grid-cols-4 gap-5 mt-6 max-md:grid-cols-2 max-md:gap-3 max-[480px]:gap-2">
         {weeklyData.slice(-4).map((week, i) => (
-          <div key={i} className="weekly-card">
-            <div className="weekly-card-header">{week.week}</div>
-            <div className="weekly-card-stats">
-              <div>
-                <span className="stat-num">{week.rides + week.runs}</span>
-                <span className="stat-label">activities</span>
+          <div key={i} className="bg-bg-tertiary rounded-[var(--radius-md)] p-5 transition-all duration-200 hover:bg-bg-elevated max-[480px]:p-3.5">
+            <div className="text-sm font-semibold text-text-primary mb-4 pb-3 border-b border-border-subtle">{week.week}</div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center">
+                <span className="block text-[1.375rem] font-bold text-text-primary max-md:text-lg max-[480px]:text-base">{week.rides + week.runs}</span>
+                <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wide max-[480px]:text-xs">activities</span>
               </div>
-              <div>
-                <span className="stat-num">{week.totalDistance}</span>
-                <span className="stat-label">km</span>
+              <div className="text-center">
+                <span className="block text-[1.375rem] font-bold text-text-primary max-md:text-lg max-[480px]:text-base">{week.totalDistance}</span>
+                <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wide max-[480px]:text-xs">km</span>
               </div>
-              <div>
-                <span className="stat-num">{Math.round(week.totalTime / 3600)}</span>
-                <span className="stat-label">hours</span>
+              <div className="text-center">
+                <span className="block text-[1.375rem] font-bold text-text-primary max-md:text-lg max-[480px]:text-base">{Math.round(week.totalTime / 3600)}</span>
+                <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wide max-[480px]:text-xs">hours</span>
               </div>
-              <div>
-                <span className="stat-num">{week.totalTSS}</span>
-                <span className="stat-label">TSS</span>
+              <div className="text-center">
+                <span className="block text-[1.375rem] font-bold text-text-primary max-md:text-lg max-[480px]:text-base">{week.totalTSS}</span>
+                <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wide max-[480px]:text-xs">TSS</span>
               </div>
             </div>
           </div>

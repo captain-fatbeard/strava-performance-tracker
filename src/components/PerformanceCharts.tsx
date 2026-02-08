@@ -23,6 +23,12 @@ interface PerformanceChartsProps {
   showAllCharts?: boolean
 }
 
+const trendClasses: Record<string, string> = {
+  improving: 'bg-success-muted text-success',
+  declining: 'bg-danger-muted text-danger',
+  stable: 'bg-warning-muted text-warning',
+}
+
 export function PerformanceCharts({ activities, showAllCharts }: PerformanceChartsProps) {
   const powerTrendData = useMemo(() => {
     const rides = activities
@@ -92,13 +98,13 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
   const hasNoHRData = hrTrendData.length === 0
 
   return (
-    <div className="charts-container">
+    <div className="flex flex-col gap-8">
       {/* Power Trend Chart */}
-      <div className="chart-section">
-        <div className="chart-header">
-          <h3>Power Trend</h3>
+      <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
+        <div className="flex justify-between items-center mb-5 max-md:flex-col max-md:items-start max-md:gap-3">
+          <h3 className="text-lg font-semibold text-text-primary">Power Trend</h3>
           {powerTrendLine && (
-            <span className={`trend-badge ${powerTrendLine.trend}`}>
+            <span className={`text-xs py-1.5 px-3.5 rounded-full font-semibold ${trendClasses[powerTrendLine.trend]}`}>
               {powerTrendLine.trend === 'improving' && '↑ Improving'}
               {powerTrendLine.trend === 'declining' && '↓ Declining'}
               {powerTrendLine.trend === 'stable' && '→ Stable'}
@@ -106,7 +112,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
           )}
         </div>
         {hasNoPowerData ? (
-          <div className="no-data">No power data available. Use a power meter or smart trainer.</div>
+          <div className="text-text-muted text-center py-16 text-[0.9rem]">No power data available. Use a power meter or smart trainer.</div>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={powerTrendData}>
@@ -152,10 +158,10 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
 
       {/* Heart Rate Trend */}
       {(showAllCharts || !hasNoHRData) && (
-        <div className="chart-section">
-          <h3>Heart Rate Trend</h3>
+        <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
+          <h3 className="text-lg font-semibold mb-5 text-text-primary max-[480px]:text-base">Heart Rate Trend</h3>
           {hasNoHRData ? (
-            <div className="no-data">No heart rate data available.</div>
+            <div className="text-text-muted text-center py-16 text-[0.9rem]">No heart rate data available.</div>
           ) : (
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={hrTrendData}>
@@ -188,8 +194,8 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
 
       {/* Speed & Elevation Trend */}
       {showAllCharts && (
-        <div className="chart-section">
-          <h3>Speed & Elevation Trend</h3>
+        <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
+          <h3 className="text-lg font-semibold mb-5 text-text-primary max-[480px]:text-base">Speed & Elevation Trend</h3>
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={speedTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
