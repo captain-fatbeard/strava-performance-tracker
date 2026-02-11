@@ -20,6 +20,21 @@ interface FitnessChartProps {
   days?: number
 }
 
+function getCTLLevel(ctl: number): { label: string; color: string } {
+  if (ctl >= 100) return { label: 'Elite', color: chartTheme.colors.semantic.positive }
+  if (ctl >= 70) return { label: 'Well-Trained', color: chartTheme.colors.primary.main }
+  if (ctl >= 40) return { label: 'Trained', color: chartTheme.colors.primary.light }
+  if (ctl >= 20) return { label: 'Building', color: chartTheme.colors.amber.main }
+  return { label: 'Getting Started', color: chartTheme.colors.neutral[400] }
+}
+
+function getATLLevel(atl: number): { label: string; color: string } {
+  if (atl >= 100) return { label: 'Very Heavy', color: chartTheme.colors.semantic.negative }
+  if (atl >= 60) return { label: 'Heavy', color: chartTheme.colors.amber.main }
+  if (atl >= 30) return { label: 'Moderate', color: chartTheme.colors.primary.main }
+  return { label: 'Light', color: chartTheme.colors.neutral[400] }
+}
+
 export function FitnessChart({ activities, days = 90 }: FitnessChartProps) {
   const ftp = useMemo(() => estimateFTP(activities), [activities])
 
@@ -40,14 +55,20 @@ export function FitnessChart({ activities, days = 90 }: FitnessChartProps) {
   }
 
   const latestData = fitnessData[fitnessData.length - 1]
+  const ctlLevel = getCTLLevel(latestData.ctl)
+  const atlLevel = getATLLevel(latestData.atl)
   const formStatus =
-    latestData.tsb > 15
-      ? { label: 'Fresh', color: chartTheme.colors.amber.main }
-      : latestData.tsb > 0
-        ? { label: 'Optimal', color: chartTheme.colors.amber.light }
-        : latestData.tsb > -15
-          ? { label: 'Tired', color: chartTheme.colors.neutral[400] }
-          : { label: 'Overreached', color: chartTheme.colors.semantic.negative }
+    latestData.tsb > 25
+      ? { label: 'Detraining', color: chartTheme.colors.neutral[500], hint: 'You may be losing fitness' }
+      : latestData.tsb > 15
+        ? { label: 'Fresh', color: chartTheme.colors.amber.main, hint: 'Great for race day' }
+        : latestData.tsb > 5
+          ? { label: 'Optimal', color: chartTheme.colors.semantic.positive, hint: 'Peak performance zone' }
+          : latestData.tsb > -10
+            ? { label: 'Neutral', color: chartTheme.colors.amber.light, hint: 'Normal training load' }
+            : latestData.tsb > -25
+              ? { label: 'Tired', color: chartTheme.colors.neutral[400], hint: 'Absorbing training' }
+              : { label: 'Overreached', color: chartTheme.colors.semantic.negative, hint: 'Risk of overtraining' }
 
   return (
     <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
@@ -57,16 +78,19 @@ export function FitnessChart({ activities, days = 90 }: FitnessChartProps) {
           <span className="flex flex-col items-center">
             <span className="text-[0.7rem] text-text-muted uppercase font-semibold tracking-wide">CTL</span>
             <span className="text-2xl font-bold" style={{ color: chartTheme.colors.primary.main }}>{latestData.ctl}</span>
+            <span className="text-[0.65rem] font-medium mt-0.5 rounded-full px-2 py-0.5" style={{ color: ctlLevel.color, backgroundColor: `${ctlLevel.color}18` }}>{ctlLevel.label}</span>
           </span>
           <span className="flex flex-col items-center">
             <span className="text-[0.7rem] text-text-muted uppercase font-semibold tracking-wide">ATL</span>
             <span className="text-2xl font-bold" style={{ color: chartTheme.colors.secondary.main }}>{latestData.atl}</span>
+            <span className="text-[0.65rem] font-medium mt-0.5 rounded-full px-2 py-0.5" style={{ color: atlLevel.color, backgroundColor: `${atlLevel.color}18` }}>{atlLevel.label}</span>
           </span>
           <span className="flex flex-col items-center">
             <span className="text-[0.7rem] text-text-muted uppercase font-semibold tracking-wide">Form</span>
             <span className="text-2xl font-bold" style={{ color: formStatus.color }}>
-              {latestData.tsb} ({formStatus.label})
+              {latestData.tsb}
             </span>
+            <span className="text-[0.65rem] font-medium mt-0.5 rounded-full px-2 py-0.5" style={{ color: formStatus.color, backgroundColor: `${formStatus.color}18` }}>{formStatus.label}</span>
           </span>
         </div>
       </div>
@@ -124,15 +148,42 @@ export function FitnessChart({ activities, days = 90 }: FitnessChartProps) {
       </ResponsiveContainer>
 
       <div className="mt-5 p-5 bg-bg-tertiary rounded-[var(--radius-md)] text-[0.8rem] text-text-secondary leading-relaxed">
-        <p className="mb-2">
-          <strong className="text-accent">CTL</strong> (Chronic Training Load) = your fitness level built over ~6 weeks
-        </p>
-        <p className="mb-2">
-          <strong className="text-accent">ATL</strong> (Acute Training Load) = recent fatigue from the last ~week
-        </p>
-        <p>
-          <strong className="text-accent">TSB</strong> (Training Stress Balance) = CTL - ATL = your current form
-        </p>
+        <div className="mb-4">
+          <p className="mb-1">
+            <strong className="text-accent">CTL</strong> (Fitness) — built over ~6 weeks of training
+          </p>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[0.72rem] text-text-muted ml-3">
+            <span>0–20 Getting Started</span>
+            <span>20–40 Building</span>
+            <span>40–70 Trained</span>
+            <span>70–100 Well-Trained</span>
+            <span>100+ Elite</span>
+          </div>
+        </div>
+        <div className="mb-4">
+          <p className="mb-1">
+            <strong className="text-accent">ATL</strong> (Fatigue) — recent load from the last ~week
+          </p>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[0.72rem] text-text-muted ml-3">
+            <span>0–30 Light</span>
+            <span>30–60 Moderate</span>
+            <span>60–100 Heavy</span>
+            <span>100+ Very Heavy</span>
+          </div>
+        </div>
+        <div>
+          <p className="mb-1">
+            <strong className="text-accent">Form</strong> (TSB = CTL − ATL) — {formStatus.hint}
+          </p>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[0.72rem] text-text-muted ml-3">
+            <span>&gt;25 Detraining</span>
+            <span>15–25 Fresh</span>
+            <span>5–15 Optimal</span>
+            <span>−10–5 Neutral</span>
+            <span>−25–−10 Tired</span>
+            <span>&lt;−25 Overreached</span>
+          </div>
+        </div>
       </div>
     </div>
   )

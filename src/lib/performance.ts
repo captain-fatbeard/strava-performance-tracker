@@ -294,6 +294,79 @@ export function getVO2maxCategory(vo2max: number, gender: 'male' | 'female' = 'm
   }
 }
 
+// ==========================================
+// Motionist (Average Recreational Exerciser) Benchmarks by Age
+// ==========================================
+
+// VO2max normative data (ml/kg/min) - based on ACSM guidelines
+// Values represent the 50th percentile for recreationally active adults
+const vo2maxBenchmarks: Record<'male' | 'female', [number, number, number][]> = {
+  male: [
+    // [maxAge, average, good]
+    [29, 43, 49],
+    [39, 41, 47],
+    [49, 38, 44],
+    [59, 35, 41],
+    [69, 31, 37],
+    [99, 28, 34],
+  ],
+  female: [
+    [29, 37, 43],
+    [39, 35, 41],
+    [49, 32, 38],
+    [59, 29, 35],
+    [69, 26, 32],
+    [99, 23, 29],
+  ],
+}
+
+// Resting HR benchmarks by age (average active adult)
+const restingHRBenchmarks: [number, number][] = [
+  // [maxAge, avgRestingHR]
+  [29, 72],
+  [39, 73],
+  [49, 74],
+  [59, 75],
+  [69, 73],
+  [99, 73],
+]
+
+export interface MotionistBenchmarks {
+  vo2max: number        // Average VO2max for age/gender
+  vo2maxGood: number    // "Good" VO2max threshold
+  maxHR: number         // Expected max HR (220 - age)
+  restingHR: number     // Average resting HR
+  wPerKg: number        // Average W/kg for recreational cyclist
+  ftp: number           // Estimated average FTP (wPerKg * 75kg reference)
+}
+
+export function getMotionistBenchmarks(age: number, gender: 'male' | 'female'): MotionistBenchmarks {
+  // VO2max
+  const vo2Row = vo2maxBenchmarks[gender].find(([maxAge]) => age <= maxAge) || vo2maxBenchmarks[gender].at(-1)!
+  const vo2max = vo2Row[1]
+  const vo2maxGood = vo2Row[2]
+
+  // Resting HR
+  const hrRow = restingHRBenchmarks.find(([maxAge]) => age <= maxAge) || restingHRBenchmarks.at(-1)!
+  const restingHR = hrRow[1]
+
+  // Max HR (Tanaka formula: 208 - 0.7 * age, more accurate than 220 - age)
+  const maxHR = Math.round(208 - 0.7 * age)
+
+  // W/kg for recreational cyclist declines with age
+  // ~2.5 at 25, declining ~0.05 per 5 years
+  const wPerKg = Math.round((2.5 - (age - 25) * 0.01) * 100) / 100
+
+  return {
+    vo2max,
+    vo2maxGood,
+    maxHR,
+    restingHR,
+    wPerKg: Math.max(wPerKg, 1.5),
+    ftp: Math.round(Math.max(wPerKg, 1.5) * 75),
+  }
+}
+
 // Intensity Factor (IF) - how hard was the workout relative to FTP
 export function calculateIF(normalizedPower: number, ftp: number): number {
   if (!normalizedPower || !ftp) return 0

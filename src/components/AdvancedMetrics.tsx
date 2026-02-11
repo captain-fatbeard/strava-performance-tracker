@@ -1,10 +1,56 @@
 import { useMemo } from 'react'
 import { type StravaActivity } from '~/lib/strava'
-import { calculateAdvancedMetrics, estimateFTP } from '~/lib/performance'
+import { calculateAdvancedMetrics, estimateFTP, getMotionistBenchmarks } from '~/lib/performance'
+import type { Gender } from '~/lib/dashboard-context'
 
 interface AdvancedMetricsProps {
   activities: StravaActivity[]
   weight: number
+  age: number
+  gender: Gender
+}
+
+function ComparisonBar({ value, benchmark, goodThreshold, unit, label }: {
+  value: number
+  benchmark: number
+  goodThreshold: number
+  unit: string
+  label: string
+}) {
+  const diff = value - benchmark
+  const diffPercent = Math.round((diff / benchmark) * 100)
+  const isAbove = diff > 0
+
+  // Scale: benchmark at ~40%, goodThreshold at ~70%, max at 100%
+  const range = goodThreshold * 1.5
+  const benchmarkPos = Math.min((benchmark / range) * 100, 95)
+  const valuePos = Math.min(Math.max((value / range) * 100, 5), 95)
+
+  return (
+    <div className="mt-3 pt-3 border-t border-border-subtle">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wide">vs {label}</span>
+        <span className={`text-xs font-bold ${isAbove ? 'text-success' : 'text-warning'}`}>
+          {isAbove ? '+' : ''}{diffPercent}%
+        </span>
+      </div>
+      <div className="relative h-2 bg-bg-secondary rounded-full overflow-hidden">
+        <div
+          className="absolute top-0 left-0 h-full rounded-full bg-accent/80"
+          style={{ width: `${valuePos}%` }}
+        />
+        <div
+          className="absolute top-0 h-full w-0.5 bg-text-muted/60"
+          style={{ left: `${benchmarkPos}%` }}
+          title={`Average: ${benchmark} ${unit}`}
+        />
+      </div>
+      <div className="flex justify-between mt-1.5">
+        <span className="text-[0.6rem] text-text-muted">Avg: {benchmark} {unit}</span>
+        <span className="text-[0.6rem] text-text-muted">Good: {goodThreshold}</span>
+      </div>
+    </div>
+  )
 }
 
 const badgeClasses: Record<string, string> = {
@@ -15,7 +61,7 @@ const badgeClasses: Record<string, string> = {
   'below-average': 'bg-danger-muted text-danger',
 }
 
-export function AdvancedMetrics({ activities, weight }: AdvancedMetricsProps) {
+export function AdvancedMetrics({ activities, weight, age, gender }: AdvancedMetricsProps) {
   const rides = activities.filter(
     (a) => a.type === 'Ride' || a.type === 'VirtualRide'
   )
@@ -24,6 +70,10 @@ export function AdvancedMetrics({ activities, weight }: AdvancedMetricsProps) {
   const metrics = useMemo(() => {
     return calculateAdvancedMetrics(activities, ftp, weight)
   }, [activities, ftp, weight])
+
+  const benchmarks = useMemo(() => {
+    return getMotionistBenchmarks(age, gender)
+  }, [age, gender])
 
   if (ftp === 0) {
     return (
@@ -54,6 +104,15 @@ export function AdvancedMetrics({ activities, weight }: AdvancedMetricsProps) {
           <span className={`absolute top-4 right-4 text-[0.65rem] py-1 px-2.5 rounded-full font-bold uppercase tracking-wide ${badgeClasses[metrics.vo2maxCategory.toLowerCase().replace(' ', '-')] || ''}`}>
             {metrics.vo2maxCategory}
           </span>
+          {metrics.vo2max > 0 && (
+            <ComparisonBar
+              value={metrics.vo2max}
+              benchmark={benchmarks.vo2max}
+              goodThreshold={benchmarks.vo2maxGood}
+              unit="ml/kg/min"
+              label={`Avg age ${age}`}
+            />
+          )}
         </div>
 
         {/* Intensity Factor */}
@@ -147,7 +206,42 @@ export function AdvancedMetrics({ activities, weight }: AdvancedMetricsProps) {
         )}
       </div>
 
-      <div className="mt-6 p-5 bg-bg-tertiary rounded-[var(--radius-md)] text-[0.8rem] text-text-secondary leading-relaxed">
+      {/* Motionist Comparison Summary */}
+      <div className="mt-6 p-5 bg-linear-to-br from-accent/5 to-bg-tertiary border border-border-subtle rounded-[var(--radius-md)]">
+        <h4 className="text-sm font-semibold text-text-primary mb-3 flex items-center gap-2">
+          <svg className="size-4 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+          Average Motionist (Age {age}, {gender})
+        </h4>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-[0.8rem] text-text-secondary max-md:grid-cols-1">
+          <div className="flex justify-between">
+            <span>VO2max</span>
+            <span className="font-medium text-text-primary">{benchmarks.vo2max} ml/kg/min</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Max Heart Rate</span>
+            <span className="font-medium text-text-primary">{benchmarks.maxHR} bpm</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Resting Heart Rate</span>
+            <span className="font-medium text-text-primary">{benchmarks.restingHR} bpm</span>
+          </div>
+          <div className="flex justify-between">
+            <span>W/kg (cycling)</span>
+            <span className="font-medium text-text-primary">{benchmarks.wPerKg} W/kg</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Est. FTP</span>
+            <span className="font-medium text-text-primary">{benchmarks.ftp} W</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 p-5 bg-bg-tertiary rounded-[var(--radius-md)] text-[0.8rem] text-text-secondary leading-relaxed">
         <p className="mb-2"><strong className="text-accent">IF</strong> (Intensity Factor): How hard workouts are vs FTP. 0.75 = endurance, 1.0 = threshold.</p>
         <p className="mb-2"><strong className="text-accent">VI</strong> (Variability Index): Effort steadiness. 1.0 = perfectly even, higher = more surges.</p>
         <p className="mb-2"><strong className="text-accent">EF</strong> (Efficiency Factor): Aerobic efficiency. Track over time - higher is better!</p>

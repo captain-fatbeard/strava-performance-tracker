@@ -103,8 +103,8 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
                 <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wide max-[480px]:text-xs">km</span>
               </div>
               <div className="text-center">
-                <span className="block text-[1.375rem] font-bold text-text-primary max-md:text-lg max-[480px]:text-base">{Math.round(week.totalTime / 3600)}</span>
-                <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wide max-[480px]:text-xs">hours</span>
+                <span className="block text-[1.375rem] font-bold text-text-primary max-md:text-lg max-[480px]:text-base">{Math.floor(week.totalTime / 3600)}h {Math.floor((week.totalTime % 3600) / 60)}m</span>
+                <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wide max-[480px]:text-xs">time</span>
               </div>
               <div className="text-center">
                 <span className="block text-[1.375rem] font-bold text-text-primary max-md:text-lg max-[480px]:text-base">{week.totalTSS}</span>
