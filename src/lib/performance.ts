@@ -801,6 +801,92 @@ export function calculateFatBurningSummary(
 }
 
 // ==========================================
+// Running Performance Metrics
+// ==========================================
+
+export interface RunningMetrics {
+  avgPace: number // seconds per km
+  bestPace: number // seconds per km (from runs >= 5km)
+  vo2max: number
+  vo2maxCategory: string
+  avgCadence: number // steps/min
+  avgHR: number
+  totalDistance: number // km
+  totalRuns: number
+}
+
+// Format pace from seconds/km to "5:23" style string
+export function formatPace(secsPerKm: number): string {
+  if (!secsPerKm || !isFinite(secsPerKm)) return '--:--'
+  const mins = Math.floor(secsPerKm / 60)
+  const secs = Math.round(secsPerKm % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+export function calculateRunningMetrics(activities: StravaActivity[]): RunningMetrics {
+  const runs = activities.filter((a) => a.type === 'Run')
+
+  const empty: RunningMetrics = {
+    avgPace: 0,
+    bestPace: 0,
+    vo2max: 0,
+    vo2maxCategory: '',
+    avgCadence: 0,
+    avgHR: 0,
+    totalDistance: 0,
+    totalRuns: 0,
+  }
+
+  if (runs.length === 0) return empty
+
+  // Avg pace across all runs (seconds per km)
+  const paces = runs.map((r) => (r.distance > 0 ? r.moving_time / (r.distance / 1000) : 0)).filter((p) => p > 0)
+  const avgPace = paces.length > 0 ? paces.reduce((s, p) => s + p, 0) / paces.length : 0
+
+  // Best pace from runs >= 5km
+  const longRuns = runs.filter((r) => r.distance >= 5000)
+  const bestPace = longRuns.length > 0
+    ? Math.min(...longRuns.map((r) => r.moving_time / (r.distance / 1000)))
+    : 0
+
+  // Estimate VO2max from best sustained pace using ACSM running equation
+  // VO2 (ml/kg/min) = 0.2 × speed(m/min) + 0.9 × speed × grade + 3.5
+  // For flat running (grade ≈ 0): VO2 ≈ 0.2 × speed(m/min) + 3.5
+  // Best pace ≈ 93% VO2max effort, so VO2max ≈ VO2 / 0.93
+  let vo2max = 0
+  if (bestPace > 0) {
+    const speedMPerMin = 1000 / (bestPace / 60) // convert s/km to m/min
+    const vo2AtPace = 0.2 * speedMPerMin + 3.5
+    vo2max = Math.round((vo2AtPace / 0.93) * 10) / 10
+  }
+
+  // Avg cadence (Strava reports half-cadence for running, so multiply by 2)
+  const withCadence = runs.filter((r) => r.average_cadence && r.average_cadence > 0)
+  const avgCadence = withCadence.length > 0
+    ? Math.round(withCadence.reduce((s, r) => s + (r.average_cadence || 0), 0) / withCadence.length * 2)
+    : 0
+
+  // Avg HR from runs with HR data
+  const withHR = runs.filter((r) => r.average_heartrate && r.average_heartrate > 0)
+  const avgHR = withHR.length > 0
+    ? Math.round(withHR.reduce((s, r) => s + (r.average_heartrate || 0), 0) / withHR.length)
+    : 0
+
+  const totalDistance = Math.round(runs.reduce((s, r) => s + r.distance, 0) / 1000 * 10) / 10
+
+  return {
+    avgPace,
+    bestPace,
+    vo2max,
+    vo2maxCategory: vo2max > 0 ? getVO2maxCategory(vo2max) : '',
+    avgCadence,
+    avgHR,
+    totalDistance,
+    totalRuns: runs.length,
+  }
+}
+
+// ==========================================
 // BMR & Resting Fat Burn Calculations
 // ==========================================
 
