@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   AreaChart,
   Area,
@@ -17,8 +17,14 @@ import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
 
 interface FitnessChartProps {
   activities: StravaActivity[]
-  days?: number
 }
+
+const rangeOptions = [
+  { label: '30d', days: 30 },
+  { label: '90d', days: 90 },
+  { label: '6m', days: 180 },
+  { label: '1y', days: 365 },
+] as const
 
 function getCTLLevel(ctl: number): { label: string; color: string } {
   if (ctl >= 100) return { label: 'Elite', color: chartTheme.colors.semantic.positive }
@@ -35,7 +41,8 @@ function getATLLevel(atl: number): { label: string; color: string } {
   return { label: 'Light', color: chartTheme.colors.neutral[400] }
 }
 
-export function FitnessChart({ activities, days = 90 }: FitnessChartProps) {
+export function FitnessChart({ activities }: FitnessChartProps) {
+  const [days, setDays] = useState(30)
   const ftp = useMemo(() => estimateFTP(activities), [activities])
 
   const fitnessData = useMemo(() => {
@@ -73,7 +80,24 @@ export function FitnessChart({ activities, days = 90 }: FitnessChartProps) {
   return (
     <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
       <div className="flex justify-between items-center mb-5 max-md:flex-col max-md:items-start max-md:gap-3">
-        <h3 className="text-lg font-semibold text-text-primary max-[480px]:text-base">Fitness & Form</h3>
+        <div className="flex items-center gap-4">
+          <h3 className="text-lg font-semibold text-text-primary max-[480px]:text-base">Fitness & Form</h3>
+          <div className="flex gap-1 bg-bg-tertiary rounded-[var(--radius-sm)] p-0.5">
+            {rangeOptions.map((opt) => (
+              <button
+                key={opt.label}
+                onClick={() => setDays(opt.days)}
+                className={`text-[0.7rem] font-semibold px-2.5 py-1 rounded-[var(--radius-sm)] transition-colors ${
+                  days === opt.days
+                    ? 'bg-accent text-bg-primary'
+                    : 'text-text-muted hover:text-text-secondary'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="flex gap-8 flex-wrap max-md:gap-4">
           <span className="flex flex-col items-center">
             <span className="text-[0.7rem] text-text-muted uppercase font-semibold tracking-wide">CTL</span>
