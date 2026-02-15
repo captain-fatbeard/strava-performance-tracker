@@ -73,6 +73,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
       .filter((a) => (a.type === 'Ride' || a.type === 'VirtualRide') && a.average_heartrate)
       .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
       .map((activity) => ({
+        fullDate: activity.start_date_local,
         date: format(new Date(activity.start_date_local), 'MMM d'),
         avgHR: Math.round(activity.average_heartrate || 0),
         maxHR: activity.max_heartrate || 0,
@@ -85,6 +86,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
       .filter((a) => (a.type === 'Ride' || a.type === 'VirtualRide') && a.average_speed > 0)
       .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
       .map((activity) => ({
+        fullDate: activity.start_date_local,
         date: format(new Date(activity.start_date_local), 'MMM d'),
         speed: Math.round((activity.average_speed * 3.6) * 10) / 10,
         maxSpeed: Math.round((activity.max_speed * 3.6) * 10) / 10,
@@ -116,7 +118,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={powerTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
-              <XAxis dataKey="date" stroke={chartTheme.axis} fontSize={12} />
+              <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => format(new Date(value), 'MMM d')} />
               <YAxis stroke={chartTheme.axis} fontSize={12} domain={['auto', 'auto']} />
               <Tooltip {...tooltipStyle} formatter={(value: number, name: string) => [`${value} W`, name]} />
               <Legend />
@@ -142,8 +144,8 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
               {powerTrendLine && (
                 <ReferenceLine
                   segment={[
-                    { x: powerTrendData[0]?.date, y: powerTrendLine.startValue },
-                    { x: powerTrendData[powerTrendData.length - 1]?.date, y: powerTrendLine.endValue },
+                    { x: powerTrendData[0]?.fullDate, y: powerTrendLine.startValue },
+                    { x: powerTrendData[powerTrendData.length - 1]?.fullDate, y: powerTrendLine.endValue },
                   ]}
                   stroke={chartTheme.colors.amber.main}
                   strokeDasharray="5 5"
@@ -171,7 +173,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={hrTrendData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
-                <XAxis dataKey="date" stroke={chartTheme.axis} fontSize={12} />
+                <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => format(new Date(value), 'MMM d')} />
                 <YAxis stroke={chartTheme.axis} fontSize={12} domain={['auto', 'auto']} />
                 <Tooltip {...tooltipStyle} formatter={(value: number, name: string) => [`${value} bpm`, name]} />
                 <Legend />
@@ -204,7 +206,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={speedTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
-              <XAxis dataKey="date" stroke={chartTheme.axis} fontSize={12} />
+              <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => format(new Date(value), 'MMM d')} />
               <YAxis yAxisId="speed" stroke={chartTheme.axis} fontSize={12} unit=" km/h" />
               <YAxis yAxisId="elevation" orientation="right" stroke={chartTheme.axis} fontSize={12} unit=" m" />
               <Tooltip

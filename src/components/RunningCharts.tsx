@@ -74,6 +74,7 @@ export function RunningCharts({ activities }: RunningChartsProps) {
     return runs
       .filter((r) => r.average_heartrate)
       .map((run) => ({
+        fullDate: run.start_date_local,
         date: format(new Date(run.start_date_local), 'MMM d'),
         avgHR: Math.round(run.average_heartrate || 0),
         maxHR: run.max_heartrate || 0,
@@ -155,7 +156,7 @@ export function RunningCharts({ activities }: RunningChartsProps) {
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={hrTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
-              <XAxis dataKey="date" stroke={chartTheme.axis} fontSize={12} />
+              <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => format(new Date(value), 'MMM d')} />
               <YAxis stroke={chartTheme.axis} fontSize={12} domain={['auto', 'auto']} />
               <Tooltip {...tooltipStyle} formatter={(value: number, name: string) => [`${value} bpm`, name]} />
               <Legend />

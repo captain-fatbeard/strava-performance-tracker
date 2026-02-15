@@ -88,6 +88,7 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
         const vo2max = estimateVO2max(rollingFTP, weight)
 
         result.push({
+          fullDate: ride.start_date_local,
           date: format(rideDate, 'MMM d'),
           vo2max,
           rollingFTP,
@@ -187,7 +188,7 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
             <ResponsiveContainer width="100%" height={300}>
               <ComposedChart data={efficiencyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
-                <XAxis dataKey="date" stroke={chartTheme.axis} fontSize={12} />
+                <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => format(new Date(value), 'MMM d')} />
                 <YAxis
                   yAxisId="ef"
                   stroke={chartTheme.axis}
@@ -223,8 +224,8 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
                   <ReferenceLine
                     yAxisId="ef"
                     segment={[
-                      { x: efficiencyData[0]?.date, y: efTrendLine.startValue },
-                      { x: efficiencyData[efficiencyData.length - 1]?.date, y: efTrendLine.endValue },
+                      { x: efficiencyData[0]?.fullDate, y: efTrendLine.startValue },
+                      { x: efficiencyData[efficiencyData.length - 1]?.fullDate, y: efTrendLine.endValue },
                     ]}
                     stroke={chartTheme.colors.amber.main}
                     strokeDasharray="5 5"
@@ -254,7 +255,7 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={vo2maxData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
-              <XAxis dataKey="date" stroke={chartTheme.axis} fontSize={12} />
+              <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => format(new Date(value), 'MMM d')} />
               <YAxis
                 stroke={chartTheme.axis}
                 fontSize={12}
@@ -311,7 +312,7 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={vamData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
-              <XAxis dataKey="date" stroke={chartTheme.axis} fontSize={12} />
+              <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => format(new Date(value), 'MMM d')} />
               <YAxis
                 yAxisId="vam"
                 stroke={chartTheme.axis}
@@ -348,8 +349,8 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
                 <ReferenceLine
                   yAxisId="vam"
                   segment={[
-                    { x: vamData[0]?.date, y: vamTrendLine.startValue },
-                    { x: vamData[vamData.length - 1]?.date, y: vamTrendLine.endValue },
+                    { x: vamData[0]?.fullDate, y: vamTrendLine.startValue },
+                    { x: vamData[vamData.length - 1]?.fullDate, y: vamTrendLine.endValue },
                   ]}
                   stroke={chartTheme.colors.amber.main}
                   strokeDasharray="5 5"
