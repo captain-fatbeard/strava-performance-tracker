@@ -39,6 +39,7 @@ export function RunningCharts({ activities }: RunningChartsProps) {
       .map((run) => {
         const paceSecsPerKm = run.moving_time / (run.distance / 1000)
         return {
+          fullDate: run.start_date_local,
           date: format(new Date(run.start_date_local), 'MMM d'),
           pace: Math.round(paceSecsPerKm * 10) / 10, // seconds per km
           paceFormatted: formatPace(paceSecsPerKm),
@@ -105,16 +106,17 @@ export function RunningCharts({ activities }: RunningChartsProps) {
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={paceTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
-              <XAxis dataKey="date" stroke={chartTheme.axis} fontSize={12} />
+              <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => format(new Date(value), 'MMM d')} />
               <YAxis
                 stroke={chartTheme.axis}
                 fontSize={12}
                 reversed
-                domain={['auto', 'auto']}
+                domain={[(min: number) => Math.floor(min / 30) * 30, (max: number) => Math.ceil(max / 30) * 30]}
                 tickFormatter={(value: number) => formatPace(value)}
               />
               <Tooltip
                 {...tooltipStyle}
+                labelFormatter={(value) => format(new Date(value as string), 'MMM d, yyyy')}
                 formatter={(value: number, name: string) => {
                   if (name === 'Pace') return [formatPace(value) + ' /km', name]
                   return [`${value} km`, name]
@@ -133,8 +135,8 @@ export function RunningCharts({ activities }: RunningChartsProps) {
               {paceTrendLine && (
                 <ReferenceLine
                   segment={[
-                    { x: paceTrendData[0]?.date, y: paceTrendLine.startValue },
-                    { x: paceTrendData[paceTrendData.length - 1]?.date, y: paceTrendLine.endValue },
+                    { x: paceTrendData[0]?.fullDate, y: paceTrendLine.startValue },
+                    { x: paceTrendData[paceTrendData.length - 1]?.fullDate, y: paceTrendLine.endValue },
                   ]}
                   stroke={chartTheme.colors.amber.main}
                   strokeDasharray="5 5"
