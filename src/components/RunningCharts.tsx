@@ -12,10 +12,9 @@ import {
   Legend,
   ReferenceLine,
 } from 'recharts'
-import { format } from 'date-fns'
 import { type StravaActivity } from '~/lib/strava'
 import { formatPace } from '~/lib/performance'
-import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
+import { chartTheme, tooltipStyle, formatDateShort, activityTooltipLabel } from '~/lib/chart-theme'
 
 interface RunningChartsProps {
   activities: StravaActivity[]
@@ -40,7 +39,6 @@ export function RunningCharts({ activities }: RunningChartsProps) {
         const paceSecsPerKm = run.moving_time / (run.distance / 1000)
         return {
           fullDate: run.start_date_local,
-          date: format(new Date(run.start_date_local), 'MMM d'),
           pace: Math.round(paceSecsPerKm * 10) / 10, // seconds per km
           paceFormatted: formatPace(paceSecsPerKm),
           distance: Math.round(run.distance / 100) / 10, // km with 1 decimal
@@ -75,7 +73,6 @@ export function RunningCharts({ activities }: RunningChartsProps) {
       .filter((r) => r.average_heartrate)
       .map((run) => ({
         fullDate: run.start_date_local,
-        date: format(new Date(run.start_date_local), 'MMM d'),
         avgHR: Math.round(run.average_heartrate || 0),
         maxHR: run.max_heartrate || 0,
         name: run.name,
@@ -107,7 +104,7 @@ export function RunningCharts({ activities }: RunningChartsProps) {
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={paceTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
-              <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => format(new Date(value), 'MMM d')} />
+              <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => formatDateShort(value)} />
               <YAxis
                 stroke={chartTheme.axis}
                 fontSize={12}
@@ -117,7 +114,7 @@ export function RunningCharts({ activities }: RunningChartsProps) {
               />
               <Tooltip
                 {...tooltipStyle}
-                labelFormatter={(value) => format(new Date(value as string), 'MMM d, yyyy')}
+                labelFormatter={activityTooltipLabel}
                 formatter={(value: number, name: string) => {
                   if (name === 'Pace') return [formatPace(value) + ' /km', name]
                   return [`${value} km`, name]
@@ -156,9 +153,9 @@ export function RunningCharts({ activities }: RunningChartsProps) {
           <ResponsiveContainer width="100%" height={300}>
             <AreaChart data={hrTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
-              <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => format(new Date(value), 'MMM d')} />
+              <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => formatDateShort(value)} />
               <YAxis stroke={chartTheme.axis} fontSize={12} domain={['auto', 'auto']} />
-              <Tooltip {...tooltipStyle} formatter={(value: number, name: string) => [`${value} bpm`, name]} />
+              <Tooltip {...tooltipStyle} labelFormatter={activityTooltipLabel} formatter={(value: number, name: string) => [`${value} bpm`, name]} />
               <Legend />
               <Area
                 type="monotone"

@@ -10,10 +10,9 @@ import {
   ReferenceLine,
   Legend,
 } from 'recharts'
-import { format, parseISO } from 'date-fns'
 import { type StravaActivity } from '~/lib/strava'
 import { calculateFitnessOverTime, estimateFTP } from '~/lib/performance'
-import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
+import { chartTheme, tooltipStyle, formatDateShort, formatDateFull } from '~/lib/chart-theme'
 
 interface FitnessChartProps {
   activities: StravaActivity[]
@@ -126,13 +125,13 @@ export function FitnessChart({ activities }: FitnessChartProps) {
             dataKey="date"
             stroke={chartTheme.axis}
             fontSize={12}
-            tickFormatter={(date) => format(parseISO(date), 'MMM d')}
+            tickFormatter={(date) => formatDateShort(date)}
             interval="preserveStartEnd"
           />
           <YAxis stroke={chartTheme.axis} fontSize={12} />
           <Tooltip
             {...tooltipStyle}
-            labelFormatter={(date) => format(parseISO(date as string), 'MMM d, yyyy')}
+            labelFormatter={(date) => formatDateFull(date as string)}
             formatter={(value: number, name: string) => {
               const labels: Record<string, string> = {
                 ctl: 'Fitness (CTL)',

@@ -14,9 +14,8 @@ import {
   ReferenceLine,
   ComposedChart,
 } from 'recharts'
-import { format } from 'date-fns'
 import { type StravaActivity } from '~/lib/strava'
-import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
+import { chartTheme, tooltipStyle, formatDateShort, activityTooltipLabel } from '~/lib/chart-theme'
 
 interface PerformanceChartsProps {
   activities: StravaActivity[]
@@ -37,7 +36,6 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
 
     return rides
       .map((ride) => ({
-        date: format(new Date(ride.start_date_local), 'MMM d'),
         fullDate: ride.start_date_local,
         avgPower: Math.round(ride.average_watts || 0),
         maxPower: ride.max_watts || 0,
@@ -74,8 +72,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
       .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
       .map((activity) => ({
         fullDate: activity.start_date_local,
-        date: format(new Date(activity.start_date_local), 'MMM d'),
-        avgHR: Math.round(activity.average_heartrate || 0),
+                avgHR: Math.round(activity.average_heartrate || 0),
         maxHR: activity.max_heartrate || 0,
         name: activity.name,
       }))
@@ -87,8 +84,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
       .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
       .map((activity) => ({
         fullDate: activity.start_date_local,
-        date: format(new Date(activity.start_date_local), 'MMM d'),
-        speed: Math.round((activity.average_speed * 3.6) * 10) / 10,
+                speed: Math.round((activity.average_speed * 3.6) * 10) / 10,
         maxSpeed: Math.round((activity.max_speed * 3.6) * 10) / 10,
         elevation: Math.round(activity.total_elevation_gain),
         name: activity.name,
@@ -118,9 +114,9 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={powerTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
-              <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => format(new Date(value), 'MMM d')} />
+              <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => formatDateShort(value)} />
               <YAxis stroke={chartTheme.axis} fontSize={12} domain={['auto', 'auto']} />
-              <Tooltip {...tooltipStyle} formatter={(value: number, name: string) => [`${value} W`, name]} />
+              <Tooltip {...tooltipStyle} labelFormatter={activityTooltipLabel} formatter={(value: number, name: string) => [`${value} W`, name]} />
               <Legend />
               <Line
                 type="monotone"
@@ -173,9 +169,9 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={hrTrendData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
-                <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => format(new Date(value), 'MMM d')} />
+                <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => formatDateShort(value)} />
                 <YAxis stroke={chartTheme.axis} fontSize={12} domain={['auto', 'auto']} />
-                <Tooltip {...tooltipStyle} formatter={(value: number, name: string) => [`${value} bpm`, name]} />
+                <Tooltip {...tooltipStyle} labelFormatter={activityTooltipLabel} formatter={(value: number, name: string) => [`${value} bpm`, name]} />
                 <Legend />
                 <Area
                   type="monotone"
@@ -206,11 +202,12 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={speedTrendData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
-              <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => format(new Date(value), 'MMM d')} />
+              <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => formatDateShort(value)} />
               <YAxis yAxisId="speed" stroke={chartTheme.axis} fontSize={12} unit=" km/h" />
               <YAxis yAxisId="elevation" orientation="right" stroke={chartTheme.axis} fontSize={12} unit=" m" />
               <Tooltip
                 {...tooltipStyle}
+                labelFormatter={activityTooltipLabel}
                 formatter={(value: number, name: string) => {
                   if (name === 'Elevation') return [`${value} m`, name]
                   return [`${value} km/h`, name]

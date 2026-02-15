@@ -127,6 +127,29 @@ export const hrZoneColors = [
   '#7a5a6a', // Z5 - Maximum (muted mauve)
 ]
 
+// Danish date formatters for charts
+import { format } from 'date-fns'
+import { da } from 'date-fns/locale'
+
+export function formatDateShort(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  return format(d, 'd. MMM', { locale: da })
+}
+
+export function formatDateFull(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date
+  return format(d, 'd. MMM yyyy', { locale: da })
+}
+
+// Shared tooltip label formatter: shows activity name as title, date as subtitle
+// Works with any chart data that has a `name` field in the payload
+export function activityTooltipLabel(label: string, payload?: Array<{ payload?: { name?: string } }>) {
+  const name = payload?.[0]?.payload?.name
+  const date = formatDateFull(label)
+  if (name) return `${name}\n${date}`
+  return date
+}
+
 // Tooltip style object for Recharts
 export const tooltipStyle = {
   contentStyle: {
@@ -140,6 +163,7 @@ export const tooltipStyle = {
     color: chartTheme.tooltip.text,
     fontWeight: 600,
     marginBottom: '8px',
+    whiteSpace: 'pre-line' as const,
   },
   itemStyle: {
     color: chartTheme.colors.neutral[400],

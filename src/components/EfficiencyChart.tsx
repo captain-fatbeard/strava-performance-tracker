@@ -12,10 +12,9 @@ import {
   ComposedChart,
   Area,
 } from 'recharts'
-import { format } from 'date-fns'
 import { type StravaActivity } from '~/lib/strava'
 import { calculateEF, estimateVO2max, calculateVAM } from '~/lib/performance'
-import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
+import { chartTheme, tooltipStyle, formatDateShort, activityTooltipLabel } from '~/lib/chart-theme'
 
 interface EfficiencyChartProps {
   activities: StravaActivity[]
@@ -45,7 +44,6 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
       const ef = calculateEF(np, ride.average_heartrate || 0)
 
       return {
-        date: format(new Date(ride.start_date_local), 'MMM d'),
         fullDate: ride.start_date_local,
         ef,
         np,
@@ -89,7 +87,6 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
 
         result.push({
           fullDate: ride.start_date_local,
-          date: format(rideDate, 'MMM d'),
           vo2max,
           rollingFTP,
         })
@@ -112,7 +109,6 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
     return rides.map((ride) => {
       const vam = calculateVAM(ride.total_elevation_gain, ride.moving_time)
       return {
-        date: format(new Date(ride.start_date_local), 'MMM d'),
         fullDate: ride.start_date_local,
         vam,
         elevation: Math.round(ride.total_elevation_gain),
@@ -188,7 +184,7 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
             <ResponsiveContainer width="100%" height={300}>
               <ComposedChart data={efficiencyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
-                <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => format(new Date(value), 'MMM d')} />
+                <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => formatDateShort(value)} />
                 <YAxis
                   yAxisId="ef"
                   stroke={chartTheme.axis}
@@ -198,15 +194,10 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
                 />
                 <Tooltip
                   {...tooltipStyle}
+                  labelFormatter={activityTooltipLabel}
                   formatter={(value: number, name: string) => {
                     if (name === 'Efficiency Factor') return [value.toFixed(2), 'Efficiency Factor']
                     return [value, name]
-                  }}
-                  labelFormatter={(label, payload) => {
-                    if (payload && payload[0]) {
-                      return `${payload[0].payload.name} - ${label}`
-                    }
-                    return label
                   }}
                 />
                 <Legend />
@@ -255,7 +246,7 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={vo2maxData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
-              <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => format(new Date(value), 'MMM d')} />
+              <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => formatDateShort(value)} />
               <YAxis
                 stroke={chartTheme.axis}
                 fontSize={12}
@@ -264,6 +255,7 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
               />
               <Tooltip
                 {...tooltipStyle}
+                labelFormatter={activityTooltipLabel}
                 formatter={(value: number, name: string) => {
                   if (name === 'Est. VO2max') return [`${value.toFixed(1)} ml/kg/min`, 'Est. VO2max']
                   if (name === 'Rolling FTP') return [`${value} W`, 'Rolling FTP']
@@ -312,7 +304,7 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={vamData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
-              <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => format(new Date(value), 'MMM d')} />
+              <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => formatDateShort(value)} />
               <YAxis
                 yAxisId="vam"
                 stroke={chartTheme.axis}
@@ -322,16 +314,11 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
               />
               <Tooltip
                 {...tooltipStyle}
+                labelFormatter={activityTooltipLabel}
                 formatter={(value: number, name: string) => {
                   if (name === 'VAM') return [`${value} m/hr`, 'VAM']
                   if (name === 'Elevation') return [`${value} m`, 'Elevation']
                   return [value, name]
-                }}
-                labelFormatter={(label, payload) => {
-                  if (payload && payload[0]) {
-                    return `${payload[0].payload.name} - ${label}`
-                  }
-                  return label
                 }}
               />
               <Legend />

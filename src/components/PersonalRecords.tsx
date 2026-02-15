@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
-import { format } from 'date-fns'
 import { type StravaActivity } from '~/lib/strava'
 import { calculatePersonalRecords } from '~/lib/performance'
+import { formatDateFull } from '~/lib/chart-theme'
 
 interface PersonalRecordsProps {
   activities: StravaActivity[]
@@ -31,7 +31,7 @@ export function PersonalRecords({ activities }: PersonalRecordsProps) {
               {record.activity.name}
             </div>
             <div className="text-xs text-text-muted mt-1">
-              {format(new Date(record.date), 'MMM d, yyyy')}
+              {formatDateFull(record.date)}
             </div>
           </div>
         ))}

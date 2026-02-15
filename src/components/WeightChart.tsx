@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { format, parseISO } from 'date-fns'
-import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
+import { chartTheme, tooltipStyle, formatDateShort, formatDateFull } from '~/lib/chart-theme'
 import type { WeightEntry } from '~/lib/storage/supabase-client'
 
 interface WeightChartProps {
@@ -128,7 +128,7 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
               dataKey="date"
               stroke={chartTheme.axis}
               fontSize={12}
-              tickFormatter={(date) => format(parseISO(date), 'MMM d')}
+              tickFormatter={(date) => formatDateShort(date)}
               interval="preserveStartEnd"
             />
             <YAxis
@@ -139,7 +139,7 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
             />
             <Tooltip
               {...tooltipStyle}
-              labelFormatter={(date) => format(parseISO(date as string), 'MMM d, yyyy HH:mm')}
+              labelFormatter={(date) => formatDateFull(date as string)}
               formatter={(value: number | undefined) => [`${(value ?? 0).toFixed(1)} kg`, 'Weight']}
             />
             <Line
@@ -214,7 +214,7 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
                   {entries.slice(0, 5).map((entry) => (
                     <li key={entry.id} className="flex items-center gap-3 py-2 px-3 bg-bg-tertiary rounded-[var(--radius-sm)] text-sm">
                       <span className="text-text-secondary min-w-[50px]">
-                        {format(new Date(entry.recordedAt), 'MMM d, HH:mm')}
+                        {formatDateFull(entry.recordedAt)}
                       </span>
                       <span className="flex-1 text-text-primary font-medium">
                         {entry.weight.toFixed(1)} kg

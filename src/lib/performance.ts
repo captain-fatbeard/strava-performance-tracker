@@ -1,6 +1,6 @@
-import { startOfWeek, addWeeks, format } from 'date-fns'
+import { startOfWeek, addWeeks } from 'date-fns'
 import { type StravaActivity } from './strava'
-import { zoneColors } from './chart-theme'
+import { zoneColors, formatDateShort } from './chart-theme'
 
 // Estimate FTP from activities (95% of best 20-min power)
 export function estimateFTP(activities: StravaActivity[]): number | null {
@@ -544,7 +544,7 @@ export function calculateWeeklySummaries(
         : 0
 
     summaries.push({
-      week: format(weekStart, 'MMM d'),
+      week: formatDateShort(weekStart),
       rides: rides.length,
       runs: runs.length,
       totalDistance: Math.round(weekActivities.reduce((sum, a) => sum + a.distance, 0) / 1000),
@@ -767,9 +767,8 @@ export function calculateFatBurningSummary(
     }
 
     // Weekly aggregation
-    const weekStart = format(
-      startOfWeek(new Date(activity.start_date), { weekStartsOn: 1 }),
-      'MMM d'
+    const weekStart = formatDateShort(
+      startOfWeek(new Date(activity.start_date), { weekStartsOn: 1 })
     )
     const existing = weeklyFatMap.get(weekStart) || { fatBurned: 0, zone2Time: 0 }
     weeklyFatMap.set(weekStart, {
