@@ -35,14 +35,16 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
       .filter((a) => (a.type === 'Ride' || a.type === 'VirtualRide') && a.average_watts)
       .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
 
-    return rides.map((ride) => ({
-      date: format(new Date(ride.start_date_local), 'MMM d'),
-      fullDate: ride.start_date_local,
-      avgPower: Math.round(ride.average_watts || 0),
-      maxPower: ride.max_watts || 0,
-      normalizedPower: ride.weighted_average_watts || 0,
-      name: ride.name,
-    }))
+    return rides
+      .map((ride) => ({
+        date: format(new Date(ride.start_date_local), 'MMM d'),
+        fullDate: ride.start_date_local,
+        avgPower: Math.round(ride.average_watts || 0),
+        maxPower: ride.max_watts || 0,
+        normalizedPower: ride.weighted_average_watts || undefined,
+        name: ride.name,
+      }))
+      .filter((d) => d.avgPower > 0)
   }, [activities])
 
   const powerTrendLine = useMemo(() => {
@@ -130,7 +132,7 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
                 activeDot={{ r: 6, stroke: chartTheme.colors.primary.main, strokeWidth: 2 }}
                 name="Avg Power"
               />
-              {powerTrendData.some((d) => d.normalizedPower > 0) && (
+              {powerTrendData.some((d) => d.normalizedPower) && (
                 <Line
                   type="monotone"
                   dataKey="normalizedPower"
@@ -153,6 +155,12 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
               )}
             </LineChart>
           </ResponsiveContainer>
+        )}
+        {!hasNoPowerData && (
+          <div className="mt-5 p-5 bg-bg-tertiary rounded-[var(--radius-md)] text-[0.8rem] text-text-secondary leading-relaxed">
+            <p className="mb-2"><strong className="text-accent">Avg Power</strong> — simple average of your power output over the ride. Doesn't account for intensity spikes.</p>
+            <p><strong className="text-accent">Normalized Power</strong> — weighted average that better reflects the true physiological cost of a ride. Accounts for surges and variable effort, so it's always equal to or higher than avg power.</p>
+          </div>
         )}
       </div>
 
