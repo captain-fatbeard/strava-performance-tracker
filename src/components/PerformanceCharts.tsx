@@ -69,29 +69,26 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
   }, [powerTrendData])
 
   const hrTrendData = useMemo(() => {
-    const withHR = activities
-      .filter((a) => a.average_heartrate)
+    return activities
+      .filter((a) => (a.type === 'Ride' || a.type === 'VirtualRide') && a.average_heartrate)
       .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
-
-    return withHR.map((activity) => ({
-      date: format(new Date(activity.start_date_local), 'MMM d'),
-      avgHR: Math.round(activity.average_heartrate || 0),
-      maxHR: activity.max_heartrate || 0,
-      name: activity.name,
-      type: activity.type,
-    }))
+      .map((activity) => ({
+        date: format(new Date(activity.start_date_local), 'MMM d'),
+        avgHR: Math.round(activity.average_heartrate || 0),
+        maxHR: activity.max_heartrate || 0,
+        name: activity.name,
+      }))
   }, [activities])
 
   const speedTrendData = useMemo(() => {
     return activities
-      .filter((a) => a.average_speed > 0)
+      .filter((a) => (a.type === 'Ride' || a.type === 'VirtualRide') && a.average_speed > 0)
       .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
       .map((activity) => ({
         date: format(new Date(activity.start_date_local), 'MMM d'),
         speed: Math.round((activity.average_speed * 3.6) * 10) / 10,
         maxSpeed: Math.round((activity.max_speed * 3.6) * 10) / 10,
         elevation: Math.round(activity.total_elevation_gain),
-        type: activity.type,
         name: activity.name,
       }))
   }, [activities])
