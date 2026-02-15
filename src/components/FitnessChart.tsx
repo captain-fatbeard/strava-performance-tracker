@@ -44,10 +44,16 @@ export function FitnessChart({ activities }: FitnessChartProps) {
   const [days, setDays] = useState(30)
   const ftp = useMemo(() => estimateFTP(activities), [activities])
 
-  const fitnessData = useMemo(() => {
+  // Calculate full history once — CTL/ATL build up from the earliest activity
+  const allFitnessData = useMemo(() => {
     if (!ftp) return []
-    return calculateFitnessOverTime(activities, ftp, days)
-  }, [activities, ftp, days])
+    return calculateFitnessOverTime(activities, ftp)
+  }, [activities, ftp])
+
+  // Slice to the selected time range for display only
+  const fitnessData = useMemo(() => {
+    return allFitnessData.slice(-days)
+  }, [allFitnessData, days])
 
   if (!ftp || fitnessData.length === 0) {
     return (

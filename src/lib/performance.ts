@@ -102,29 +102,35 @@ export interface FitnessData {
 
 export function calculateFitnessOverTime(
   activities: StravaActivity[],
-  ftp: number,
-  days: number = 90
+  ftp: number
 ): FitnessData[] {
   const now = new Date()
-  const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
 
   // Group activities by date
   const dailyTSS: Record<string, number> = {}
 
-  activities
+  const ridesWithPower = activities
     .filter((a) => (a.type === 'Ride' || a.type === 'VirtualRide') && a.average_watts)
-    .forEach((activity) => {
-      const date = activity.start_date_local.split('T')[0]
-      const tss = calculateTSS(activity, ftp)
-      dailyTSS[date] = (dailyTSS[date] || 0) + tss
-    })
+
+  if (ridesWithPower.length === 0) return []
+
+  ridesWithPower.forEach((activity) => {
+    const date = activity.start_date_local.split('T')[0]
+    const tss = calculateTSS(activity, ftp)
+    dailyTSS[date] = (dailyTSS[date] || 0) + tss
+  })
+
+  // Start from earliest activity to build up CTL/ATL accurately
+  const earliest = ridesWithPower
+    .map((a) => new Date(a.start_date_local))
+    .reduce((min, d) => (d < min ? d : min))
 
   const result: FitnessData[] = []
   let ctl = 0
   let atl = 0
 
-  // Iterate through each day
-  for (let d = new Date(startDate); d <= now; d.setDate(d.getDate() + 1)) {
+  // Iterate through each day from earliest activity to now
+  for (let d = new Date(earliest); d <= now; d.setDate(d.getDate() + 1)) {
     // Use local date to match activity.start_date_local format
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     const tss = dailyTSS[dateStr] || 0
