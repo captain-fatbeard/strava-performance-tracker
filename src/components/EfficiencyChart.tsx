@@ -15,10 +15,27 @@ import {
 import { type StravaActivity } from '~/lib/strava'
 import { calculateEF, estimateVO2max, calculateVAM } from '~/lib/performance'
 import { chartTheme, tooltipStyle, formatDateShort, activityTooltipLabel } from '~/lib/chart-theme'
+import type { WeightEntry } from '~/lib/dashboard-context'
 
 interface EfficiencyChartProps {
   activities: StravaActivity[]
   weight: number
+  weightEntries: WeightEntry[]
+}
+
+// Find the weight entry closest to a given date (most recent entry on or before)
+function getWeightForDate(date: Date, weightEntries: WeightEntry[], fallback: number): number {
+  if (weightEntries.length === 0) return fallback
+
+  // weightEntries are sorted DESC by recordedAt
+  for (const entry of weightEntries) {
+    if (new Date(entry.recordedAt) <= date) {
+      return entry.weight
+    }
+  }
+
+  // If no entry is on or before the date, use the earliest entry
+  return weightEntries[weightEntries.length - 1].weight
 }
 
 const trendClasses: Record<string, string> = {
@@ -27,7 +44,7 @@ const trendClasses: Record<string, string> = {
   stable: 'bg-warning-muted text-warning',
 }
 
-export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
+export function EfficiencyChart({ activities, weight, weightEntries }: EfficiencyChartProps) {
   // Calculate EF for each ride over time
   const efficiencyData = useMemo(() => {
     const rides = activities
@@ -67,7 +84,7 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
     if (rides.length === 0) return []
 
     // Calculate rolling 6-week best power for FTP estimation
-    const result: { date: string; vo2max: number; rollingFTP: number }[] = []
+    const result: { fullDate: string; vo2max: number; rollingFTP: number; weight: number }[] = []
 
     rides.forEach((ride, index) => {
       const rideDate = new Date(ride.start_date)
@@ -83,18 +100,20 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
         // Get best average power from recent rides
         const bestPower = Math.max(...recentRides.map((r) => r.average_watts || 0))
         const rollingFTP = Math.round(bestPower * 0.95)
-        const vo2max = estimateVO2max(rollingFTP, weight)
+        const dateWeight = getWeightForDate(rideDate, weightEntries, weight)
+        const vo2max = estimateVO2max(rollingFTP, dateWeight)
 
         result.push({
           fullDate: ride.start_date_local,
           vo2max,
           rollingFTP,
+          weight: dateWeight,
         })
       }
     })
 
     return result
-  }, [activities, weight])
+  }, [activities, weight, weightEntries])
 
   // Calculate VAM for rides with significant climbing
   const vamData = useMemo(() => {
@@ -241,7 +260,7 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
         <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
           <div className="flex justify-between items-center mb-5 max-md:flex-col max-md:items-start max-md:gap-3">
             <h3 className="text-lg font-semibold text-text-primary max-[480px]:text-base">Estimated VO2max Trend</h3>
-            <span className="bg-linear-to-br from-accent to-accent-dark text-white py-1.5 px-4 rounded-full text-sm font-semibold shadow-[0_2px_8px_rgba(20,184,166,0.3)]">Based on rolling FTP @ {weight}kg</span>
+            <span className="bg-linear-to-br from-accent to-accent-dark text-white py-1.5 px-4 rounded-full text-sm font-semibold shadow-[0_2px_8px_rgba(20,184,166,0.3)]">Based on rolling FTP & weight history</span>
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={vo2maxData}>
@@ -256,8 +275,8 @@ export function EfficiencyChart({ activities, weight }: EfficiencyChartProps) {
               <Tooltip
                 {...tooltipStyle}
                 labelFormatter={activityTooltipLabel}
-                formatter={(value: number, name: string) => {
-                  if (name === 'Est. VO2max') return [`${value.toFixed(1)} ml/kg/min`, 'Est. VO2max']
+                formatter={(value: number, name: string, props: { payload?: { weight?: number } }) => {
+                  if (name === 'Est. VO2max') return [`${value.toFixed(1)} ml/kg/min (@ ${props.payload?.weight ?? weight}kg)`, 'Est. VO2max']
                   if (name === 'Rolling FTP') return [`${value} W`, 'Rolling FTP']
                   return [value, name]
                 }}

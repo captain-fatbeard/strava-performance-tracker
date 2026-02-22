@@ -11,7 +11,7 @@ export const Route = createFileRoute('/_dashboard/performance')({
 })
 
 function PerformancePage() {
-  const { statsActivities, weight, age, gender } = useDashboard()
+  const { statsActivities, weight, age, gender, weightEntries } = useDashboard()
 
   return (
     <div className="flex flex-col gap-8">
@@ -28,7 +28,7 @@ function PerformancePage() {
         <span className="bg-linear-to-br from-accent to-teal-300 bg-clip-text text-transparent">Cycling Performance</span>
       </h2>
       <AdvancedMetrics activities={statsActivities} weight={weight} age={age} gender={gender} />
-      <EfficiencyChart activities={statsActivities} weight={weight} />
+      <EfficiencyChart activities={statsActivities} weight={weight} weightEntries={weightEntries} />
       <PerformanceCharts activities={statsActivities} showAllCharts />
 
       {/* Running Performance */}
