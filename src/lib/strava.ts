@@ -38,12 +38,43 @@ export interface StravaActivity {
   kilojoules?: number
 }
 
+export interface StravaBestEffort {
+  id: number
+  name: string
+  elapsed_time: number
+  moving_time: number
+  start_date: string
+  distance: number
+  achievements: Array<{ type_id: number; type: string; rank: number }>
+}
+
 export interface StravaDetailedActivity extends StravaActivity {
   calories: number
   device_name: string
+  device_watts?: boolean
+  description: string | null
+  workout_type: number | null
+  average_temp?: number
+  perceived_exertion?: number | null
+  achievement_count: number
+  kudos_count: number
+  comment_count: number
+  gear: { id: string; name: string } | null
   segment_efforts: StravaSegmentEffort[]
   splits_metric: StravaSplit[]
   laps: StravaLap[]
+  best_efforts: StravaBestEffort[]
+  map: {
+    id: string
+    summary_polyline: string | null
+    resource_state: number
+  }
+  photos: {
+    primary: {
+      urls: Record<string, string>
+    } | null
+    count: number
+  }
 }
 
 export interface StravaSegmentEffort {
@@ -55,6 +86,7 @@ export interface StravaSegmentEffort {
   distance: number
   average_watts?: number
   average_heartrate?: number
+  achievements: Array<{ type_id: number; type: string; rank: number }>
 }
 
 export interface StravaSplit {
@@ -80,6 +112,26 @@ export interface StravaLap {
   average_watts?: number
   average_heartrate?: number
   max_heartrate?: number
+}
+
+export interface ActivityDetailsJson {
+  calories: number
+  device_name: string
+  description: string | null
+  workout_type: number | null
+  average_temp?: number
+  perceived_exertion?: number | null
+  achievement_count?: number
+  kudos_count?: number
+  comment_count?: number
+  gear_name: string | null
+  segment_efforts: StravaSegmentEffort[]
+  splits_metric: StravaSplit[]
+  laps: StravaLap[]
+  best_efforts: StravaBestEffort[]
+  summary_polyline: string | null
+  photo_url: string | null
+  power_per_km?: number[]
 }
 
 export function getStravaAuthUrl(clientId: string, redirectUri: string): string {
@@ -191,6 +243,73 @@ export async function getActivity(
   }
 
   return response.json()
+}
+
+export interface StravaStream {
+  type: string
+  data: number[]
+  series_type: string
+  original_size: number
+  resolution: string
+}
+
+export async function getActivityStreams(
+  accessToken: string,
+  activityId: number,
+  keys: string[]
+): Promise<Record<string, number[]>> {
+  const response = await fetch(
+    `${STRAVA_API_BASE}/activities/${activityId}/streams?keys=${keys.join(',')}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  )
+
+  if (!response.ok) return {}
+
+  const json = await response.json()
+
+  // Strava returns an array of stream objects: [{ type: "watts", data: [...] }, ...]
+  const result: Record<string, number[]> = {}
+  const streams: StravaStream[] = Array.isArray(json) ? json : []
+  for (const stream of streams) {
+    result[stream.type] = stream.data
+  }
+  return result
+}
+
+export function computePowerPerKm(
+  distanceStream: number[],
+  wattsStream: number[]
+): number[] {
+  if (!distanceStream.length || !wattsStream.length) return []
+
+  const powerPerKm: number[] = []
+  let kmBoundary = 1000
+  let wattsSum = 0
+  let wattsCount = 0
+
+  for (let i = 0; i < distanceStream.length; i++) {
+    const dist = distanceStream[i]
+    const watts = wattsStream[i]
+
+    if (watts != null && watts > 0) {
+      wattsSum += watts
+      wattsCount++
+    }
+
+    if (dist >= kmBoundary) {
+      powerPerKm.push(wattsCount > 0 ? Math.round(wattsSum / wattsCount) : 0)
+      wattsSum = 0
+      wattsCount = 0
+      kmBoundary += 1000
+    }
+  }
+
+  // Push final partial km if there are remaining samples
+  if (wattsCount > 0) {
+    powerPerKm.push(Math.round(wattsSum / wattsCount))
+  }
+
+  return powerPerKm
 }
 
 export async function getAllActivities(

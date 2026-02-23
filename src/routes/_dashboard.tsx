@@ -23,6 +23,8 @@ import {
   fetchExcludedActivityIds,
   addExcludedActivity,
   removeExcludedActivity,
+  fetchCachedActivities,
+  upsertActivities,
   isSupabaseConfigured,
   type WeightEntry,
 } from '~/lib/storage/supabase-client'
@@ -96,11 +98,12 @@ function DashboardLayout() {
 
       setAthlete(storedAthlete)
 
-      // Load settings and excluded activities from Supabase (requires athlete ID)
+      // Load settings, excluded activities, and cached activities from Supabase
       if (isSupabaseConfigured()) {
-        const [settings, excludedIds] = await Promise.all([
+        const [settings, excludedIds, cachedActivities] = await Promise.all([
           fetchUserSettings(storedAthlete.id),
           fetchExcludedActivityIds(storedAthlete.id),
+          fetchCachedActivities(storedAthlete.id),
         ])
         if (settings) {
           setTimeRange(settings.timeRange)
@@ -111,9 +114,16 @@ function DashboardLayout() {
           setGender(settings.gender)
         }
         setExcludedActivityIds(excludedIds)
+
+        // If we have cached data, show it immediately
+        if (cachedActivities.length > 0) {
+          setActivities(cachedActivities)
+          setIsLoading(false)
+        }
       }
       settingsLoaded.current = true
 
+      // Background sync with Strava
       try {
         let currentTokens = tokens
 
@@ -134,10 +144,20 @@ function DashboardLayout() {
         })
 
         setActivities(fetchedActivities)
+
+        // Fire-and-forget: cache activities to Supabase
+        if (isSupabaseConfigured()) {
+          upsertActivities(storedAthlete.id, fetchedActivities)
+        }
       } catch (err) {
-        console.error('Error loading data:', err)
-        setError('Failed to load data. Please try logging in again.')
-        await storage.auth.clear()
+        // If we already have cached data, silently log the error
+        if (activities.length > 0) {
+          console.warn('Strava sync failed, using cached data:', err)
+        } else {
+          console.error('Error loading data:', err)
+          setError('Failed to load data. Please try logging in again.')
+          await storage.auth.clear()
+        }
       } finally {
         setIsLoading(false)
       }

@@ -4,6 +4,7 @@ import {
   refreshAccessToken,
   getActivities,
   getActivity,
+  getActivityStreams,
   getAthlete,
   type StravaTokens,
   type StravaAthlete,
@@ -86,6 +87,12 @@ export const fetchStravaActivity = createServerFn({ method: 'POST' })
   .inputValidator((data: { accessToken: string; activityId: number }) => data)
   .handler(async ({ data }): Promise<StravaDetailedActivity> => {
     return getActivity(data.accessToken, data.activityId)
+  })
+
+export const fetchStravaStreams = createServerFn({ method: 'POST' })
+  .inputValidator((data: { accessToken: string; activityId: number; keys: string[] }) => data)
+  .handler(async ({ data }): Promise<Record<string, number[]>> => {
+    return getActivityStreams(data.accessToken, data.activityId, data.keys)
   })
 
 export const fetchAllStravaActivities = createServerFn({ method: 'POST' })

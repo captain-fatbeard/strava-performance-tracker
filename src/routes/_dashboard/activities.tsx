@@ -1,13 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useDashboard } from '~/lib/dashboard-context'
-import { ActivityList } from '~/components/ActivityList'
+import { createFileRoute, Outlet } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/_dashboard/activities')({
-  component: ActivitiesPage,
+  component: ActivitiesLayout,
 })
 
-function ActivitiesPage() {
-  const { filteredActivities } = useDashboard()
-
-  return <ActivityList activities={filteredActivities} />
+function ActivitiesLayout() {
+  return <Outlet />
 }

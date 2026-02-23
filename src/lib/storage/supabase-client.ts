@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import type { StravaActivity, ActivityDetailsJson } from '../strava'
 
 // Types
 export type TimeRange = '30d' | '90d' | '6m' | '1y' | 'all'
@@ -297,6 +298,210 @@ export async function removeExcludedActivity(
     return true
   } catch (err) {
     console.warn('Supabase remove excluded activity error:', err)
+    return false
+  }
+}
+
+// Activity Cache
+
+interface ActivityRow {
+  id: number
+  athlete_id: number
+  name: string
+  type: string
+  sport_type: string
+  start_date: string
+  start_date_local: string
+  distance: number
+  moving_time: number
+  elapsed_time: number
+  total_elevation_gain: number
+  average_speed: number
+  max_speed: number
+  average_watts: number | null
+  max_watts: number | null
+  weighted_average_watts: number | null
+  average_heartrate: number | null
+  max_heartrate: number | null
+  average_cadence: number | null
+  suffer_score: number | null
+  kilojoules: number | null
+  details_json: ActivityDetailsJson | null
+  details_fetched_at: string | null
+}
+
+function rowToActivity(row: ActivityRow): StravaActivity {
+  return {
+    id: row.id,
+    name: row.name,
+    type: row.type,
+    sport_type: row.sport_type,
+    start_date: row.start_date,
+    start_date_local: row.start_date_local,
+    distance: row.distance,
+    moving_time: row.moving_time,
+    elapsed_time: row.elapsed_time,
+    total_elevation_gain: row.total_elevation_gain,
+    average_speed: row.average_speed,
+    max_speed: row.max_speed,
+    average_watts: row.average_watts ?? undefined,
+    max_watts: row.max_watts ?? undefined,
+    weighted_average_watts: row.weighted_average_watts ?? undefined,
+    average_heartrate: row.average_heartrate ?? undefined,
+    max_heartrate: row.max_heartrate ?? undefined,
+    average_cadence: row.average_cadence ?? undefined,
+    suffer_score: row.suffer_score ?? undefined,
+    kilojoules: row.kilojoules ?? undefined,
+  }
+}
+
+export async function fetchCachedActivities(athleteId: number): Promise<StravaActivity[]> {
+  if (!supabase) return []
+
+  try {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('*')
+      .eq('athlete_id', athleteId)
+      .order('start_date', { ascending: false })
+
+    if (error) {
+      console.warn('Supabase fetch cached activities error:', error.message)
+      return []
+    }
+
+    return (data as ActivityRow[]).map(rowToActivity)
+  } catch (err) {
+    console.warn('Supabase fetch cached activities error:', err)
+    return []
+  }
+}
+
+export async function upsertActivities(
+  athleteId: number,
+  activities: StravaActivity[]
+): Promise<boolean> {
+  if (!supabase || activities.length === 0) return false
+
+  try {
+    const rows = activities.map((a) => ({
+      id: a.id,
+      athlete_id: athleteId,
+      name: a.name,
+      type: a.type,
+      sport_type: a.sport_type,
+      start_date: a.start_date,
+      start_date_local: a.start_date_local,
+      distance: a.distance,
+      moving_time: a.moving_time,
+      elapsed_time: a.elapsed_time,
+      total_elevation_gain: a.total_elevation_gain,
+      average_speed: a.average_speed,
+      max_speed: a.max_speed,
+      average_watts: a.average_watts ?? null,
+      max_watts: a.max_watts ?? null,
+      weighted_average_watts: a.weighted_average_watts ?? null,
+      average_heartrate: a.average_heartrate ?? null,
+      max_heartrate: a.max_heartrate ?? null,
+      average_cadence: a.average_cadence ?? null,
+      suffer_score: a.suffer_score ?? null,
+      kilojoules: a.kilojoules ?? null,
+      updated_at: new Date().toISOString(),
+    }))
+
+    // Batch in chunks of 500 to avoid payload limits
+    for (let i = 0; i < rows.length; i += 500) {
+      const chunk = rows.slice(i, i + 500)
+      const { error } = await supabase
+        .from('activities')
+        .upsert(chunk, { onConflict: 'id' })
+
+      if (error) {
+        console.warn('Supabase upsert activities error:', error.message)
+        return false
+      }
+    }
+
+    return true
+  } catch (err) {
+    console.warn('Supabase upsert activities error:', err)
+    return false
+  }
+}
+
+export async function fetchCachedActivityDetails(
+  activityId: number
+): Promise<{ activity: StravaActivity; details: ActivityDetailsJson } | null> {
+  if (!supabase) return null
+
+  try {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('*')
+      .eq('id', activityId)
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') return null
+      console.warn('Supabase fetch activity details error:', error.message)
+      return null
+    }
+
+    const row = data as ActivityRow
+    if (!row.details_json) return null
+
+    return {
+      activity: rowToActivity(row),
+      details: row.details_json,
+    }
+  } catch (err) {
+    console.warn('Supabase fetch activity details error:', err)
+    return null
+  }
+}
+
+export async function clearCachedActivityDetails(activityId: number): Promise<boolean> {
+  if (!supabase) return false
+  try {
+    const { error } = await supabase
+      .from('activities')
+      .update({ details_json: null, details_fetched_at: null })
+      .eq('id', activityId)
+    if (error) {
+      console.warn('Supabase clear activity details error:', error.message)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.warn('Supabase clear activity details error:', err)
+    return false
+  }
+}
+
+export async function cacheActivityDetails(
+  activityId: number,
+  details: ActivityDetailsJson
+): Promise<boolean> {
+  if (!supabase) return false
+
+  try {
+    const { error } = await supabase
+      .from('activities')
+      .update({
+        details_json: details,
+        details_fetched_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', activityId)
+
+    if (error) {
+      console.warn('Supabase cache activity details error:', error.message)
+      return false
+    }
+
+    return true
+  } catch (err) {
+    console.warn('Supabase cache activity details error:', err)
     return false
   }
 }

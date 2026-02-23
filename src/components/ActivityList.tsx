@@ -1,3 +1,4 @@
+import { Link, useNavigate } from '@tanstack/react-router'
 import { type StravaActivity, metersToKm, secondsToHMS } from '~/lib/strava'
 import { useDashboard } from '~/lib/dashboard-context'
 import { formatDateFull } from '~/lib/chart-theme'
@@ -14,6 +15,7 @@ const activityTypeClasses: Record<string, string> = {
 
 export function ActivityList({ activities }: ActivityListProps) {
   const { excludedActivityIds, toggleActivityExclusion } = useDashboard()
+  const navigate = useNavigate()
 
   if (activities.length === 0) {
     return (
@@ -43,9 +45,26 @@ export function ActivityList({ activities }: ActivityListProps) {
           {activities.map((activity) => {
             const isExcluded = excludedActivityIds.includes(activity.id)
             return (
-              <tr key={activity.id} className={`transition-colors duration-150 hover:[&_td]:bg-bg-tertiary last:[&_td]:border-b-0 ${isExcluded ? '[&_td]:opacity-50' : ''}`}>
+              <tr
+                key={activity.id}
+                className={`transition-colors duration-150 hover:[&_td]:bg-bg-tertiary last:[&_td]:border-b-0 cursor-pointer ${isExcluded ? '[&_td]:opacity-50' : ''}`}
+                onClick={(e) => {
+                  // Don't navigate when clicking the exclude button
+                  if ((e.target as HTMLElement).closest('button')) return
+                  navigate({ to: '/activities/$activityId', params: { activityId: String(activity.id) } })
+                }}
+              >
                 <td className="p-4 px-5 border-b border-border-subtle max-md:px-2 max-md:py-2.5">{formatDateFull(activity.start_date_local)}</td>
-                <td className={`p-4 px-5 border-b border-border-subtle font-semibold max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary max-md:px-2 max-md:py-2.5 max-md:max-w-[140px] ${isExcluded ? 'line-through' : ''}`}>{activity.name}</td>
+                <td className={`p-4 px-5 border-b border-border-subtle font-semibold max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap max-md:px-2 max-md:py-2.5 max-md:max-w-[140px] ${isExcluded ? 'line-through' : ''}`}>
+                  <Link
+                    to="/activities/$activityId"
+                    params={{ activityId: String(activity.id) }}
+                    className="text-text-primary no-underline hover:text-accent transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {activity.name}
+                  </Link>
+                </td>
                 <td className="p-4 px-5 border-b border-border-subtle max-md:px-2 max-md:py-2.5">
                   <span className={`inline-block py-1.5 px-3 rounded-[var(--radius-sm)] text-[0.7rem] font-semibold uppercase tracking-wide ${activityTypeClasses[activity.type.toLowerCase()] || 'bg-bg-tertiary text-text-secondary'}`}>
                     {activity.type === 'VirtualRide' ? 'Zwift' : activity.type}
