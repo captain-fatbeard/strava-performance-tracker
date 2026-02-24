@@ -1,17 +1,32 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useEffect, useState, useMemo } from 'react'
 import { useDashboard } from '~/lib/dashboard-context'
 import { AdvancedMetrics } from '~/components/AdvancedMetrics'
 import { EfficiencyChart } from '~/components/EfficiencyChart'
 import { PerformanceCharts } from '~/components/PerformanceCharts'
 import { RunningMetrics } from '~/components/RunningMetrics'
 import { RunningCharts } from '~/components/RunningCharts'
+import { fetchCachedSegmentData, isSupabaseConfigured, type SegmentEffortWithActivity } from '~/lib/storage/supabase-client'
 
 export const Route = createFileRoute('/_dashboard/performance')({
   component: PerformancePage,
 })
 
 function PerformancePage() {
-  const { statsActivities, weight, age, gender, weightEntries } = useDashboard()
+  const { athlete, statsActivities, weight, age, gender, weightEntries, timeRangeDays } = useDashboard()
+  const [allSegmentData, setAllSegmentData] = useState<SegmentEffortWithActivity[]>([])
+
+  useEffect(() => {
+    if (athlete && isSupabaseConfigured()) {
+      fetchCachedSegmentData(athlete.id).then(setAllSegmentData)
+    }
+  }, [athlete])
+
+  const segmentData = useMemo(() => {
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() - timeRangeDays)
+    return allSegmentData.filter((s) => new Date(s.activityDate) >= cutoff)
+  }, [allSegmentData, timeRangeDays])
 
   return (
     <div className="flex flex-col gap-8">
@@ -28,7 +43,7 @@ function PerformancePage() {
         <span className="bg-linear-to-br from-accent to-teal-300 bg-clip-text text-transparent">Cycling Performance</span>
       </h2>
       <AdvancedMetrics activities={statsActivities} weight={weight} age={age} gender={gender} />
-      <EfficiencyChart activities={statsActivities} weight={weight} weightEntries={weightEntries} />
+      <EfficiencyChart activities={statsActivities} weight={weight} weightEntries={weightEntries} segmentData={segmentData} />
       <PerformanceCharts activities={statsActivities} showAllCharts />
 
       {/* Running Performance */}

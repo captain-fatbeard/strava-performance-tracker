@@ -11,9 +11,13 @@ import {
   ReferenceLine,
   ComposedChart,
   Area,
+  BarChart,
+  Bar,
+  Cell,
 } from 'recharts'
 import { type StravaActivity } from '~/lib/strava'
-import { calculateEF, estimateVO2max, calculateVAM } from '~/lib/performance'
+import type { SegmentEffortWithActivity } from '~/lib/storage/supabase-client'
+import { calculateEF, estimateVO2max, classifyGradeBand, GRADE_BAND_ORDER } from '~/lib/performance'
 import { chartTheme, tooltipStyle, formatDateShort, activityTooltipLabel } from '~/lib/chart-theme'
 import type { WeightEntry } from '~/lib/dashboard-context'
 
@@ -21,6 +25,14 @@ interface EfficiencyChartProps {
   activities: StravaActivity[]
   weight: number
   weightEntries: WeightEntry[]
+  segmentData?: SegmentEffortWithActivity[]
+}
+
+interface SegmentSpeedData {
+  gradeBand: string
+  avgSpeed: number
+  bestSpeed: number
+  count: number
 }
 
 // Find the weight entry closest to a given date (most recent entry on or before)
@@ -44,7 +56,15 @@ const trendClasses: Record<string, string> = {
   stable: 'bg-warning-muted text-warning',
 }
 
-export function EfficiencyChart({ activities, weight, weightEntries }: EfficiencyChartProps) {
+const BAND_COLORS = [
+  chartTheme.colors.primary.main,
+  chartTheme.colors.sky.main,
+  chartTheme.colors.secondary.main,
+  chartTheme.colors.amber.main,
+  chartTheme.colors.coral.main,
+]
+
+export function EfficiencyChart({ activities, weight, weightEntries, segmentData }: EfficiencyChartProps) {
   // Calculate EF for each ride over time
   const efficiencyData = useMemo(() => {
     const rides = activities
@@ -115,8 +135,8 @@ export function EfficiencyChart({ activities, weight, weightEntries }: Efficienc
     return result
   }, [activities, weight, weightEntries])
 
-  // Calculate VAM for rides with significant climbing
-  const vamData = useMemo(() => {
+  // Calculate climbing speed (road km/h) for rides with significant climbing
+  const climbSpeedData = useMemo(() => {
     const rides = activities
       .filter(
         (a) =>
@@ -126,25 +146,25 @@ export function EfficiencyChart({ activities, weight, weightEntries }: Efficienc
       .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
 
     return rides.map((ride) => {
-      const vam = calculateVAM(ride.total_elevation_gain, ride.moving_time)
+      const speed = Math.round(ride.average_speed * 3.6 * 10) / 10 // m/s → km/h
       return {
         fullDate: ride.start_date_local,
-        vam,
+        speed,
         elevation: Math.round(ride.total_elevation_gain),
         name: ride.name,
       }
     })
   }, [activities])
 
-  // Calculate VAM trend line
-  const vamTrendLine = useMemo(() => {
-    if (vamData.length < 2) return null
+  // Calculate climbing speed trend line
+  const climbSpeedTrendLine = useMemo(() => {
+    if (climbSpeedData.length < 2) return null
 
-    const n = vamData.length
-    const sumX = vamData.reduce((sum, _, i) => sum + i, 0)
-    const sumY = vamData.reduce((sum, d) => sum + d.vam, 0)
-    const sumXY = vamData.reduce((sum, d, i) => sum + i * d.vam, 0)
-    const sumX2 = vamData.reduce((sum, _, i) => sum + i * i, 0)
+    const n = climbSpeedData.length
+    const sumX = climbSpeedData.reduce((sum, _, i) => sum + i, 0)
+    const sumY = climbSpeedData.reduce((sum, d) => sum + d.speed, 0)
+    const sumXY = climbSpeedData.reduce((sum, d, i) => sum + i * d.speed, 0)
+    const sumX2 = climbSpeedData.reduce((sum, _, i) => sum + i * i, 0)
 
     const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX)
     const intercept = (sumY - slope * sumX) / n
@@ -153,9 +173,9 @@ export function EfficiencyChart({ activities, weight, weightEntries }: Efficienc
       slope,
       startValue: intercept,
       endValue: slope * (n - 1) + intercept,
-      trend: slope > 5 ? 'improving' : slope < -5 ? 'declining' : 'stable',
+      trend: slope > 0.3 ? 'improving' : slope < -0.3 ? 'declining' : 'stable',
     }
-  }, [vamData])
+  }, [climbSpeedData])
 
   // Calculate EF trend line
   const efTrendLine = useMemo(() => {
@@ -177,6 +197,117 @@ export function EfficiencyChart({ activities, weight, weightEntries }: Efficienc
       trend: slope > 0.01 ? 'improving' : slope < -0.01 ? 'declining' : 'stable',
     }
   }, [efficiencyData])
+
+  // Compute segment climbing speed (road km/h) grouped by gradient band
+  const segmentSpeedData = useMemo((): SegmentSpeedData[] | null => {
+    if (!segmentData || segmentData.length === 0) return null
+
+    const bandMap = new Map<string, { total: number; best: number; count: number }>()
+
+    for (const effort of segmentData) {
+      const seg = effort.segment
+      if (!seg || seg.average_grade < 1) continue
+      if (!effort.moving_time || effort.moving_time <= 0) continue
+      // Skip very short segments (< 200m) — momentum-dominated, not representative of climbing ability
+      if (seg.distance < 200) continue
+
+      // Road speed = segment distance / time → km/h
+      const speedKmh = (seg.distance / effort.moving_time) * 3.6
+      if (speedKmh <= 0) continue
+
+      // Sanity check: filter out segments with bad elevation data (e.g. below-sea-level GPS glitches).
+      // At steep grades there's a physical speed limit. Using generous 600W / 80kg model:
+      // max_speed_kmh ≈ (600 * 3.6) / (80 * 9.81 * grade) ≈ 2.75 / grade
+      // This gives ~46 km/h at 6%, ~31 km/h at 9%, ~23 km/h at 12%, ~12 km/h at 23%
+      const grade = seg.average_grade / 100
+      if (speedKmh > 2.75 / grade) continue
+
+      const band = classifyGradeBand(seg.average_grade)
+      const existing = bandMap.get(band) || { total: 0, best: 0, count: 0 }
+      existing.total += speedKmh
+      existing.best = Math.max(existing.best, speedKmh)
+      existing.count++
+      bandMap.set(band, existing)
+    }
+
+    if (bandMap.size === 0) return null
+
+    return GRADE_BAND_ORDER
+      .filter((band) => bandMap.has(band))
+      .map((band) => {
+        const d = bandMap.get(band)!
+        return {
+          gradeBand: band,
+          avgSpeed: Math.round((d.total / d.count) * 10) / 10,
+          bestSpeed: Math.round(d.best * 10) / 10,
+          count: d.count,
+        }
+      })
+  }, [segmentData])
+
+  // Compute climbing speed over time — one line per gradient band
+  const segmentSpeedOverTime = useMemo(() => {
+    if (!segmentData || segmentData.length === 0) return null
+
+    // Collect valid efforts with date
+    const efforts: { date: string; band: string; speed: number; activityName: string }[] = []
+
+    for (const effort of segmentData) {
+      const seg = effort.segment
+      if (!seg || seg.average_grade < 1) continue
+      if (!effort.moving_time || effort.moving_time <= 0) continue
+      if (seg.distance < 200) continue
+
+      const speedKmh = (seg.distance / effort.moving_time) * 3.6
+      if (speedKmh <= 0) continue
+
+      const grade = seg.average_grade / 100
+      if (speedKmh > 2.75 / grade) continue
+
+      efforts.push({
+        date: effort.activityDate,
+        band: classifyGradeBand(seg.average_grade),
+        speed: speedKmh,
+        activityName: effort.activityName,
+      })
+    }
+
+    if (efforts.length === 0) return null
+
+    // Group by activity date, average speed per band per date
+    const dateMap = new Map<string, { bands: Map<string, { total: number; count: number }>; activityName: string }>()
+
+    for (const e of efforts) {
+      if (!dateMap.has(e.date)) {
+        dateMap.set(e.date, { bands: new Map(), activityName: e.activityName })
+      }
+      const entry = dateMap.get(e.date)!
+      const bandEntry = entry.bands.get(e.band) || { total: 0, count: 0 }
+      bandEntry.total += e.speed
+      bandEntry.count++
+      entry.bands.set(e.band, bandEntry)
+    }
+
+    // Build sorted time series
+    const sorted = [...dateMap.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+
+    return sorted.map(([date, { bands, activityName }]) => {
+      const point: Record<string, number | string | undefined> = { fullDate: date, name: activityName }
+      for (const band of GRADE_BAND_ORDER) {
+        const b = bands.get(band)
+        point[band] = b ? Math.round((b.total / b.count) * 10) / 10 : undefined
+      }
+      return point
+    })
+  }, [segmentData])
+
+  // Which bands actually have data in the time series?
+  const activeBands = useMemo(() => {
+    if (!segmentSpeedOverTime) return []
+    return GRADE_BAND_ORDER.filter((band) =>
+      segmentSpeedOverTime.some((point) => point[band] !== undefined)
+    )
+  }, [segmentSpeedOverTime])
 
   const hasNoData = efficiencyData.length === 0
 
@@ -307,77 +438,161 @@ export function EfficiencyChart({ activities, weight, weightEntries }: Efficienc
         </div>
       )}
 
-      {/* VAM Chart */}
-      {vamData.length > 0 && (
+      {/* Climbing Speed Charts — Segment mode or Activity fallback */}
+      {segmentSpeedData ? (
+        <>
+          {/* Bar chart: average by gradient band */}
+          <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
+            <div className="flex justify-between items-center mb-5 max-md:flex-col max-md:items-start max-md:gap-3">
+              <h3 className="text-lg font-semibold text-text-primary max-[480px]:text-base">Climbing Speed by Gradient</h3>
+              <span className="bg-linear-to-br from-accent to-accent-dark text-white py-1.5 px-4 rounded-full text-sm font-semibold shadow-[0_2px_8px_rgba(20,184,166,0.3)]">Segment-based</span>
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={segmentSpeedData} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+                <XAxis dataKey="gradeBand" stroke={chartTheme.axis} fontSize={12} />
+                <YAxis
+                  stroke={chartTheme.axis}
+                  fontSize={12}
+                  label={{ value: 'km/h', angle: -90, position: 'insideLeft', fill: chartTheme.axis }}
+                />
+                <Tooltip
+                  {...tooltipStyle}
+                  formatter={(value: number, name: string, props: { payload?: SegmentSpeedData }) => {
+                    const count = props.payload?.count
+                    if (name === 'Avg Speed') return [`${value} km/h (${count} segments)`, name]
+                    if (name === 'Best Speed') return [`${value} km/h`, name]
+                    return [value, name]
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="avgSpeed" name="Avg Speed" radius={[4, 4, 0, 0]}>
+                  {segmentSpeedData.map((_, i) => (
+                    <Cell key={i} fill={BAND_COLORS[i % BAND_COLORS.length]} />
+                  ))}
+                </Bar>
+                <Bar dataKey="bestSpeed" name="Best Speed" radius={[4, 4, 0, 0]} fillOpacity={0.4}>
+                  {segmentSpeedData.map((_, i) => (
+                    <Cell key={i} fill={BAND_COLORS[i % BAND_COLORS.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="mt-5 p-4 bg-bg-tertiary rounded-[var(--radius-md)] text-[0.8rem] text-text-secondary leading-relaxed">
+              <p>
+                <strong className="text-accent">Climbing Speed</strong> — Road speed (km/h) during climbing segments grouped by
+                average gradient. Steeper gradients naturally produce lower speeds.
+              </p>
+            </div>
+          </div>
+
+          {/* Line chart: climbing speed over time per gradient band */}
+          {segmentSpeedOverTime && segmentSpeedOverTime.length > 1 && (
+            <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
+              <h3 className="text-lg font-semibold text-text-primary mb-5 max-[480px]:text-base">Climbing Speed Over Time</h3>
+              <ResponsiveContainer width="100%" height={350}>
+                <LineChart data={segmentSpeedOverTime}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
+                  <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => formatDateShort(value)} />
+                  <YAxis
+                    stroke={chartTheme.axis}
+                    fontSize={12}
+                    domain={['auto', 'auto']}
+                    label={{ value: 'km/h', angle: -90, position: 'insideLeft', fill: chartTheme.axis }}
+                  />
+                  <Tooltip
+                    {...tooltipStyle}
+                    labelFormatter={activityTooltipLabel}
+                    formatter={(value: number, name: string) => [`${value} km/h`, name]}
+                  />
+                  <Legend />
+                  {activeBands.map((band, i) => (
+                    <Line
+                      key={band}
+                      type="monotone"
+                      dataKey={band}
+                      stroke={BAND_COLORS[GRADE_BAND_ORDER.indexOf(band) % BAND_COLORS.length]}
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: BAND_COLORS[GRADE_BAND_ORDER.indexOf(band) % BAND_COLORS.length] }}
+                      connectNulls
+                      name={band}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+              <div className="mt-5 p-4 bg-bg-tertiary rounded-[var(--radius-md)] text-[0.8rem] text-text-secondary leading-relaxed">
+                <p>
+                  <strong className="text-accent">Climbing speed per activity</strong> — Average road speed for each gradient band per ride.
+                  Track how your climbing speed at different gradients changes over time.
+                </p>
+              </div>
+            </div>
+          )}
+        </>
+      ) : climbSpeedData.length > 0 ? (
         <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
           <div className="flex justify-between items-center mb-5 max-md:flex-col max-md:items-start max-md:gap-3">
-            <h3 className="text-lg font-semibold text-text-primary max-[480px]:text-base">VAM (Climbing Speed) Over Time</h3>
-            {vamTrendLine && (
-              <span className={`text-xs py-1.5 px-3.5 rounded-full font-semibold ${trendClasses[vamTrendLine.trend]}`}>
-                {vamTrendLine.trend === 'improving' && '↑ Improving'}
-                {vamTrendLine.trend === 'declining' && '↓ Declining'}
-                {vamTrendLine.trend === 'stable' && '→ Stable'}
+            <h3 className="text-lg font-semibold text-text-primary max-[480px]:text-base">Climbing Speed Over Time</h3>
+            {climbSpeedTrendLine && (
+              <span className={`text-xs py-1.5 px-3.5 rounded-full font-semibold ${trendClasses[climbSpeedTrendLine.trend]}`}>
+                {climbSpeedTrendLine.trend === 'improving' && '↑ Improving'}
+                {climbSpeedTrendLine.trend === 'declining' && '↓ Declining'}
+                {climbSpeedTrendLine.trend === 'stable' && '→ Stable'}
               </span>
             )}
           </div>
           <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={vamData}>
+            <ComposedChart data={climbSpeedData}>
               <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
               <XAxis dataKey="fullDate" stroke={chartTheme.axis} fontSize={12} tickFormatter={(value) => formatDateShort(value)} />
               <YAxis
-                yAxisId="vam"
+                yAxisId="speed"
                 stroke={chartTheme.axis}
                 fontSize={12}
                 domain={['auto', 'auto']}
-                label={{ value: 'm/hr', angle: -90, position: 'insideLeft', fill: chartTheme.axis }}
+                label={{ value: 'km/h', angle: -90, position: 'insideLeft', fill: chartTheme.axis }}
               />
               <Tooltip
                 {...tooltipStyle}
                 labelFormatter={activityTooltipLabel}
                 formatter={(value: number, name: string) => {
-                  if (name === 'VAM') return [`${value} m/hr`, 'VAM']
-                  if (name === 'Elevation') return [`${value} m`, 'Elevation']
+                  if (name === 'Speed') return [`${value} km/h`, 'Speed']
                   return [value, name]
                 }}
               />
               <Legend />
               <Area
-                yAxisId="vam"
+                yAxisId="speed"
                 type="monotone"
-                dataKey="vam"
+                dataKey="speed"
                 stroke={chartTheme.colors.secondary.main}
                 fill={chartTheme.fills.secondary.main}
                 strokeWidth={2}
                 dot={{ r: 4, fill: chartTheme.colors.secondary.main }}
-                name="VAM"
+                name="Speed"
               />
-              {vamTrendLine && (
+              {climbSpeedTrendLine && (
                 <ReferenceLine
-                  yAxisId="vam"
+                  yAxisId="speed"
                   segment={[
-                    { x: vamData[0]?.fullDate, y: vamTrendLine.startValue },
-                    { x: vamData[vamData.length - 1]?.fullDate, y: vamTrendLine.endValue },
+                    { x: climbSpeedData[0]?.fullDate, y: climbSpeedTrendLine.startValue },
+                    { x: climbSpeedData[climbSpeedData.length - 1]?.fullDate, y: climbSpeedTrendLine.endValue },
                   ]}
                   stroke={chartTheme.colors.amber.main}
                   strokeDasharray="5 5"
                   strokeWidth={2}
                 />
               )}
-              {/* Reference lines for climbing categories */}
-              <ReferenceLine yAxisId="vam" y={1500} stroke={chartTheme.colors.primary.light} strokeDasharray="3 3" label={{ value: 'Pro', fill: chartTheme.colors.primary.light, fontSize: 10 }} />
-              <ReferenceLine yAxisId="vam" y={1200} stroke={chartTheme.colors.neutral[400]} strokeDasharray="3 3" label={{ value: 'Elite Amateur', fill: chartTheme.colors.neutral[400], fontSize: 10 }} />
-              <ReferenceLine yAxisId="vam" y={900} stroke={chartTheme.colors.neutral[500]} strokeDasharray="3 3" label={{ value: 'Strong', fill: chartTheme.colors.neutral[500], fontSize: 10 }} />
             </ComposedChart>
           </ResponsiveContainer>
           <div className="mt-5 p-4 bg-bg-tertiary rounded-[var(--radius-md)] text-[0.8rem] text-text-secondary leading-relaxed">
             <p>
-              <strong className="text-accent">VAM (Velocità Ascensionale Media)</strong> = Vertical meters climbed per hour.
-              Only rides with 100m+ elevation shown. Pro climbers: 1500-1800 m/hr on major climbs.
-              Elite amateurs: 1200-1500 m/hr. Strong recreational: 900-1200 m/hr.
+              <strong className="text-accent">Climbing Speed</strong> — Average road speed (km/h) for rides with 100m+ elevation gain.
+              Use "Sync All" in settings to unlock segment-based climbing speed grouped by gradient.
             </p>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

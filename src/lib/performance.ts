@@ -392,6 +392,31 @@ export function calculateVAM(elevationGain: number, movingTimeSeconds: number): 
   return Math.round(elevationGain / hours)
 }
 
+// Segment-based VAM utilities
+
+export const GRADE_BAND_ORDER = ['1-3%', '4-6%', '7-8%', '8-9%', '10%+'] as const
+export type GradeBand = (typeof GRADE_BAND_ORDER)[number]
+
+export function classifyGradeBand(grade: number): GradeBand {
+  if (grade < 4) return '1-3%'
+  if (grade < 7) return '4-6%'
+  if (grade < 8) return '7-8%'
+  if (grade < 10) return '8-9%'
+  return '10%+'
+}
+
+export interface SegmentVAMData {
+  gradeBand: GradeBand
+  avgVAM: number
+  bestVAM: number
+  count: number
+}
+
+export function calculateSegmentVAM(elevGain: number, timeSeconds: number): number {
+  if (!elevGain || elevGain <= 0 || !timeSeconds || timeSeconds <= 0) return 0
+  return Math.round((elevGain / timeSeconds) * 3600)
+}
+
 // Efficiency Factor (EF) - aerobic efficiency (higher = fitter)
 export function calculateEF(normalizedPower: number, avgHR: number): number {
   if (!normalizedPower || !avgHR) return 0

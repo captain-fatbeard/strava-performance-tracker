@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import type { StravaActivity, ActivityDetailsJson } from '../strava'
+import type { StravaActivity, ActivityDetailsJson, StravaSegmentEffort } from '../strava'
 
 // Types
 export type TimeRange = '30d' | '90d' | '6m' | '1y' | 'all'
@@ -503,5 +503,77 @@ export async function cacheActivityDetails(
   } catch (err) {
     console.warn('Supabase cache activity details error:', err)
     return false
+  }
+}
+
+// Fetch IDs of Ride/VirtualRide activities that don't have cached details yet
+export async function fetchActivityIdsWithoutDetails(athleteId: number): Promise<number[]> {
+  if (!supabase) return []
+
+  try {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('id')
+      .eq('athlete_id', athleteId)
+      .in('type', ['Ride', 'VirtualRide'])
+      .is('details_json', null)
+      .order('start_date', { ascending: false })
+
+    if (error) {
+      console.warn('Supabase fetch uncached activity ids error:', error.message)
+      return []
+    }
+
+    return (data as { id: number }[]).map((r) => r.id)
+  } catch (err) {
+    console.warn('Supabase fetch uncached activity ids error:', err)
+    return []
+  }
+}
+
+// Segment effort with activity context for time-series charts
+export interface SegmentEffortWithActivity extends StravaSegmentEffort {
+  activityDate: string
+  activityName: string
+}
+
+// Fetch segment effort data from cached activity details for rides with climbing
+export async function fetchCachedSegmentData(
+  athleteId: number
+): Promise<SegmentEffortWithActivity[]> {
+  if (!supabase) return []
+
+  try {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('start_date_local, name, details_json')
+      .eq('athlete_id', athleteId)
+      .not('details_json', 'is', null)
+      .in('type', ['Ride', 'VirtualRide'])
+
+    if (error) {
+      console.warn('Supabase fetch segment data error:', error.message)
+      return []
+    }
+
+    const segments: SegmentEffortWithActivity[] = []
+    for (const row of data as { start_date_local: string; name: string; details_json: ActivityDetailsJson }[]) {
+      const efforts = row.details_json?.segment_efforts
+      if (!efforts) continue
+      for (const effort of efforts) {
+        if (effort.segment && effort.segment.average_grade >= 1) {
+          segments.push({
+            ...effort,
+            activityDate: row.start_date_local,
+            activityName: row.name,
+          })
+        }
+      }
+    }
+
+    return segments
+  } catch (err) {
+    console.warn('Supabase fetch segment data error:', err)
+    return []
   }
 }

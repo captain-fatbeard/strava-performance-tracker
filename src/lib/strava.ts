@@ -77,6 +77,17 @@ export interface StravaDetailedActivity extends StravaActivity {
   }
 }
 
+export interface StravaSegmentInfo {
+  id: number
+  name: string
+  average_grade: number
+  maximum_grade: number
+  elevation_high: number
+  elevation_low: number
+  climb_category: number
+  distance: number
+}
+
 export interface StravaSegmentEffort {
   id: number
   name: string
@@ -87,6 +98,7 @@ export interface StravaSegmentEffort {
   average_watts?: number
   average_heartrate?: number
   achievements: Array<{ type_id: number; type: string; rank: number }>
+  segment?: StravaSegmentInfo
 }
 
 export interface StravaSplit {

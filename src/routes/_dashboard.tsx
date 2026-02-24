@@ -6,8 +6,8 @@ import {
   type TimeRange,
   type ActivityType,
 } from '~/lib/storage/supabase-client'
-import { refreshStravaToken, fetchAllStravaActivities } from '~/lib/server-functions'
-import { type StravaActivity, type StravaAthlete, metersToKm } from '~/lib/strava'
+import { refreshStravaToken, fetchAllStravaActivities, fetchStravaActivity, fetchStravaStreams } from '~/lib/server-functions'
+import { type StravaActivity, type StravaAthlete, type StravaDetailedActivity, type ActivityDetailsJson, metersToKm, computePowerPerKm } from '~/lib/strava'
 import { estimateFTP } from '~/lib/performance'
 import {
   DashboardContext,
@@ -25,6 +25,8 @@ import {
   removeExcludedActivity,
   fetchCachedActivities,
   upsertActivities,
+  cacheActivityDetails,
+  fetchActivityIdsWithoutDetails,
   isSupabaseConfigured,
   type WeightEntry,
 } from '~/lib/storage/supabase-client'
@@ -41,6 +43,8 @@ function DashboardLayout() {
   const [error, setError] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [isSyncingAll, setIsSyncingAll] = useState(false)
+  const [syncProgress, setSyncProgress] = useState<{ current: number; total: number } | null>(null)
 
   const [timeRange, setTimeRange] = useState<TimeRange>(DEFAULT_SETTINGS.timeRange)
   const [activityType, setActivityType] = useState<ActivityType>(DEFAULT_SETTINGS.activityType)
@@ -61,6 +65,150 @@ function DashboardLayout() {
 
   // Track if settings have been loaded to avoid overwriting on mount
   const settingsLoaded = useRef(false)
+
+  // Reusable sync callback
+  const syncActivities = useCallback(
+    async (fetchAll: boolean) => {
+      const tokens = await storage.auth.getTokens()
+      const storedAthlete = await storage.auth.getAthlete()
+      if (!tokens || !storedAthlete) return
+
+      let currentTokens = tokens
+      if (await storage.auth.isTokenExpired()) {
+        const newTokens = await refreshStravaToken({ data: { refreshToken: tokens.refresh_token } })
+        currentTokens = newTokens
+        await storage.auth.setTokens(newTokens)
+      }
+
+      const afterDate = fetchAll
+        ? undefined
+        : (() => {
+            const oneYearAgo = new Date()
+            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+            return oneYearAgo.toISOString()
+          })()
+
+      const fetchedActivities = await fetchAllStravaActivities({
+        data: {
+          accessToken: currentTokens.access_token,
+          afterDate,
+        },
+      })
+
+      setActivities(fetchedActivities)
+
+      if (isSupabaseConfigured()) {
+        upsertActivities(storedAthlete.id, fetchedActivities)
+      }
+    },
+    []
+  )
+
+  const handleSyncAll = useCallback(async () => {
+    setIsSyncingAll(true)
+    setSyncProgress(null)
+    try {
+      // Phase 1: Sync activity list
+      await syncActivities(true)
+
+      // Phase 2: Fetch details for rides without cached details
+      if (!isSupabaseConfigured()) return
+
+      const storedAthlete = await storage.auth.getAthlete()
+      if (!storedAthlete) return
+
+      // Wait for upsert to complete before querying for uncached
+      await new Promise((r) => setTimeout(r, 1000))
+
+      const uncachedIds = await fetchActivityIdsWithoutDetails(storedAthlete.id)
+      if (uncachedIds.length === 0) return
+
+      setSyncProgress({ current: 0, total: uncachedIds.length })
+
+      const tokens = await storage.auth.getTokens()
+      if (!tokens) return
+
+      let currentTokens = tokens
+      if (await storage.auth.isTokenExpired()) {
+        currentTokens = await refreshStravaToken({ data: { refreshToken: tokens.refresh_token } })
+        await storage.auth.setTokens(currentTokens)
+      }
+
+      for (let i = 0; i < uncachedIds.length; i++) {
+        setSyncProgress({ current: i + 1, total: uncachedIds.length })
+
+        try {
+          // Re-check token every 50 activities
+          if (i > 0 && i % 50 === 0) {
+            if (await storage.auth.isTokenExpired()) {
+              const refreshed = await refreshStravaToken({ data: { refreshToken: currentTokens.refresh_token } })
+              currentTokens = refreshed
+              await storage.auth.setTokens(refreshed)
+            }
+          }
+
+          const detailed: StravaDetailedActivity = await fetchStravaActivity({
+            data: { accessToken: currentTokens.access_token, activityId: uncachedIds[i] },
+          })
+
+          const photoUrl = detailed.photos?.primary?.urls
+            ? detailed.photos.primary.urls['600'] || detailed.photos.primary.urls['100'] || Object.values(detailed.photos.primary.urls)[0] || null
+            : null
+
+          // Fetch power streams if available
+          let powerPerKm: number[] | undefined
+          if (detailed.average_watts || detailed.device_watts) {
+            try {
+              const streams = await fetchStravaStreams({
+                data: { accessToken: currentTokens.access_token, activityId: uncachedIds[i], keys: ['watts', 'distance'] },
+              })
+              if (streams.watts?.length && streams.distance?.length) {
+                powerPerKm = computePowerPerKm(streams.distance, streams.watts)
+              }
+            } catch {
+              // Non-critical, skip streams
+            }
+          }
+
+          const detailsJson: ActivityDetailsJson = {
+            calories: detailed.calories,
+            device_name: detailed.device_name,
+            description: detailed.description || null,
+            workout_type: detailed.workout_type ?? null,
+            average_temp: detailed.average_temp,
+            perceived_exertion: detailed.perceived_exertion ?? null,
+            achievement_count: detailed.achievement_count ?? 0,
+            kudos_count: detailed.kudos_count ?? 0,
+            comment_count: detailed.comment_count ?? 0,
+            gear_name: detailed.gear?.name || null,
+            segment_efforts: detailed.segment_efforts || [],
+            splits_metric: detailed.splits_metric || [],
+            laps: detailed.laps || [],
+            best_efforts: detailed.best_efforts || [],
+            summary_polyline: detailed.map?.summary_polyline || null,
+            photo_url: photoUrl,
+            power_per_km: powerPerKm,
+          }
+
+          cacheActivityDetails(uncachedIds[i], detailsJson)
+        } catch (err) {
+          console.warn(`Failed to fetch details for activity ${uncachedIds[i]}:`, err)
+          // On rate limit, wait longer
+          await new Promise((r) => setTimeout(r, 30000))
+        }
+
+        // Delay between requests to respect Strava rate limits (100 req / 15 min)
+        if (i < uncachedIds.length - 1) {
+          await new Promise((r) => setTimeout(r, 10000))
+        }
+      }
+    } catch (err) {
+      console.error('Sync all failed:', err)
+    } finally {
+      setIsSyncingAll(false)
+      setSyncProgress(null)
+    }
+  }, [syncActivities])
 
   // Persist settings changes to database (only after initial load)
   useEffect(() => {
@@ -125,30 +273,7 @@ function DashboardLayout() {
 
       // Background sync with Strava
       try {
-        let currentTokens = tokens
-
-        if (await storage.auth.isTokenExpired()) {
-          const newTokens = await refreshStravaToken({ data: { refreshToken: tokens.refresh_token } })
-          currentTokens = newTokens
-          await storage.auth.setTokens(newTokens)
-        }
-
-        const oneYearAgo = new Date()
-        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
-
-        const fetchedActivities = await fetchAllStravaActivities({
-          data: {
-            accessToken: currentTokens.access_token,
-            afterDate: oneYearAgo.toISOString(),
-          },
-        })
-
-        setActivities(fetchedActivities)
-
-        // Fire-and-forget: cache activities to Supabase
-        if (isSupabaseConfigured()) {
-          upsertActivities(storedAthlete.id, fetchedActivities)
-        }
+        await syncActivities(false)
       } catch (err) {
         // If we already have cached data, silently log the error
         if (activities.length > 0) {
@@ -564,6 +689,51 @@ function DashboardLayout() {
                   <option value="female">Female</option>
                 </select>
               </div>
+            </div>
+
+            <div className="mt-8">
+              <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold mb-4 pb-2 border-b border-border-subtle">Data</h3>
+              <button
+                onClick={handleSyncAll}
+                disabled={isSyncingAll}
+                className="bg-bg-tertiary border border-border text-text-secondary py-2.5 px-4 rounded-[var(--radius-sm)] cursor-pointer text-sm font-medium transition-all duration-150 hover:bg-bg-elevated hover:text-text-primary hover:border-accent w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className={isSyncingAll ? 'animate-spin' : ''}
+                >
+                  <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+                  <path d="M21 3v5h-5" />
+                </svg>
+                {isSyncingAll
+                  ? syncProgress
+                    ? `Fetching details ${syncProgress.current}/${syncProgress.total}...`
+                    : 'Syncing activities...'
+                  : 'Sync All Activities'}
+              </button>
+              {syncProgress && (
+                <div className="mt-2">
+                  <div className="w-full h-1.5 bg-bg-tertiary rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-accent rounded-full transition-all duration-300"
+                      style={{ width: `${Math.round((syncProgress.current / syncProgress.total) * 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-[0.7rem] text-text-muted mt-1">
+                    {syncProgress.current} of {syncProgress.total} rides — ~10s per activity to respect rate limits
+                  </p>
+                </div>
+              )}
+              {!syncProgress && (
+                <p className="text-[0.7rem] text-text-muted mt-2 leading-relaxed">
+                  Fetches your full Strava history and downloads detailed data (segments, splits, laps) for all rides.
+                </p>
+              )}
             </div>
           </div>
 
