@@ -104,8 +104,6 @@ export function calculateFitnessOverTime(
   activities: StravaActivity[],
   ftp: number
 ): FitnessData[] {
-  const now = new Date()
-
   // Group activities by date
   const dailyTSS: Record<string, number> = {}
 
@@ -124,13 +122,17 @@ export function calculateFitnessOverTime(
   const earliest = ridesWithPower
     .map((a) => new Date(a.start_date_local))
     .reduce((min, d) => (d < min ? d : min))
+  earliest.setHours(0, 0, 0, 0)
+
+  const today = new Date()
+  today.setHours(23, 59, 59, 999)
 
   const result: FitnessData[] = []
   let ctl = 0
   let atl = 0
 
-  // Iterate through each day from earliest activity to now
-  for (let d = new Date(earliest); d <= now; d.setDate(d.getDate() + 1)) {
+  // Iterate through each day from earliest activity to today (inclusive)
+  for (let d = new Date(earliest); d <= today; d.setDate(d.getDate() + 1)) {
     // Use local date to match activity.start_date_local format
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     const tss = dailyTSS[dateStr] || 0
