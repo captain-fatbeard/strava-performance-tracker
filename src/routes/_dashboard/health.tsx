@@ -1,7 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useDashboard } from '~/lib/dashboard-context'
 import { WeightChart } from '~/components/WeightChart'
-import { FatBurningStats } from '~/components/FatBurningStats'
+import { HeartRateInsights } from '~/components/HeartRateInsights'
+import { ActivityInsights } from '~/components/ActivityInsights'
 
 export const Route = createFileRoute('/_dashboard/health')({
   component: HealthPage,
@@ -28,14 +29,17 @@ function HealthPage() {
         onAddEntry={addWeightEntry}
         onDeleteEntry={deleteWeightEntry}
       />
-      <FatBurningStats
+      <HeartRateInsights
         activities={filteredActivities}
-        weight={weight}
         maxHR={maxHR}
         restingHR={restingHR}
+      />
+      <ActivityInsights
+        activities={filteredActivities}
+        weight={weight}
         age={age}
         gender={gender}
-        periodDays={timeRangeDays}
+        timeRangeDays={timeRangeDays}
       />
     </div>
   )
