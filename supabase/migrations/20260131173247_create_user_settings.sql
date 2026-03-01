@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
   max_hr INTEGER DEFAULT 185,
   resting_hr INTEGER DEFAULT 60,
   age INTEGER DEFAULT 35,
+  birthday TEXT DEFAULT NULL,
   gender TEXT DEFAULT 'male' CHECK (gender IN ('male', 'female')),
 
   -- Filter preferences
