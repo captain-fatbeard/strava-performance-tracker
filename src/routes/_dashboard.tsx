@@ -8,7 +8,7 @@ import {
 } from '~/lib/storage/supabase-client'
 import { refreshStravaToken, fetchAllStravaActivities, fetchStravaActivity, fetchStravaStreams } from '~/lib/server-functions'
 import { type StravaActivity, type StravaAthlete, type StravaDetailedActivity, type ActivityDetailsJson, metersToKm, computePowerPerKm } from '~/lib/strava'
-import { estimateFTP } from '~/lib/performance'
+import { estimateFTP, calculateMaxHR, calculateRestingHR } from '~/lib/performance'
 import {
   DashboardContext,
   type DashboardContextType,
@@ -48,8 +48,6 @@ function DashboardLayout() {
 
   const [timeRange, setTimeRange] = useState<TimeRange>(DEFAULT_SETTINGS.timeRange)
   const [activityType, setActivityType] = useState<ActivityType>(DEFAULT_SETTINGS.activityType)
-  const [maxHR, setMaxHR] = useState<number>(DEFAULT_SETTINGS.maxHR)
-  const [restingHR, setRestingHR] = useState<number>(DEFAULT_SETTINGS.restingHR)
   const [age, setAge] = useState<number>(DEFAULT_SETTINGS.age)
   const [gender, setGender] = useState<'male' | 'female'>(DEFAULT_SETTINGS.gender)
   const [excludedActivityIds, setExcludedActivityIds] = useState<number[]>([])
@@ -62,6 +60,12 @@ function DashboardLayout() {
     if (weightEntries.length === 0) return 75 // Default weight
     return weightEntries[0].weight // Already sorted by recorded_at DESC
   }, [weightEntries])
+
+  // Auto-calculate Max HR and Resting HR from activity data
+  const maxHRData = useMemo(() => calculateMaxHR(activities, age), [activities, age])
+  const restingHRData = useMemo(() => calculateRestingHR(activities, age, gender), [activities, age, gender])
+  const maxHR = maxHRData.value
+  const restingHR = restingHRData.value
 
   // Track if settings have been loaded to avoid overwriting on mount
   const settingsLoaded = useRef(false)
@@ -218,8 +222,6 @@ function DashboardLayout() {
     const timeoutId = setTimeout(() => {
       if (isSupabaseConfigured()) {
         upsertUserSettings(athlete.id, {
-          maxHR,
-          restingHR,
           age,
           gender,
           timeRange,
@@ -229,7 +231,7 @@ function DashboardLayout() {
     }, 500)
 
     return () => clearTimeout(timeoutId)
-  }, [athlete, maxHR, restingHR, age, gender, timeRange, activityType])
+  }, [athlete, age, gender, timeRange, activityType])
 
   useEffect(() => {
     async function init() {
@@ -256,8 +258,6 @@ function DashboardLayout() {
         if (settings) {
           setTimeRange(settings.timeRange)
           setActivityType(settings.activityType)
-          setMaxHR(settings.maxHR)
-          setRestingHR(settings.restingHR)
           setAge(settings.age)
           setGender(settings.gender)
         }
@@ -468,9 +468,11 @@ function DashboardLayout() {
     setActivityType,
     weight,
     maxHR,
-    setMaxHR,
+    maxHRSource: maxHRData.source,
+    maxHRActivityCount: maxHRData.activityCount,
     restingHR,
-    setRestingHR,
+    restingHRSource: restingHRData.source,
+    restingHRActivityCount: restingHRData.activityCount,
     age,
     setAge,
     gender,
@@ -642,28 +644,28 @@ function DashboardLayout() {
 
             <div>
               <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold mb-4 pb-2 border-b border-border-subtle">User Profile</h3>
-              <div className="flex flex-col gap-2 mb-5 min-w-[200px]">
-                <label className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">Max HR: {maxHR} bpm</label>
-                <input
-                  className="range-thumb w-full h-1.5 bg-bg-tertiary rounded-sm outline-none cursor-pointer appearance-none"
-                  type="range"
-                  min="150"
-                  max="220"
-                  value={maxHR}
-                  onChange={(e) => setMaxHR(Number(e.target.value))}
-                />
+              <div className="flex flex-col gap-1.5 mb-5">
+                <label className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">Max HR</label>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-lg font-semibold text-text-primary">{maxHR} bpm</span>
+                  <span className="text-xs text-text-muted">
+                    {maxHRData.source === 'observed'
+                      ? `from ${maxHRData.activityCount} activities`
+                      : 'estimated (Tanaka formula)'}
+                  </span>
+                </div>
               </div>
 
-              <div className="flex flex-col gap-2 mb-5 min-w-[200px]">
-                <label className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">Resting HR: {restingHR} bpm</label>
-                <input
-                  className="range-thumb w-full h-1.5 bg-bg-tertiary rounded-sm outline-none cursor-pointer appearance-none"
-                  type="range"
-                  min="35"
-                  max="90"
-                  value={restingHR}
-                  onChange={(e) => setRestingHR(Number(e.target.value))}
-                />
+              <div className="flex flex-col gap-1.5 mb-5">
+                <label className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">Resting HR</label>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-lg font-semibold text-text-primary">{restingHR} bpm</span>
+                  <span className="text-xs text-text-muted">
+                    {restingHRData.source === 'observed'
+                      ? `from ${restingHRData.activityCount} activities`
+                      : 'estimated (age-based)'}
+                  </span>
+                </div>
               </div>
 
               <div className="flex flex-col gap-2 mb-5 min-w-[200px]">

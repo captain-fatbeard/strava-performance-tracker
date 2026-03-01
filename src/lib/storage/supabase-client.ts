@@ -7,8 +7,6 @@ export type ActivityType = 'all' | 'Ride' | 'Run' | 'VirtualRide'
 export type Gender = 'male' | 'female'
 
 export interface AppSettings {
-  maxHR: number
-  restingHR: number
   age: number
   gender: Gender
   timeRange: TimeRange
@@ -16,8 +14,6 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  maxHR: 185,
-  restingHR: 60,
   age: 35,
   gender: 'male',
   timeRange: '90d',
@@ -64,8 +60,6 @@ interface UserSettingsRow {
 
 function rowToSettings(row: UserSettingsRow): AppSettings {
   return {
-    maxHR: row.max_hr,
-    restingHR: row.resting_hr,
     age: row.age,
     gender: row.gender as Gender,
     timeRange: row.time_range as TimeRange,
@@ -107,8 +101,6 @@ export async function upsertUserSettings(
     const { error } = await supabase.from('user_settings').upsert(
       {
         athlete_id: athleteId,
-        max_hr: settings.maxHR,
-        resting_hr: settings.restingHR,
         age: settings.age,
         gender: settings.gender,
         time_range: settings.timeRange,

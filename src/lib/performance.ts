@@ -375,6 +375,52 @@ export function getMotionistBenchmarks(age: number, gender: 'male' | 'female'): 
   }
 }
 
+// ==========================================
+// Auto-calculated Max HR & Resting HR
+// ==========================================
+
+export interface CalculatedHR {
+  value: number
+  source: 'observed' | 'estimated'
+  activityCount: number
+}
+
+// Max HR: highest observed max_heartrate across all activities
+// Fallback: Tanaka formula (208 - 0.7 × age)
+export function calculateMaxHR(activities: StravaActivity[], age: number): CalculatedHR {
+  const withMaxHR = activities.filter((a) => a.max_heartrate && a.max_heartrate > 0)
+
+  if (withMaxHR.length > 0) {
+    const observed = Math.max(...withMaxHR.map((a) => a.max_heartrate!))
+    return { value: observed, source: 'observed', activityCount: withMaxHR.length }
+  }
+
+  // Tanaka formula fallback
+  return { value: Math.round(208 - 0.7 * age), source: 'estimated', activityCount: 0 }
+}
+
+// Resting HR: 5th percentile of average_heartrate across activities (capped at 100 bpm)
+// Requires minimum 5 activities with HR data
+// Fallback: ACSM age-based estimate via getMotionistBenchmarks()
+export function calculateRestingHR(
+  activities: StravaActivity[],
+  age: number,
+  gender: 'male' | 'female'
+): CalculatedHR {
+  const withAvgHR = activities
+    .filter((a) => a.average_heartrate && a.average_heartrate > 0 && a.average_heartrate <= 100)
+
+  if (withAvgHR.length >= 5) {
+    const sorted = withAvgHR.map((a) => a.average_heartrate!).sort((a, b) => a - b)
+    const p5Index = Math.max(0, Math.floor(sorted.length * 0.05))
+    return { value: Math.round(sorted[p5Index]), source: 'observed', activityCount: withAvgHR.length }
+  }
+
+  // Fall back to ACSM age-based estimate
+  const benchmarks = getMotionistBenchmarks(age, gender)
+  return { value: benchmarks.restingHR, source: 'estimated', activityCount: withAvgHR.length }
+}
+
 // Intensity Factor (IF) - how hard was the workout relative to FTP
 export function calculateIF(normalizedPower: number, ftp: number): number {
   if (!normalizedPower || !ftp) return 0
