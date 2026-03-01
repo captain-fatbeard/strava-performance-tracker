@@ -8,7 +8,7 @@ import {
 } from '~/lib/storage/supabase-client'
 import { refreshStravaToken, fetchAllStravaActivities, fetchStravaActivity, fetchStravaStreams } from '~/lib/server-functions'
 import { type StravaActivity, type StravaAthlete, type StravaDetailedActivity, type ActivityDetailsJson, metersToKm, computePowerPerKm } from '~/lib/strava'
-import { estimateFTP, calculateMaxHR, calculateRestingHR } from '~/lib/performance'
+import { estimateFTP, calculateMaxHR, calculateRestingHR, calculateAge } from '~/lib/performance'
 import {
   DashboardContext,
   type DashboardContextType,
@@ -48,7 +48,7 @@ function DashboardLayout() {
 
   const [timeRange, setTimeRange] = useState<TimeRange>(DEFAULT_SETTINGS.timeRange)
   const [activityType, setActivityType] = useState<ActivityType>(DEFAULT_SETTINGS.activityType)
-  const [age, setAge] = useState<number>(DEFAULT_SETTINGS.age)
+  const [birthday, setBirthday] = useState<string | null>(DEFAULT_SETTINGS.birthday)
   const [gender, setGender] = useState<'male' | 'female'>(DEFAULT_SETTINGS.gender)
   const [excludedActivityIds, setExcludedActivityIds] = useState<number[]>([])
 
@@ -60,6 +60,9 @@ function DashboardLayout() {
     if (weightEntries.length === 0) return 75 // Default weight
     return weightEntries[0].weight // Already sorted by recorded_at DESC
   }, [weightEntries])
+
+  // Derive age from birthday
+  const age = useMemo(() => calculateAge(birthday), [birthday])
 
   // Auto-calculate Max HR and Resting HR from activity data
   const maxHRData = useMemo(() => calculateMaxHR(activities, age), [activities, age])
@@ -222,7 +225,7 @@ function DashboardLayout() {
     const timeoutId = setTimeout(() => {
       if (isSupabaseConfigured()) {
         upsertUserSettings(athlete.id, {
-          age,
+          birthday,
           gender,
           timeRange,
           activityType,
@@ -231,7 +234,7 @@ function DashboardLayout() {
     }, 500)
 
     return () => clearTimeout(timeoutId)
-  }, [athlete, age, gender, timeRange, activityType])
+  }, [athlete, birthday, gender, timeRange, activityType])
 
   useEffect(() => {
     async function init() {
@@ -258,7 +261,7 @@ function DashboardLayout() {
         if (settings) {
           setTimeRange(settings.timeRange)
           setActivityType(settings.activityType)
-          setAge(settings.age)
+          setBirthday(settings.birthday)
           setGender(settings.gender)
         }
         setExcludedActivityIds(excludedIds)
@@ -474,7 +477,8 @@ function DashboardLayout() {
     restingHRSource: restingHRData.source,
     restingHRActivityCount: restingHRData.activityCount,
     age,
-    setAge,
+    birthday,
+    setBirthday,
     gender,
     setGender,
     timeRangeDays: timeRangeToDays[timeRange],
@@ -668,15 +672,16 @@ function DashboardLayout() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2 mb-5 min-w-[200px]">
-                <label className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">Age: {age}</label>
+              <div className="flex flex-col gap-2 mb-5">
+                <label className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">
+                  Birthday{birthday ? ` (age ${age})` : ''}
+                </label>
                 <input
-                  className="range-thumb w-full h-1.5 bg-bg-tertiary rounded-sm outline-none cursor-pointer appearance-none"
-                  type="range"
-                  min="18"
-                  max="80"
-                  value={age}
-                  onChange={(e) => setAge(Number(e.target.value))}
+                  className="w-full bg-bg-tertiary border border-border text-text-primary py-2.5 px-4 rounded-[var(--radius-sm)] text-sm transition-all duration-150 hover:border-text-muted focus:outline-none focus:border-accent focus:ring-3 focus:ring-accent/15"
+                  type="date"
+                  value={birthday ?? ''}
+                  max={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => setBirthday(e.target.value || null)}
                 />
               </div>
 

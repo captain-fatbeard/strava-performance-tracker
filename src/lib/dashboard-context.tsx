@@ -43,7 +43,8 @@ export interface DashboardContextType {
   restingHRSource: 'observed' | 'estimated'
   restingHRActivityCount: number
   age: number
-  setAge: (age: number) => void
+  birthday: string | null
+  setBirthday: (birthday: string | null) => void
   gender: Gender
   setGender: (gender: Gender) => void
   timeRangeDays: number

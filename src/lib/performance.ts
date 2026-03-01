@@ -375,6 +375,20 @@ export function getMotionistBenchmarks(age: number, gender: 'male' | 'female'): 
   }
 }
 
+// Calculate age from birthday string (YYYY-MM-DD)
+export function calculateAge(birthday: string | null, defaultAge: number = 35): number {
+  if (!birthday) return defaultAge
+  const birth = new Date(birthday)
+  if (isNaN(birth.getTime())) return defaultAge
+  const today = new Date()
+  let age = today.getFullYear() - birth.getFullYear()
+  const monthDiff = today.getMonth() - birth.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--
+  }
+  return age
+}
+
 // ==========================================
 // Auto-calculated Max HR & Resting HR
 // ==========================================
