@@ -8,7 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import { format, parseISO } from 'date-fns'
+import { format, parseISO, startOfWeek } from 'date-fns'
 import { chartTheme, tooltipStyle, formatDateShort, formatDateFull } from '~/lib/chart-theme'
 import type { WeightEntry } from '~/lib/storage/supabase-client'
 
@@ -27,12 +27,35 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
   const chartData = useMemo(() => {
     if (entries.length === 0) return []
 
-    return [...entries]
-      .sort((a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime())
-      .map((entry) => ({
+    const sorted = [...entries].sort(
+      (a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime(),
+    )
+
+    // Group by week and compute averages
+    const weekGroups = new Map<string, number[]>()
+    for (const entry of sorted) {
+      const weekKey = startOfWeek(new Date(entry.recordedAt), { weekStartsOn: 1 }).toISOString()
+      const group = weekGroups.get(weekKey)
+      if (group) {
+        group.push(entry.weight)
+      } else {
+        weekGroups.set(weekKey, [entry.weight])
+      }
+    }
+
+    const weekAvgs = new Map<string, number>()
+    for (const [key, weights] of weekGroups) {
+      weekAvgs.set(key, weights.reduce((sum, w) => sum + w, 0) / weights.length)
+    }
+
+    return sorted.map((entry) => {
+      const weekKey = startOfWeek(new Date(entry.recordedAt), { weekStartsOn: 1 }).toISOString()
+      return {
         date: entry.recordedAt,
         weight: entry.weight,
-      }))
+        weeklyAvg: weekAvgs.get(weekKey),
+      }
+    })
   }, [entries])
 
   const { minWeight, maxWeight } = useMemo(() => {
@@ -115,6 +138,17 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
           No weight entries yet. Click the + button to add your first entry.
         </div>
       ) : (
+        <>
+        <div className="flex justify-end gap-5 mb-2 text-xs text-text-muted">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-4 h-0.5 rounded-full" style={{ backgroundColor: chartTheme.colors.primary.main }} />
+            Weight
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-4 h-0.5 rounded-full border-t-2 border-dashed" style={{ borderColor: chartTheme.colors.amber.main }} />
+            Weekly Avg
+          </span>
+        </div>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={chartData}>
             <defs>
@@ -140,7 +174,10 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
             <Tooltip
               {...tooltipStyle}
               labelFormatter={(date) => formatDateFull(date as string)}
-              formatter={(value: number | undefined) => [`${(value ?? 0).toFixed(1)} kg`, 'Weight']}
+              formatter={(value: number | undefined, name: string) => [
+                `${(value ?? 0).toFixed(1)} kg`,
+                name === 'weeklyAvg' ? 'Weekly Avg' : 'Weight',
+              ]}
             />
             <Line
               type="monotone"
@@ -150,8 +187,19 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
               dot={{ fill: chartTheme.colors.primary.main, strokeWidth: 0, r: 4 }}
               activeDot={{ fill: chartTheme.colors.primary.light, strokeWidth: 0, r: 6 }}
             />
+            <Line
+              type="stepAfter"
+              dataKey="weeklyAvg"
+              name="weeklyAvg"
+              stroke={chartTheme.colors.amber.main}
+              strokeWidth={2}
+              strokeDasharray="6 3"
+              dot={false}
+              activeDot={{ fill: chartTheme.colors.amber.main, strokeWidth: 0, r: 5 }}
+            />
           </LineChart>
         </ResponsiveContainer>
+        </>
       )}
 
       {isModalOpen && (
