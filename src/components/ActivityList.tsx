@@ -38,7 +38,7 @@ export function ActivityList({ activities }: ActivityListProps) {
             <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5">Elevation</th>
             <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5">Power</th>
             <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5">HR</th>
-            <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider last:rounded-tr-[var(--radius-lg)] max-md:px-2 max-md:py-2.5">Stats</th>
+            <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider last:rounded-tr-[var(--radius-lg)] max-md:px-2 max-md:py-2.5">Performance</th>
           </tr>
         </thead>
         <tbody>
@@ -91,7 +91,7 @@ export function ActivityList({ activities }: ActivityListProps) {
                     onClick={() => toggleActivityExclusion(activity.id)}
                     title={isExcluded ? 'Include in stats' : 'Exclude from stats'}
                   >
-                    {isExcluded ? 'Excluded' : 'Included'}
+                    {isExcluded ? 'Excluded' : 'Include'}
                   </button>
                 </td>
               </tr>
