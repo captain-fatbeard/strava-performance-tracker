@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.1](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.1.0...v1.1.1) (2026-03-19)
+
+
+### Bug Fixes
+
+* resolve Invalid time value error on performance page ([851a5d7](https://github.com/captain-fatbeard/strava-performance-tracker/commit/851a5d791a48b12eaf442efc38e6e74756ccf064))
+
 ## 1.1.0 (2026-03-19)
 
 
