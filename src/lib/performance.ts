@@ -893,6 +893,115 @@ export function calculateFatBurningSummary(
 }
 
 // ==========================================
+// Activity Scoring — Effort vs Terrain
+// ==========================================
+
+export interface ActivityScore {
+  activityId: number
+  name: string
+  date: string
+  dateKey: string
+  rideScore: number
+  difficultyScore: number
+  effortScore: number
+  distanceKm: number
+  elevationGain: number
+  avgGradient: number
+  avgPower: number
+  normalizedPower: number
+  durationHours: number
+  avgHR: number
+}
+
+// Terrain difficulty: "equivalent flat km" — each 100m climbing ≈ 8km extra flat effort
+// This captures that a short steep ride is harder than a longer flat one
+function calcDifficultyScore(distanceKm: number, elevationGain: number): number {
+  return Math.round(distanceKm + (elevationGain / 100) * 8)
+}
+
+// Effort: power output sustained over time
+// sqrt(hours) gives diminishing returns — 4h at 200W is harder than 1h but not 4×
+function calcEffortScore(power: number, durationHours: number): number {
+  if (!power || !durationHours) return 0
+  return Math.round(power * Math.sqrt(durationHours) / 10)
+}
+
+// Ride Score: effort adjusted for terrain difficulty
+// Terrain multiplier: flat=1.0, 1% avg gradient=1.5, 2%=2.0, 3%+=2.5+
+function calcRideScore(power: number, durationHours: number, distanceKm: number, elevationGain: number): number {
+  if (!power || !durationHours) return 0
+  const avgGradient = distanceKm > 0 ? (elevationGain / (distanceKm * 1000)) * 100 : 0
+  const terrainMultiplier = 1 + avgGradient * 0.5
+  return Math.round(power * Math.sqrt(durationHours) * terrainMultiplier / 10)
+}
+
+export function calculateActivityScores(activities: StravaActivity[], ftp: number): ActivityScore[] {
+  const rides = activities.filter(
+    (a) => (a.type === 'Ride' || a.type === 'VirtualRide') && a.average_watts && a.moving_time >= 600
+  )
+
+  return rides.map((ride) => {
+    const np = ride.weighted_average_watts || ride.average_watts || 0
+    const avgPower = ride.average_watts || 0
+    const power = np || avgPower
+    const distanceKm = ride.distance / 1000
+    const durationHours = ride.moving_time / 3600
+    const elevationGain = ride.total_elevation_gain || 0
+    const avgGradient = distanceKm > 0 ? (elevationGain / (distanceKm * 1000)) * 100 : 0
+
+    return {
+      activityId: ride.id,
+      name: ride.name,
+      date: ride.start_date_local,
+      dateKey: `${ride.start_date_local}_${ride.id}`,
+      rideScore: calcRideScore(power, durationHours, distanceKm, elevationGain),
+      difficultyScore: calcDifficultyScore(distanceKm, elevationGain),
+      effortScore: calcEffortScore(power, durationHours),
+      distanceKm: Math.round(distanceKm * 10) / 10,
+      elevationGain: Math.round(elevationGain),
+      avgGradient: Math.round(avgGradient * 10) / 10,
+      avgPower,
+      normalizedPower: np,
+      durationHours: Math.round(durationHours * 100) / 100,
+      avgHR: ride.average_heartrate || 0,
+    }
+  }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+}
+
+export interface ScoringAverages {
+  avgRideScore: number
+  bestRideScore: number
+  avgDifficulty: number
+  avgEffort: number
+  avgPowerPerDifficulty: number // watts per difficulty point — higher = stronger
+}
+
+export function calculateScoringAverages(scores: ActivityScore[]): ScoringAverages {
+  if (scores.length === 0) {
+    return { avgRideScore: 0, bestRideScore: 0, avgDifficulty: 0, avgEffort: 0, avgPowerPerDifficulty: 0 }
+  }
+
+  const sum = (arr: number[]) => arr.reduce((s, v) => s + v, 0)
+  const rideScores = scores.map((s) => s.rideScore)
+  const difficulties = scores.map((s) => s.difficultyScore)
+  const efforts = scores.map((s) => s.effortScore)
+
+  // Watts per difficulty point: how much power you produce relative to terrain difficulty
+  const withDifficulty = scores.filter((s) => s.difficultyScore > 0)
+  const avgPowerPerDifficulty = withDifficulty.length > 0
+    ? sum(withDifficulty.map((s) => s.normalizedPower / s.difficultyScore)) / withDifficulty.length
+    : 0
+
+  return {
+    avgRideScore: Math.round(sum(rideScores) / scores.length),
+    bestRideScore: Math.max(...rideScores),
+    avgDifficulty: Math.round(sum(difficulties) / scores.length),
+    avgEffort: Math.round(sum(efforts) / scores.length),
+    avgPowerPerDifficulty: Math.round(avgPowerPerDifficulty * 10) / 10,
+  }
+}
+
+// ==========================================
 // Running Performance Metrics
 // ==========================================
 

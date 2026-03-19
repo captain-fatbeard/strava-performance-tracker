@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState, useMemo } from 'react'
 import { useDashboard } from '~/lib/dashboard-context'
 import { AdvancedMetrics } from '~/components/AdvancedMetrics'
+import { ActivityScoring } from '~/components/ActivityScoring'
 import { EfficiencyChart } from '~/components/EfficiencyChart'
 import { PerformanceCharts } from '~/components/PerformanceCharts'
 import { RunningMetrics } from '~/components/RunningMetrics'
@@ -43,6 +44,7 @@ function PerformancePage() {
         <span className="bg-linear-to-br from-accent to-teal-300 bg-clip-text text-transparent">Cycling Performance</span>
       </h2>
       <AdvancedMetrics activities={statsActivities} weight={weight} age={age} gender={gender} />
+      <ActivityScoring activities={statsActivities} />
       <EfficiencyChart activities={statsActivities} weight={weight} weightEntries={weightEntries} segmentData={segmentData} />
       <PerformanceCharts activities={statsActivities} showAllCharts />
 
