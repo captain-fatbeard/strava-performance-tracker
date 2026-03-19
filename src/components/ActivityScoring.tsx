@@ -126,14 +126,14 @@ export function ActivityScoring({ activities }: ActivityScoringProps) {
             <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
             <XAxis
               dataKey="dateKey"
-              tickFormatter={(v) => formatDateShort(v)}
+              tickFormatter={(v) => formatDateShort(v.split('_')[0])}
               stroke={chartTheme.axis}
               tick={{ fill: chartTheme.axis, fontSize: 12 }}
             />
             <YAxis stroke={chartTheme.axis} tick={{ fill: chartTheme.axis, fontSize: 12 }} />
             <Tooltip
               {...tooltipStyle}
-              labelFormatter={(label, payload) => activityTooltipLabel(label, payload)}
+              labelFormatter={(label, payload) => activityTooltipLabel(String(label).split('_')[0], payload)}
               formatter={(value: number, name: string) => {
                 if (name === 'rideScore') return [value, 'Ride Score']
                 if (name === 'difficultyScore') return [value, 'Difficulty']
