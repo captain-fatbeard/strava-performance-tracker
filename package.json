@@ -1,6 +1,6 @@
 {
   "name": "formlab",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "Analyze your fitness form and training metrics",
   "scripts": {
@@ -15,7 +15,14 @@
     "release:major": "standard-version --release-as major",
     "prepare": "husky"
   },
-  "keywords": ["strava", "fitness", "analytics", "cycling", "running", "performance"],
+  "keywords": [
+    "strava",
+    "fitness",
+    "analytics",
+    "cycling",
+    "running",
+    "performance"
+  ],
   "author": "",
   "license": "MIT",
   "packageManager": "pnpm@10.16.1",

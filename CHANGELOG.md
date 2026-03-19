@@ -1,9 +1,13 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/),
-and this project adheres to [Semantic Versioning](https://semver.org/).
+## 1.1.0 (2026-03-19)
+
+
+### Features
+
+* add activity scoring with effort vs terrain analysis ([58b4b6b](https://github.com/captain-fatbeard/strava-performance-tracker/commit/58b4b6b2bd9adde6dc08ee4086c63411274fcd1a))
 
 ## [1.0.0] - 2025-02-22
 
