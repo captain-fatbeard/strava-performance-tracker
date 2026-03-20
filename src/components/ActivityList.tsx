@@ -1,7 +1,9 @@
+import { useMemo } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { type StravaActivity, metersToKm, secondsToHMS } from '~/lib/strava'
 import { useDashboard } from '~/lib/dashboard-context'
 import { formatDateFull } from '~/lib/chart-theme'
+import { calculateActivityScores, estimateFTP } from '~/lib/performance'
 
 interface ActivityListProps {
   activities: StravaActivity[]
@@ -13,9 +15,34 @@ const activityTypeClasses: Record<string, string> = {
   run: 'bg-success-muted text-[#4ade80]',
 }
 
+const scoreLabelClasses: Record<string, string> = {
+  Epic: 'bg-[#f97316]/15 text-[#f97316]',
+  Hard: 'bg-[#ef4444]/15 text-[#ef4444]',
+  Solid: 'bg-[#3b82f6]/15 text-[#3b82f6]',
+  Moderate: 'bg-[#a78bfa]/15 text-[#a78bfa]',
+  Easy: 'bg-bg-tertiary text-text-muted',
+}
+
+function getScoreLabel(score: number): string {
+  if (score >= 100) return 'Epic'
+  if (score >= 80) return 'Hard'
+  if (score >= 50) return 'Solid'
+  if (score >= 30) return 'Moderate'
+  return 'Easy'
+}
+
 export function ActivityList({ activities }: ActivityListProps) {
   const { excludedActivityIds, toggleActivityExclusion } = useDashboard()
   const navigate = useNavigate()
+
+  const scoreMap = useMemo(() => {
+    const rides = activities.filter((a) => a.type === 'Ride' || a.type === 'VirtualRide')
+    const ftp = estimateFTP(rides) || 0
+    const scores = calculateActivityScores(activities, ftp)
+    const map = new Map<number, number>()
+    for (const s of scores) map.set(s.activityId, s.rideScore)
+    return map
+  }, [activities])
 
   if (activities.length === 0) {
     return (
@@ -38,6 +65,7 @@ export function ActivityList({ activities }: ActivityListProps) {
             <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5">Elevation</th>
             <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5">Power</th>
             <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5">HR</th>
+            <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5">Ride Score</th>
             <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider last:rounded-tr-[var(--radius-lg)] max-md:px-2 max-md:py-2.5">Performance</th>
           </tr>
         </thead>
@@ -80,6 +108,17 @@ export function ActivityList({ activities }: ActivityListProps) {
                   {activity.average_heartrate
                     ? `${Math.round(activity.average_heartrate)} bpm`
                     : '-'}
+                </td>
+                <td className="p-4 px-5 border-b border-border-subtle max-md:px-2 max-md:py-2.5">
+                  {scoreMap.has(activity.id) ? (() => {
+                    const score = scoreMap.get(activity.id)!
+                    const label = getScoreLabel(score)
+                    return (
+                      <span className={`inline-block py-1.5 px-3 rounded-[var(--radius-sm)] text-[0.7rem] font-semibold ${scoreLabelClasses[label]}`}>
+                        {score} · {label}
+                      </span>
+                    )
+                  })() : '-'}
                 </td>
                 <td className="p-4 px-5 border-b border-border-subtle max-md:px-2 max-md:py-2.5">
                   <button
