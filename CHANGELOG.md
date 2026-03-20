@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.2.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.1.1...v1.2.0) (2026-03-20)
+
+
+### Features
+
+* add ride score column to activity list ([943b137](https://github.com/captain-fatbeard/strava-performance-tracker/commit/943b1373ddde8feac14604a7425af558195693c8))
+* add trend line connecting dots on Power Sustainability chart ([bd5508a](https://github.com/captain-fatbeard/strava-performance-tracker/commit/bd5508a0c97b9ff5705404bea3b42f8da6d6de7b))
+
 ### [1.1.1](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.1.0...v1.1.1) (2026-03-19)
 
 
