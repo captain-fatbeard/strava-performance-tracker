@@ -37,6 +37,7 @@ export function ActivityScoring({ activities }: ActivityScoringProps) {
   const ftp = estimateFTP(rides) || 0
 
   const scores = useMemo(() => calculateActivityScores(activities, ftp), [activities, ftp])
+  const scoresByDifficulty = useMemo(() => [...scores].sort((a, b) => a.difficultyScore - b.difficultyScore), [scores])
   const averages = useMemo(() => calculateScoringAverages(scores), [scores])
 
   if (scores.length === 0) {
@@ -173,7 +174,7 @@ export function ActivityScoring({ activities }: ActivityScoringProps) {
         <h3 className="text-lg font-semibold mb-2">Power Sustainability</h3>
         <p className="text-sm text-text-muted mb-6">How well you maintain power as rides get longer and harder</p>
         <ResponsiveContainer width="100%" height={300}>
-          <ComposedChart data={scores}>
+          <ComposedChart data={scoresByDifficulty}>
             <CartesianGrid strokeDasharray="3 3" stroke={chartTheme.grid} />
             <XAxis
               dataKey="difficultyScore"
@@ -199,8 +200,18 @@ export function ActivityScoring({ activities }: ActivityScoringProps) {
                 return `${d.name}\n${d.distanceKm} km · ${d.elevationGain}m ↑ · ${formatDuration(d.durationHours)}`
               }}
             />
+            <Line
+              type="monotone"
+              dataKey="normalizedPower"
+              stroke={chartTheme.colors.neutral[500]}
+              strokeWidth={1}
+              strokeDasharray="4 3"
+              dot={false}
+              activeDot={false}
+              connectNulls
+            />
             <Scatter dataKey="normalizedPower" fill={chartTheme.colors.primary.main}>
-              {scores.map((entry) => (
+              {scoresByDifficulty.map((entry) => (
                 <Cell
                   key={entry.activityId}
                   fill={entry.avgGradient >= 2 ? chartTheme.colors.coral.main :
