@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.3.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.2.0...v1.3.0) (2026-03-23)
+
+
+### Features
+
+* add Records page with personal records, power records, best efforts, and popular segments ([6dbd8bd](https://github.com/captain-fatbeard/strava-performance-tracker/commit/6dbd8bdac4c24d320596658eed97bc67a52bae17))
+
 ## [1.2.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.1.1...v1.2.0) (2026-03-20)
 
 
