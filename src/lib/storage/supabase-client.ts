@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
-import type { StravaActivity, ActivityDetailsJson, StravaSegmentEffort } from '../strava'
+import type { StravaActivity, ActivityDetailsJson, StravaSegmentEffort, StravaBestEffort } from '../strava'
 
 // Types
 export type TimeRange = '30d' | '90d' | '6m' | '1y' | 'all'
@@ -528,6 +528,7 @@ export async function fetchActivityIdsWithoutDetails(athleteId: number): Promise
 export interface SegmentEffortWithActivity extends StravaSegmentEffort {
   activityDate: string
   activityName: string
+  activityType: string
 }
 
 // Fetch segment effort data from cached activity details for rides with climbing
@@ -539,7 +540,7 @@ export async function fetchCachedSegmentData(
   try {
     const { data, error } = await supabase
       .from('activities')
-      .select('start_date_local, name, details_json')
+      .select('start_date_local, name, type, details_json')
       .eq('athlete_id', athleteId)
       .not('details_json', 'is', null)
       .in('type', ['Ride', 'VirtualRide'])
@@ -550,7 +551,7 @@ export async function fetchCachedSegmentData(
     }
 
     const segments: SegmentEffortWithActivity[] = []
-    for (const row of data as { start_date_local: string; name: string; details_json: ActivityDetailsJson }[]) {
+    for (const row of data as { start_date_local: string; name: string; type: string; details_json: ActivityDetailsJson }[]) {
       const efforts = row.details_json?.segment_efforts
       if (!efforts) continue
       for (const effort of efforts) {
@@ -559,6 +560,7 @@ export async function fetchCachedSegmentData(
             ...effort,
             activityDate: row.start_date_local,
             activityName: row.name,
+            activityType: row.type,
           })
         }
       }
@@ -567,6 +569,95 @@ export async function fetchCachedSegmentData(
     return segments
   } catch (err) {
     console.warn('Supabase fetch segment data error:', err)
+    return []
+  }
+}
+
+// Fetch ALL segment efforts (not just climbing) from cached activity details
+export async function fetchAllCachedSegmentData(
+  athleteId: number
+): Promise<SegmentEffortWithActivity[]> {
+  if (!supabase) return []
+
+  try {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('start_date_local, name, type, details_json')
+      .eq('athlete_id', athleteId)
+      .not('details_json', 'is', null)
+      .in('type', ['Ride', 'VirtualRide'])
+
+    if (error) {
+      console.warn('Supabase fetch all segment data error:', error.message)
+      return []
+    }
+
+    const segments: SegmentEffortWithActivity[] = []
+    for (const row of data as { start_date_local: string; name: string; type: string; details_json: ActivityDetailsJson }[]) {
+      const efforts = row.details_json?.segment_efforts
+      if (!efforts) continue
+      for (const effort of efforts) {
+        if (effort.segment) {
+          segments.push({
+            ...effort,
+            activityDate: row.start_date_local,
+            activityName: row.name,
+            activityType: row.type,
+          })
+        }
+      }
+    }
+
+    return segments
+  } catch (err) {
+    console.warn('Supabase fetch all segment data error:', err)
+    return []
+  }
+}
+
+// Best effort with activity context
+export interface BestEffortWithActivity extends StravaBestEffort {
+  activityDate: string
+  activityName: string
+  activityId: number
+}
+
+// Fetch best efforts (5K, 10K, etc.) from cached activity details
+export async function fetchCachedBestEfforts(
+  athleteId: number
+): Promise<BestEffortWithActivity[]> {
+  if (!supabase) return []
+
+  try {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('id, start_date_local, name, details_json')
+      .eq('athlete_id', athleteId)
+      .not('details_json', 'is', null)
+      .in('type', ['Run'])
+
+    if (error) {
+      console.warn('Supabase fetch best efforts error:', error.message)
+      return []
+    }
+
+    const efforts: BestEffortWithActivity[] = []
+    for (const row of data as { id: number; start_date_local: string; name: string; details_json: ActivityDetailsJson }[]) {
+      const bestEfforts = row.details_json?.best_efforts
+      if (!bestEfforts) continue
+      for (const effort of bestEfforts) {
+        efforts.push({
+          ...effort,
+          activityDate: row.start_date_local,
+          activityName: row.name,
+          activityId: row.id,
+        })
+      }
+    }
+
+    return efforts
+  } catch (err) {
+    console.warn('Supabase fetch best efforts error:', err)
     return []
   }
 }
