@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.4.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.3.0...v1.4.0) (2026-03-24)
+
+
+### Features
+
+* replace exclude mechanism with training/performance activity categories ([0fc57cc](https://github.com/captain-fatbeard/strava-performance-tracker/commit/0fc57cc1f11346dd3c911f6b5fb5e9e71f292885))
+
 ## [1.3.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.2.0...v1.3.0) (2026-03-23)
 
 
