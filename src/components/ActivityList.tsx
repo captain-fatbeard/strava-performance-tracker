@@ -32,7 +32,7 @@ function getScoreLabel(score: number): string {
 }
 
 export function ActivityList({ activities }: ActivityListProps) {
-  const { excludedActivityIds, toggleActivityExclusion } = useDashboard()
+  const { trainingActivityIds, toggleActivityCategory } = useDashboard()
   const navigate = useNavigate()
 
   const scoreMap = useMemo(() => {
@@ -66,24 +66,24 @@ export function ActivityList({ activities }: ActivityListProps) {
             <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5">Power</th>
             <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5">HR</th>
             <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5">Ride Score</th>
-            <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider last:rounded-tr-[var(--radius-lg)] max-md:px-2 max-md:py-2.5">Performance</th>
+            <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider last:rounded-tr-[var(--radius-lg)] max-md:px-2 max-md:py-2.5">Category</th>
           </tr>
         </thead>
         <tbody>
           {activities.map((activity) => {
-            const isExcluded = excludedActivityIds.includes(activity.id)
+            const isTraining = trainingActivityIds.includes(activity.id)
             return (
               <tr
                 key={activity.id}
-                className={`transition-colors duration-150 hover:[&_td]:bg-bg-tertiary last:[&_td]:border-b-0 cursor-pointer ${isExcluded ? '[&_td]:opacity-50' : ''}`}
+                className="transition-colors duration-150 hover:[&_td]:bg-bg-tertiary last:[&_td]:border-b-0 cursor-pointer"
                 onClick={(e) => {
-                  // Don't navigate when clicking the exclude button
+                  // Don't navigate when clicking the category button
                   if ((e.target as HTMLElement).closest('button')) return
                   navigate({ to: '/activities/$activityId', params: { activityId: String(activity.id) } })
                 }}
               >
                 <td className="p-4 px-5 border-b border-border-subtle max-md:px-2 max-md:py-2.5">{formatDateFull(activity.start_date_local)}</td>
-                <td className={`p-4 px-5 border-b border-border-subtle font-semibold max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap max-md:px-2 max-md:py-2.5 max-md:max-w-[140px] ${isExcluded ? 'line-through' : ''}`}>
+                <td className="p-4 px-5 border-b border-border-subtle font-semibold max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap max-md:px-2 max-md:py-2.5 max-md:max-w-[140px]">
                   <Link
                     to="/activities/$activityId"
                     params={{ activityId: String(activity.id) }}
@@ -123,14 +123,14 @@ export function ActivityList({ activities }: ActivityListProps) {
                 <td className="p-4 px-5 border-b border-border-subtle max-md:px-2 max-md:py-2.5">
                   <button
                     className={`py-1.5 px-3 rounded-[var(--radius-sm)] text-[0.7rem] font-semibold cursor-pointer transition-all duration-150 whitespace-nowrap ${
-                      isExcluded
-                        ? 'bg-danger-muted border border-red-500/30 text-danger hover:bg-red-500/25 hover:border-danger'
-                        : 'bg-bg-tertiary border border-border text-text-secondary hover:bg-bg-elevated hover:border-text-muted hover:text-text-primary'
+                      isTraining
+                        ? 'bg-[#f59e0b]/10 border border-[#f59e0b]/30 text-[#f59e0b] hover:bg-[#f59e0b]/20 hover:border-[#f59e0b]/50'
+                        : 'bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20 hover:border-accent/50'
                     }`}
-                    onClick={() => toggleActivityExclusion(activity.id)}
-                    title={isExcluded ? 'Include in stats' : 'Exclude from stats'}
+                    onClick={() => toggleActivityCategory(activity.id)}
+                    title={isTraining ? 'Mark as performance activity' : 'Mark as training activity'}
                   >
-                    {isExcluded ? 'Excluded' : 'Include'}
+                    {isTraining ? 'Training' : 'Performance'}
                   </button>
                 </td>
               </tr>

@@ -20,9 +20,9 @@ import {
   deleteWeightEntry as deleteWeightEntryFromDb,
   fetchUserSettings,
   upsertUserSettings,
-  fetchExcludedActivityIds,
-  addExcludedActivity,
-  removeExcludedActivity,
+  fetchTrainingActivityIds,
+  addTrainingActivity,
+  removeTrainingActivity,
   fetchCachedActivities,
   upsertActivities,
   cacheActivityDetails,
@@ -50,7 +50,7 @@ function DashboardLayout() {
   const [activityType, setActivityType] = useState<ActivityType>(DEFAULT_SETTINGS.activityType)
   const [birthday, setBirthday] = useState<string | null>(DEFAULT_SETTINGS.birthday)
   const [gender, setGender] = useState<'male' | 'female'>(DEFAULT_SETTINGS.gender)
-  const [excludedActivityIds, setExcludedActivityIds] = useState<number[]>([])
+  const [trainingActivityIds, setTrainingActivityIds] = useState<number[]>([])
 
   // Weight tracking state
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([])
@@ -251,11 +251,11 @@ function DashboardLayout() {
 
       setAthlete(storedAthlete)
 
-      // Load settings, excluded activities, and cached activities from Supabase
+      // Load settings, training activity ids, and cached activities from Supabase
       if (isSupabaseConfigured()) {
-        const [settings, excludedIds, cachedActivities] = await Promise.all([
+        const [settings, trainingIds, cachedActivities] = await Promise.all([
           fetchUserSettings(storedAthlete.id),
-          fetchExcludedActivityIds(storedAthlete.id),
+          fetchTrainingActivityIds(storedAthlete.id),
           fetchCachedActivities(storedAthlete.id),
         ])
         if (settings) {
@@ -264,7 +264,7 @@ function DashboardLayout() {
           setBirthday(settings.birthday)
           setGender(settings.gender)
         }
-        setExcludedActivityIds(excludedIds)
+        setTrainingActivityIds(trainingIds)
 
         // If we have cached data, show it immediately
         if (cachedActivities.length > 0) {
@@ -299,29 +299,29 @@ function DashboardLayout() {
     navigate({ to: '/' })
   }
 
-  const toggleActivityExclusion = useCallback(
+  const toggleActivityCategory = useCallback(
     (activityId: number) => {
       if (!athlete) return
 
-      const isCurrentlyExcluded = excludedActivityIds.includes(activityId)
+      const isCurrentlyTraining = trainingActivityIds.includes(activityId)
 
       // Optimistic update
-      setExcludedActivityIds((prev) =>
-        isCurrentlyExcluded
+      setTrainingActivityIds((prev) =>
+        isCurrentlyTraining
           ? prev.filter((id) => id !== activityId)
           : [...prev, activityId]
       )
 
       // Persist to Supabase
       if (isSupabaseConfigured()) {
-        if (isCurrentlyExcluded) {
-          removeExcludedActivity(athlete.id, activityId)
+        if (isCurrentlyTraining) {
+          removeTrainingActivity(athlete.id, activityId)
         } else {
-          addExcludedActivity(athlete.id, activityId)
+          addTrainingActivity(athlete.id, activityId)
         }
       }
     },
-    [athlete, excludedActivityIds]
+    [athlete, trainingActivityIds]
   )
 
   // Load weight entries when athlete is available
@@ -396,8 +396,8 @@ function DashboardLayout() {
   }, [activities, timeRange, activityType])
 
   const statsActivities = useMemo(() => {
-    return filteredActivities.filter((a) => !excludedActivityIds.includes(a.id))
-  }, [filteredActivities, excludedActivityIds])
+    return filteredActivities.filter((a) => !trainingActivityIds.includes(a.id))
+  }, [filteredActivities, trainingActivityIds])
 
   const stats = useMemo(() => {
     const rides = filteredActivities.filter(
@@ -482,8 +482,8 @@ function DashboardLayout() {
     gender,
     setGender,
     timeRangeDays: timeRangeToDays[timeRange],
-    excludedActivityIds,
-    toggleActivityExclusion,
+    trainingActivityIds,
+    toggleActivityCategory,
     weightEntries,
     addWeightEntry: handleAddWeightEntry,
     deleteWeightEntry: handleDeleteWeightEntry,

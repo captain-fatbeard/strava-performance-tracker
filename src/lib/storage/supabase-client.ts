@@ -223,8 +223,8 @@ export async function deleteWeightEntry(id: string): Promise<boolean> {
   }
 }
 
-// Excluded Activities
-export async function fetchExcludedActivityIds(athleteId: number): Promise<number[]> {
+// Training-Only Activities (stored in excluded_activities table)
+export async function fetchTrainingActivityIds(athleteId: number): Promise<number[]> {
   if (!supabase) return []
 
   try {
@@ -245,7 +245,7 @@ export async function fetchExcludedActivityIds(athleteId: number): Promise<numbe
   }
 }
 
-export async function addExcludedActivity(
+export async function addTrainingActivity(
   athleteId: number,
   activityId: number
 ): Promise<boolean> {
@@ -270,7 +270,7 @@ export async function addExcludedActivity(
   }
 }
 
-export async function removeExcludedActivity(
+export async function removeTrainingActivity(
   athleteId: number,
   activityId: number
 ): Promise<boolean> {

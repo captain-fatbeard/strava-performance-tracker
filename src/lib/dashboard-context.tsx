@@ -48,8 +48,8 @@ export interface DashboardContextType {
   gender: Gender
   setGender: (gender: Gender) => void
   timeRangeDays: number
-  excludedActivityIds: number[]
-  toggleActivityExclusion: (activityId: number) => void
+  trainingActivityIds: number[]
+  toggleActivityCategory: (activityId: number) => void
   weightEntries: WeightEntry[]
   addWeightEntry: (weight: number, recordedAt: Date) => Promise<boolean>
   deleteWeightEntry: (id: string) => Promise<boolean>
