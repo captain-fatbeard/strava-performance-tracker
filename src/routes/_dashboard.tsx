@@ -82,9 +82,17 @@ function DashboardLayout() {
 
       let currentTokens = tokens
       if (await storage.auth.isTokenExpired()) {
-        const newTokens = await refreshStravaToken({ data: { refreshToken: tokens.refresh_token } })
-        currentTokens = newTokens
-        await storage.auth.setTokens(newTokens)
+        try {
+          const newTokens = await refreshStravaToken({ data: { refreshToken: tokens.refresh_token } })
+          currentTokens = newTokens
+          await storage.auth.setTokens(newTokens)
+        } catch (err) {
+          console.error('Token refresh failed:', err)
+          // Clear auth only on token refresh failure — the refresh token is invalid
+          await storage.auth.clear()
+          navigate({ to: '/' })
+          return
+        }
       }
 
       const afterDate = fetchAll
@@ -252,6 +260,7 @@ function DashboardLayout() {
       setAthlete(storedAthlete)
 
       // Load settings, training activity ids, and cached activities from Supabase
+      let hasCachedData = false
       if (isSupabaseConfigured()) {
         const [settings, trainingIds, cachedActivities] = await Promise.all([
           fetchUserSettings(storedAthlete.id),
@@ -268,23 +277,20 @@ function DashboardLayout() {
 
         // If we have cached data, show it immediately
         if (cachedActivities.length > 0) {
+          hasCachedData = true
           setActivities(cachedActivities)
           setIsLoading(false)
         }
       }
       settingsLoaded.current = true
 
-      // Background sync with Strava
+      // Background sync with Strava — never clear auth on sync failure
       try {
         await syncActivities(false)
       } catch (err) {
-        // If we already have cached data, silently log the error
-        if (activities.length > 0) {
-          console.warn('Strava sync failed, using cached data:', err)
-        } else {
-          console.error('Error loading data:', err)
-          setError('Failed to load data. Please try logging in again.')
-          await storage.auth.clear()
+        console.warn('Strava sync failed, using cached data:', err)
+        if (!hasCachedData) {
+          setError('Failed to sync with Strava. Please try again later.')
         }
       } finally {
         setIsLoading(false)
