@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.5.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.4.0...v1.5.0) (2026-03-27)
+
+
+### Features
+
+* move Activities to last position in nav bar ([cbd23d8](https://github.com/captain-fatbeard/strava-performance-tracker/commit/cbd23d81361b7da1134aad432d8b8c1b50f7c7c9))
+
+
+### Bug Fixes
+
+* prevent session loss on Strava sync failure ([2a63dbb](https://github.com/captain-fatbeard/strava-performance-tracker/commit/2a63dbbe8b4c92a19659c5e569dabbe539393217))
+
 ## [1.4.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.3.0...v1.4.0) (2026-03-24)
 
 
