@@ -575,11 +575,11 @@ function DashboardLayout() {
             <Link to="/performance" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="block py-3 px-4 text-text-secondary no-underline text-[0.9375rem] font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
               Performance
             </Link>
-            <Link to="/activities" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="block py-3 px-4 text-text-secondary no-underline text-[0.9375rem] font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
-              Activities
-            </Link>
             <Link to="/records" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="block py-3 px-4 text-text-secondary no-underline text-[0.9375rem] font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
               Records
+            </Link>
+            <Link to="/activities" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="block py-3 px-4 text-text-secondary no-underline text-[0.9375rem] font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
+              Activities
             </Link>
           </div>
           <div className="p-4 border-t border-border-subtle flex flex-col gap-2">
@@ -780,11 +780,11 @@ function DashboardLayout() {
               <Link to="/performance" activeProps={{ className: 'active' }} className="bg-transparent border-none text-text-muted py-3 px-6 text-sm font-medium cursor-pointer relative transition-all duration-150 no-underline rounded-[var(--radius-md)] hover:text-text-primary hover:bg-bg-tertiary">
                 Performance
               </Link>
-              <Link to="/activities" activeProps={{ className: 'active' }} className="bg-transparent border-none text-text-muted py-3 px-6 text-sm font-medium cursor-pointer relative transition-all duration-150 no-underline rounded-[var(--radius-md)] hover:text-text-primary hover:bg-bg-tertiary">
-                Activities
-              </Link>
               <Link to="/records" activeProps={{ className: 'active' }} className="bg-transparent border-none text-text-muted py-3 px-6 text-sm font-medium cursor-pointer relative transition-all duration-150 no-underline rounded-[var(--radius-md)] hover:text-text-primary hover:bg-bg-tertiary">
                 Records
+              </Link>
+              <Link to="/activities" activeProps={{ className: 'active' }} className="bg-transparent border-none text-text-muted py-3 px-6 text-sm font-medium cursor-pointer relative transition-all duration-150 no-underline rounded-[var(--radius-md)] hover:text-text-primary hover:bg-bg-tertiary">
+                Activities
               </Link>
             </div>
           </nav>
