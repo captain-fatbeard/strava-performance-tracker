@@ -29,6 +29,11 @@ import {
   fetchActivityIdsWithoutDetails,
   isSupabaseConfigured,
   type WeightEntry,
+  type ActivityGroup,
+  fetchActivityGroups,
+  createActivityGroup,
+  deleteActivityGroup,
+  updateActivityGroupName,
 } from '~/lib/storage/supabase-client'
 
 export const Route = createFileRoute('/_dashboard')({
@@ -51,6 +56,9 @@ function DashboardLayout() {
   const [birthday, setBirthday] = useState<string | null>(DEFAULT_SETTINGS.birthday)
   const [gender, setGender] = useState<'male' | 'female'>(DEFAULT_SETTINGS.gender)
   const [trainingActivityIds, setTrainingActivityIds] = useState<number[]>([])
+
+  // Activity groups state
+  const [activityGroups, setActivityGroups] = useState<ActivityGroup[]>([])
 
   // Weight tracking state
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([])
@@ -262,10 +270,11 @@ function DashboardLayout() {
       // Load settings, training activity ids, and cached activities from Supabase
       let hasCachedData = false
       if (isSupabaseConfigured()) {
-        const [settings, trainingIds, cachedActivities] = await Promise.all([
+        const [settings, trainingIds, cachedActivities, groups] = await Promise.all([
           fetchUserSettings(storedAthlete.id),
           fetchTrainingActivityIds(storedAthlete.id),
           fetchCachedActivities(storedAthlete.id),
+          fetchActivityGroups(storedAthlete.id),
         ])
         if (settings) {
           setTimeRange(settings.timeRange)
@@ -274,6 +283,7 @@ function DashboardLayout() {
           setGender(settings.gender)
         }
         setTrainingActivityIds(trainingIds)
+        setActivityGroups(groups)
 
         // If we have cached data, show it immediately
         if (cachedActivities.length > 0) {
@@ -362,6 +372,34 @@ function DashboardLayout() {
     return success
   }, [])
 
+  const handleCreateGroup = useCallback(
+    async (name: string, activityIds: number[]): Promise<ActivityGroup | null> => {
+      if (!athlete) return null
+      const group = await createActivityGroup(athlete.id, name, activityIds)
+      if (group) {
+        setActivityGroups((prev) => [group, ...prev])
+      }
+      return group
+    },
+    [athlete]
+  )
+
+  const handleDeleteGroup = useCallback(async (groupId: string): Promise<boolean> => {
+    const success = await deleteActivityGroup(groupId)
+    if (success) {
+      setActivityGroups((prev) => prev.filter((g) => g.id !== groupId))
+    }
+    return success
+  }, [])
+
+  const handleUpdateGroupName = useCallback(async (groupId: string, name: string): Promise<boolean> => {
+    const success = await updateActivityGroupName(groupId, name)
+    if (success) {
+      setActivityGroups((prev) => prev.map((g) => g.id === groupId ? { ...g, name } : g))
+    }
+    return success
+  }, [])
+
   const filteredActivities = useMemo(() => {
     let filtered = activities
 
@@ -401,22 +439,82 @@ function DashboardLayout() {
     )
   }, [activities, timeRange, activityType])
 
+  // Merge grouped activities into single synthetic activities for stats
+  const mergedActivities = useMemo(() => {
+    const groupedIds = new Set<number>()
+    for (const group of activityGroups) {
+      for (const id of group.activityIds) groupedIds.add(id)
+    }
+
+    // Start with ungrouped activities
+    const result: StravaActivity[] = filteredActivities.filter((a) => !groupedIds.has(a.id))
+
+    // Add one synthetic activity per group
+    for (const group of activityGroups) {
+      const members = group.activityIds
+        .map((id) => filteredActivities.find((a) => a.id === id))
+        .filter((a): a is StravaActivity => a != null)
+
+      if (members.length === 0) continue
+
+      const wattsMembers = members.filter((a) => a.average_watts)
+      const hrMembers = members.filter((a) => a.average_heartrate)
+
+      // Use the earliest activity's date and type (predominant type)
+      const sorted = [...members].sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+      const typeCounts = new Map<string, number>()
+      for (const m of members) typeCounts.set(m.type, (typeCounts.get(m.type) || 0) + 1)
+      const predominantType = [...typeCounts.entries()].sort((a, b) => b[1] - a[1])[0][0]
+
+      const synthetic: StravaActivity = {
+        id: -group.activityIds[0], // negative to avoid collision
+        name: group.name,
+        type: predominantType,
+        sport_type: sorted[0].sport_type,
+        start_date: sorted[0].start_date,
+        start_date_local: sorted[0].start_date_local,
+        distance: members.reduce((s, a) => s + a.distance, 0),
+        moving_time: members.reduce((s, a) => s + a.moving_time, 0),
+        elapsed_time: members.reduce((s, a) => s + a.elapsed_time, 0),
+        total_elevation_gain: members.reduce((s, a) => s + a.total_elevation_gain, 0),
+        average_speed: members.reduce((s, a) => s + a.distance, 0) / members.reduce((s, a) => s + a.moving_time, 0),
+        max_speed: Math.max(...members.map((a) => a.max_speed)),
+        average_watts: wattsMembers.length > 0 ? wattsMembers.reduce((s, a) => s + a.average_watts!, 0) / wattsMembers.length : undefined,
+        max_watts: members.some((a) => a.max_watts) ? Math.max(...members.filter((a) => a.max_watts).map((a) => a.max_watts!)) : undefined,
+        weighted_average_watts: wattsMembers.length > 0 && wattsMembers.some((a) => a.weighted_average_watts)
+          ? wattsMembers.filter((a) => a.weighted_average_watts).reduce((s, a) => s + a.weighted_average_watts!, 0) / wattsMembers.filter((a) => a.weighted_average_watts).length
+          : undefined,
+        average_heartrate: hrMembers.length > 0 ? hrMembers.reduce((s, a) => s + a.average_heartrate!, 0) / hrMembers.length : undefined,
+        max_heartrate: members.some((a) => a.max_heartrate) ? Math.max(...members.filter((a) => a.max_heartrate).map((a) => a.max_heartrate!)) : undefined,
+        average_cadence: members.some((a) => a.average_cadence)
+          ? members.filter((a) => a.average_cadence).reduce((s, a) => s + a.average_cadence!, 0) / members.filter((a) => a.average_cadence).length
+          : undefined,
+        suffer_score: members.some((a) => a.suffer_score) ? members.reduce((s, a) => s + (a.suffer_score || 0), 0) : undefined,
+        kilojoules: members.some((a) => a.kilojoules) ? members.reduce((s, a) => s + (a.kilojoules || 0), 0) : undefined,
+      }
+
+      result.push(synthetic)
+    }
+
+    return result.sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
+  }, [filteredActivities, activityGroups])
+
   const statsActivities = useMemo(() => {
-    return filteredActivities.filter((a) => !trainingActivityIds.includes(a.id))
-  }, [filteredActivities, trainingActivityIds])
+    return mergedActivities.filter((a) => !trainingActivityIds.includes(a.id))
+  }, [mergedActivities, trainingActivityIds])
 
   const stats = useMemo(() => {
-    const rides = filteredActivities.filter(
+    const rides = mergedActivities.filter(
       (a) => a.type === 'Ride' || a.type === 'VirtualRide'
     )
-    const runs = filteredActivities.filter((a) => a.type === 'Run')
+    const runs = mergedActivities.filter((a) => a.type === 'Run')
 
-    const totalDistance = filteredActivities.reduce((sum, a) => sum + a.distance, 0)
-    const totalElevation = filteredActivities.reduce(
+    const totalDistance = mergedActivities.reduce((sum, a) => sum + a.distance, 0)
+    const totalElevation = mergedActivities.reduce(
       (sum, a) => sum + a.total_elevation_gain,
       0
     )
-    const totalTime = filteredActivities.reduce((sum, a) => sum + a.moving_time, 0)
+    const totalTime = mergedActivities.reduce((sum, a) => sum + a.moving_time, 0)
 
     const avgPower =
       rides.length > 0
@@ -425,16 +523,16 @@ function DashboardLayout() {
         : 0
 
     const avgHR =
-      filteredActivities.length > 0
-        ? filteredActivities.reduce((sum, a) => sum + (a.average_heartrate || 0), 0) /
-          filteredActivities.filter((a) => a.average_heartrate).length
+      mergedActivities.length > 0
+        ? mergedActivities.reduce((sum, a) => sum + (a.average_heartrate || 0), 0) /
+          mergedActivities.filter((a) => a.average_heartrate).length
         : 0
 
     const ftp = estimateFTP(rides) || 0
     const wattsPerKilo = ftp > 0 && weight > 0 ? ftp / weight : 0
 
     return {
-      totalActivities: filteredActivities.length,
+      totalActivities: mergedActivities.length,
       totalDistance: metersToKm(totalDistance),
       totalElevation,
       totalTime,
@@ -445,7 +543,7 @@ function DashboardLayout() {
       ftp,
       wattsPerKilo,
     }
-  }, [filteredActivities, weight])
+  }, [mergedActivities, weight])
 
   if (isLoading) {
     return (
@@ -490,6 +588,10 @@ function DashboardLayout() {
     timeRangeDays: timeRangeToDays[timeRange],
     trainingActivityIds,
     toggleActivityCategory,
+    activityGroups,
+    createGroup: handleCreateGroup,
+    deleteGroup: handleDeleteGroup,
+    updateGroupName: handleUpdateGroupName,
     weightEntries,
     addWeightEntry: handleAddWeightEntry,
     deleteWeightEntry: handleDeleteWeightEntry,

@@ -524,6 +524,133 @@ export async function fetchActivityIdsWithoutDetails(athleteId: number): Promise
   }
 }
 
+// Activity Groups
+export interface ActivityGroup {
+  id: string
+  athleteId: number
+  name: string
+  activityIds: number[]
+  createdAt: string
+  updatedAt: string
+}
+
+interface ActivityGroupRow {
+  id: string
+  athlete_id: number
+  name: string
+  activity_ids: number[]
+  created_at: string
+  updated_at: string
+}
+
+function rowToActivityGroup(row: ActivityGroupRow): ActivityGroup {
+  return {
+    id: row.id,
+    athleteId: row.athlete_id,
+    name: row.name,
+    activityIds: row.activity_ids,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+export async function fetchActivityGroups(athleteId: number): Promise<ActivityGroup[]> {
+  if (!supabase) return []
+
+  try {
+    const { data, error } = await supabase
+      .from('activity_groups')
+      .select('*')
+      .eq('athlete_id', athleteId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.warn('Supabase fetch activity groups error:', error.message)
+      return []
+    }
+
+    return (data as ActivityGroupRow[]).map(rowToActivityGroup)
+  } catch (err) {
+    console.warn('Supabase fetch activity groups error:', err)
+    return []
+  }
+}
+
+export async function createActivityGroup(
+  athleteId: number,
+  name: string,
+  activityIds: number[]
+): Promise<ActivityGroup | null> {
+  if (!supabase) return null
+
+  try {
+    const { data, error } = await supabase
+      .from('activity_groups')
+      .insert({
+        athlete_id: athleteId,
+        name,
+        activity_ids: activityIds,
+      })
+      .select()
+      .single()
+
+    if (error) {
+      console.warn('Supabase create activity group error:', error.message)
+      return null
+    }
+
+    return rowToActivityGroup(data as ActivityGroupRow)
+  } catch (err) {
+    console.warn('Supabase create activity group error:', err)
+    return null
+  }
+}
+
+export async function deleteActivityGroup(groupId: string): Promise<boolean> {
+  if (!supabase) return false
+
+  try {
+    const { error } = await supabase
+      .from('activity_groups')
+      .delete()
+      .eq('id', groupId)
+
+    if (error) {
+      console.warn('Supabase delete activity group error:', error.message)
+      return false
+    }
+
+    return true
+  } catch (err) {
+    console.warn('Supabase delete activity group error:', err)
+    return false
+  }
+}
+
+export async function updateActivityGroupName(
+  groupId: string,
+  name: string
+): Promise<boolean> {
+  if (!supabase) return false
+
+  try {
+    const { error } = await supabase
+      .from('activity_groups')
+      .update({ name, updated_at: new Date().toISOString() })
+      .eq('id', groupId)
+
+    if (error) {
+      console.warn('Supabase update activity group error:', error.message)
+      return false
+    }
+
+    return true
+  } catch (err) {
+    console.warn('Supabase update activity group error:', err)
+    return false
+  }
+}
+
 // Segment effort with activity context for time-series charts
 export interface SegmentEffortWithActivity extends StravaSegmentEffort {
   activityDate: string

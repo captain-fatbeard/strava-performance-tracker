@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { type StravaActivity, metersToKm, secondsToHMS } from '~/lib/strava'
-import { useDashboard } from '~/lib/dashboard-context'
+import { useDashboard, type ActivityGroup } from '~/lib/dashboard-context'
 import { formatDateFull } from '~/lib/chart-theme'
 import { calculateActivityScores, estimateFTP } from '~/lib/performance'
 
@@ -31,9 +31,73 @@ function getScoreLabel(score: number): string {
   return 'Easy'
 }
 
+interface MergedActivity {
+  type: 'single'
+  activity: StravaActivity
+}
+
+interface MergedGroup {
+  type: 'group'
+  group: ActivityGroup
+  activities: StravaActivity[]
+  // Aggregated values
+  distance: number
+  movingTime: number
+  elevation: number
+  avgWatts: number | undefined
+  avgHR: number | undefined
+  date: string // earliest activity date
+  latestDate: string // for sorting
+}
+
+type ListItem = MergedActivity | MergedGroup
+
+function aggregateGroup(group: ActivityGroup, activities: StravaActivity[]): MergedGroup {
+  const groupActivities = group.activityIds
+    .map((id) => activities.find((a) => a.id === id))
+    .filter((a): a is StravaActivity => a != null)
+    .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+
+  const distance = groupActivities.reduce((sum, a) => sum + a.distance, 0)
+  const movingTime = groupActivities.reduce((sum, a) => sum + a.moving_time, 0)
+  const elevation = groupActivities.reduce((sum, a) => sum + a.total_elevation_gain, 0)
+
+  const wattsActivities = groupActivities.filter((a) => a.average_watts)
+  const avgWatts = wattsActivities.length > 0
+    ? wattsActivities.reduce((sum, a) => sum + (a.average_watts || 0), 0) / wattsActivities.length
+    : undefined
+
+  const hrActivities = groupActivities.filter((a) => a.average_heartrate)
+  const avgHR = hrActivities.length > 0
+    ? hrActivities.reduce((sum, a) => sum + (a.average_heartrate || 0), 0) / hrActivities.length
+    : undefined
+
+  const dates = groupActivities.map((a) => a.start_date_local)
+
+  return {
+    type: 'group',
+    group,
+    activities: groupActivities,
+    distance,
+    movingTime,
+    elevation,
+    avgWatts,
+    avgHR,
+    date: dates[0] || '',
+    latestDate: dates[dates.length - 1] || '',
+  }
+}
+
 export function ActivityList({ activities }: ActivityListProps) {
-  const { trainingActivityIds, toggleActivityCategory } = useDashboard()
+  const { trainingActivityIds, toggleActivityCategory, activityGroups, createGroup, deleteGroup, updateGroupName } = useDashboard()
   const navigate = useNavigate()
+
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  const [showGroupNameModal, setShowGroupNameModal] = useState(false)
+  const [groupName, setGroupName] = useState('')
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
+  const [editingGroupName, setEditingGroupName] = useState('')
 
   const scoreMap = useMemo(() => {
     const rides = activities.filter((a) => a.type === 'Ride' || a.type === 'VirtualRide')
@@ -44,6 +108,105 @@ export function ActivityList({ activities }: ActivityListProps) {
     return map
   }, [activities])
 
+  // Build grouped activity IDs set for quick lookup
+  const groupedActivityIds = useMemo(() => {
+    const ids = new Set<number>()
+    for (const group of activityGroups) {
+      for (const id of group.activityIds) {
+        ids.add(id)
+      }
+    }
+    return ids
+  }, [activityGroups])
+
+  // Build list items: groups + ungrouped singles
+  const listItems = useMemo(() => {
+    const items: ListItem[] = []
+
+    // Add groups (only if they have visible activities)
+    for (const group of activityGroups) {
+      const merged = aggregateGroup(group, activities)
+      if (merged.activities.length > 0) {
+        items.push(merged)
+      }
+    }
+
+    // Add ungrouped activities
+    for (const activity of activities) {
+      if (!groupedActivityIds.has(activity.id)) {
+        items.push({ type: 'single', activity })
+      }
+    }
+
+    // Sort by date descending
+    items.sort((a, b) => {
+      const dateA = a.type === 'single' ? a.activity.start_date : a.latestDate
+      const dateB = b.type === 'single' ? b.activity.start_date : b.latestDate
+      return new Date(dateB).getTime() - new Date(dateA).getTime()
+    })
+
+    return items
+  }, [activities, activityGroups, groupedActivityIds])
+
+  const toggleSelect = useCallback((id: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }, [])
+
+  const toggleGroupExpanded = useCallback((groupId: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(groupId)) {
+        next.delete(groupId)
+      } else {
+        next.add(groupId)
+      }
+      return next
+    })
+  }, [])
+
+  const handleCreateGroup = useCallback(async () => {
+    if (selectedIds.size < 2 || !groupName.trim()) return
+    await createGroup(groupName.trim(), Array.from(selectedIds))
+    setSelectedIds(new Set())
+    setGroupName('')
+    setShowGroupNameModal(false)
+  }, [selectedIds, groupName, createGroup])
+
+  const handleDeleteGroup = useCallback(async (groupId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    await deleteGroup(groupId)
+    setExpandedGroups((prev) => {
+      const next = new Set(prev)
+      next.delete(groupId)
+      return next
+    })
+  }, [deleteGroup])
+
+  const handleStartRename = useCallback((groupId: string, currentName: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setEditingGroupId(groupId)
+    setEditingGroupName(currentName)
+  }, [])
+
+  const handleFinishRename = useCallback(async () => {
+    if (editingGroupId && editingGroupName.trim()) {
+      await updateGroupName(editingGroupId, editingGroupName.trim())
+    }
+    setEditingGroupId(null)
+    setEditingGroupName('')
+  }, [editingGroupId, editingGroupName, updateGroupName])
+
+  const selectionMode = selectedIds.size > 0
+
   if (activities.length === 0) {
     return (
       <div className="text-center py-16 text-text-muted text-[0.9rem]">
@@ -52,92 +215,395 @@ export function ActivityList({ activities }: ActivityListProps) {
     )
   }
 
+  const thClass = "text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5"
+  const tdClass = "p-4 px-5 border-b border-border-subtle max-md:px-2 max-md:py-2.5"
+
   return (
-    <div className="overflow-x-auto bg-bg-secondary rounded-[var(--radius-lg)] border border-border-subtle max-md:text-[0.8rem]">
-      <table className="w-full border-collapse text-sm">
-        <thead>
-          <tr>
-            <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider first:rounded-tl-[var(--radius-lg)] last:rounded-tr-[var(--radius-lg)] max-md:px-2 max-md:py-2.5">Date</th>
-            <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5">Name</th>
-            <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5">Type</th>
-            <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5">Distance</th>
-            <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5">Time</th>
-            <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5">Elevation</th>
-            <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5">Power</th>
-            <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5">HR</th>
-            <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5">Ride Score</th>
-            <th className="text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider last:rounded-tr-[var(--radius-lg)] max-md:px-2 max-md:py-2.5">Category</th>
-          </tr>
-        </thead>
-        <tbody>
-          {activities.map((activity) => {
-            const isTraining = trainingActivityIds.includes(activity.id)
-            return (
-              <tr
-                key={activity.id}
-                className="transition-colors duration-150 hover:[&_td]:bg-bg-tertiary last:[&_td]:border-b-0 cursor-pointer"
-                onClick={(e) => {
-                  // Don't navigate when clicking the category button
-                  if ((e.target as HTMLElement).closest('button')) return
-                  navigate({ to: '/activities/$activityId', params: { activityId: String(activity.id) } })
-                }}
+    <>
+      {/* Selection toolbar */}
+      {selectionMode && (
+        <div className="flex items-center gap-3 mb-3 p-3 bg-accent/10 border border-accent/30 rounded-[var(--radius-md)] animate-fade-in">
+          <span className="text-sm font-medium text-accent">
+            {selectedIds.size} selected
+          </span>
+          <button
+            className="py-1.5 px-4 rounded-[var(--radius-sm)] text-[0.8rem] font-semibold cursor-pointer transition-all duration-150 bg-accent text-white hover:bg-accent-dark disabled:opacity-40 disabled:cursor-not-allowed"
+            disabled={selectedIds.size < 2}
+            onClick={() => {
+              setGroupName('')
+              setShowGroupNameModal(true)
+            }}
+          >
+            Group Activities
+          </button>
+          <button
+            className="py-1.5 px-4 rounded-[var(--radius-sm)] text-[0.8rem] font-medium cursor-pointer transition-all duration-150 bg-bg-tertiary border border-border text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
+            onClick={() => setSelectedIds(new Set())}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* Group name modal */}
+      {showGroupNameModal && (
+        <>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40" onClick={() => setShowGroupNameModal(false)} />
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-bg-secondary border border-border rounded-[var(--radius-lg)] p-6 w-[400px] max-w-[90vw] shadow-xl animate-modal-slide-in">
+            <h3 className="text-lg font-semibold text-text-primary mb-4">Group Activities</h3>
+            <p className="text-sm text-text-muted mb-4">
+              Give this group a name. The {selectedIds.size} activities will appear as a single merged entry.
+            </p>
+            <input
+              type="text"
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleCreateGroup() }}
+              placeholder="e.g. Weekend Century Ride"
+              autoFocus
+              className="w-full bg-bg-tertiary border border-border text-text-primary py-2.5 px-4 rounded-[var(--radius-sm)] text-sm transition-all duration-150 hover:border-text-muted focus:outline-none focus:border-accent focus:ring-3 focus:ring-accent/15 mb-4"
+            />
+            <div className="flex gap-3 justify-end">
+              <button
+                className="py-2 px-4 rounded-[var(--radius-sm)] text-sm font-medium cursor-pointer bg-bg-tertiary border border-border text-text-secondary hover:bg-bg-elevated hover:text-text-primary transition-all duration-150"
+                onClick={() => setShowGroupNameModal(false)}
               >
-                <td className="p-4 px-5 border-b border-border-subtle max-md:px-2 max-md:py-2.5">{formatDateFull(activity.start_date_local)}</td>
-                <td className="p-4 px-5 border-b border-border-subtle font-semibold max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap max-md:px-2 max-md:py-2.5 max-md:max-w-[140px]">
-                  <Link
-                    to="/activities/$activityId"
-                    params={{ activityId: String(activity.id) }}
-                    className="text-text-primary no-underline hover:text-accent transition-colors"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {activity.name}
-                  </Link>
-                </td>
-                <td className="p-4 px-5 border-b border-border-subtle max-md:px-2 max-md:py-2.5">
-                  <span className={`inline-block py-1.5 px-3 rounded-[var(--radius-sm)] text-[0.7rem] font-semibold uppercase tracking-wide ${activityTypeClasses[activity.type.toLowerCase()] || 'bg-bg-tertiary text-text-secondary'}`}>
-                    {activity.type === 'VirtualRide' ? 'Zwift' : activity.type}
-                  </span>
-                </td>
-                <td className="p-4 px-5 border-b border-border-subtle max-md:px-2 max-md:py-2.5">{metersToKm(activity.distance).toFixed(1)} km</td>
-                <td className="p-4 px-5 border-b border-border-subtle max-md:px-2 max-md:py-2.5">{secondsToHMS(activity.moving_time)}</td>
-                <td className="p-4 px-5 border-b border-border-subtle max-md:px-2 max-md:py-2.5">{activity.total_elevation_gain.toFixed(0)} m</td>
-                <td className="p-4 px-5 border-b border-border-subtle max-md:px-2 max-md:py-2.5">
-                  {activity.average_watts ? `${Math.round(activity.average_watts)} W` : '-'}
-                </td>
-                <td className="p-4 px-5 border-b border-border-subtle max-md:px-2 max-md:py-2.5">
-                  {activity.average_heartrate
-                    ? `${Math.round(activity.average_heartrate)} bpm`
-                    : '-'}
-                </td>
-                <td className="p-4 px-5 border-b border-border-subtle max-md:px-2 max-md:py-2.5">
-                  {scoreMap.has(activity.id) ? (() => {
-                    const score = scoreMap.get(activity.id)!
-                    const label = getScoreLabel(score)
-                    return (
-                      <span className={`inline-block py-1.5 px-3 rounded-[var(--radius-sm)] text-[0.7rem] font-semibold ${scoreLabelClasses[label]}`}>
-                        {score} · {label}
-                      </span>
-                    )
-                  })() : '-'}
-                </td>
-                <td className="p-4 px-5 border-b border-border-subtle max-md:px-2 max-md:py-2.5">
-                  <button
-                    className={`py-1.5 px-3 rounded-[var(--radius-sm)] text-[0.7rem] font-semibold cursor-pointer transition-all duration-150 whitespace-nowrap ${
-                      isTraining
-                        ? 'bg-[#f59e0b]/10 border border-[#f59e0b]/30 text-[#f59e0b] hover:bg-[#f59e0b]/20 hover:border-[#f59e0b]/50'
-                        : 'bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20 hover:border-accent/50'
-                    }`}
-                    onClick={() => toggleActivityCategory(activity.id)}
-                    title={isTraining ? 'Mark as performance activity' : 'Mark as training activity'}
-                  >
-                    {isTraining ? 'Training' : 'Performance'}
-                  </button>
-                </td>
-              </tr>
+                Cancel
+              </button>
+              <button
+                className="py-2 px-4 rounded-[var(--radius-sm)] text-sm font-semibold cursor-pointer bg-accent text-white hover:bg-accent-dark transition-all duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
+                disabled={!groupName.trim()}
+                onClick={handleCreateGroup}
+              >
+                Create Group
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      <div className="overflow-x-auto bg-bg-secondary rounded-[var(--radius-lg)] border border-border-subtle max-md:text-[0.8rem]">
+        <table className="w-full border-collapse text-sm">
+          <thead>
+            <tr>
+              <th className={`${thClass} first:rounded-tl-[var(--radius-lg)] w-10`}>
+                <span className="sr-only">Select</span>
+              </th>
+              <th className={thClass}>Date</th>
+              <th className={thClass}>Name</th>
+              <th className={thClass}>Type</th>
+              <th className={thClass}>Distance</th>
+              <th className={thClass}>Time</th>
+              <th className={thClass}>Elevation</th>
+              <th className={thClass}>Power</th>
+              <th className={thClass}>HR</th>
+              <th className={thClass}>Ride Score</th>
+              <th className={`${thClass} last:rounded-tr-[var(--radius-lg)]`}>Category</th>
+            </tr>
+          </thead>
+          <tbody>
+            {listItems.map((item) => {
+              if (item.type === 'group') {
+                const isExpanded = expandedGroups.has(item.group.id)
+                return (
+                  <GroupRow
+                    key={`group-${item.group.id}`}
+                    item={item}
+                    isExpanded={isExpanded}
+                    onToggleExpand={() => toggleGroupExpanded(item.group.id)}
+                    onDelete={(e) => handleDeleteGroup(item.group.id, e)}
+                    onStartRename={(e) => handleStartRename(item.group.id, item.group.name, e)}
+                    editingGroupId={editingGroupId}
+                    editingGroupName={editingGroupName}
+                    setEditingGroupName={setEditingGroupName}
+                    onFinishRename={handleFinishRename}
+                    tdClass={tdClass}
+                    scoreMap={scoreMap}
+                    trainingActivityIds={trainingActivityIds}
+                    toggleActivityCategory={toggleActivityCategory}
+                    navigate={navigate}
+                  />
+                )
+              }
+
+              const activity = item.activity
+              const isTraining = trainingActivityIds.includes(activity.id)
+              const isSelected = selectedIds.has(activity.id)
+              return (
+                <ActivityRow
+                  key={activity.id}
+                  activity={activity}
+                  isTraining={isTraining}
+                  isSelected={isSelected}
+                  onToggleSelect={(e) => toggleSelect(activity.id, e)}
+                  toggleActivityCategory={toggleActivityCategory}
+                  navigate={navigate}
+                  tdClass={tdClass}
+                  scoreMap={scoreMap}
+                />
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}
+
+function ActivityRow({
+  activity,
+  isTraining,
+  isSelected,
+  onToggleSelect,
+  toggleActivityCategory,
+  navigate,
+  tdClass,
+  scoreMap,
+  indent,
+}: {
+  activity: StravaActivity
+  isTraining: boolean
+  isSelected?: boolean
+  onToggleSelect?: (e: React.MouseEvent) => void
+  toggleActivityCategory: (id: number) => void
+  navigate: ReturnType<typeof useNavigate>
+  tdClass: string
+  scoreMap: Map<number, number>
+  indent?: boolean
+}) {
+  return (
+    <tr
+      className={`transition-colors duration-150 hover:[&_td]:bg-bg-tertiary last:[&_td]:border-b-0 cursor-pointer ${indent ? '[&_td]:bg-bg-primary/50' : ''}`}
+      onClick={(e) => {
+        if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('input[type="checkbox"]')) return
+        navigate({ to: '/activities/$activityId', params: { activityId: String(activity.id) } })
+      }}
+    >
+      <td className={tdClass}>
+        {onToggleSelect ? (
+          <input
+            type="checkbox"
+            checked={isSelected || false}
+            onChange={() => {}}
+            onClick={onToggleSelect}
+            className="size-4 accent-accent cursor-pointer"
+          />
+        ) : indent ? (
+          <span className="text-text-muted text-xs pl-2">-</span>
+        ) : null}
+      </td>
+      <td className={tdClass}>{formatDateFull(activity.start_date_local)}</td>
+      <td className={`${tdClass} font-semibold max-w-[220px] overflow-hidden text-ellipsis whitespace-nowrap max-md:max-w-[140px]`}>
+        <Link
+          to="/activities/$activityId"
+          params={{ activityId: String(activity.id) }}
+          className="text-text-primary no-underline hover:text-accent transition-colors"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {activity.name}
+        </Link>
+      </td>
+      <td className={tdClass}>
+        <span className={`inline-block py-1.5 px-3 rounded-[var(--radius-sm)] text-[0.7rem] font-semibold uppercase tracking-wide ${activityTypeClasses[activity.type.toLowerCase()] || 'bg-bg-tertiary text-text-secondary'}`}>
+          {activity.type === 'VirtualRide' ? 'Zwift' : activity.type}
+        </span>
+      </td>
+      <td className={tdClass}>{metersToKm(activity.distance).toFixed(1)} km</td>
+      <td className={tdClass}>{secondsToHMS(activity.moving_time)}</td>
+      <td className={tdClass}>{activity.total_elevation_gain.toFixed(0)} m</td>
+      <td className={tdClass}>
+        {activity.average_watts ? `${Math.round(activity.average_watts)} W` : '-'}
+      </td>
+      <td className={tdClass}>
+        {activity.average_heartrate
+          ? `${Math.round(activity.average_heartrate)} bpm`
+          : '-'}
+      </td>
+      <td className={tdClass}>
+        {scoreMap.has(activity.id) ? (() => {
+          const score = scoreMap.get(activity.id)!
+          const label = getScoreLabel(score)
+          return (
+            <span className={`inline-block py-1.5 px-3 rounded-[var(--radius-sm)] text-[0.7rem] font-semibold ${scoreLabelClasses[label]}`}>
+              {score} · {label}
+            </span>
+          )
+        })() : '-'}
+      </td>
+      <td className={tdClass}>
+        <button
+          className={`py-1.5 px-3 rounded-[var(--radius-sm)] text-[0.7rem] font-semibold cursor-pointer transition-all duration-150 whitespace-nowrap ${
+            isTraining
+              ? 'bg-[#f59e0b]/10 border border-[#f59e0b]/30 text-[#f59e0b] hover:bg-[#f59e0b]/20 hover:border-[#f59e0b]/50'
+              : 'bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20 hover:border-accent/50'
+          }`}
+          onClick={() => toggleActivityCategory(activity.id)}
+          title={isTraining ? 'Mark as performance activity' : 'Mark as training activity'}
+        >
+          {isTraining ? 'Training' : 'Performance'}
+        </button>
+      </td>
+    </tr>
+  )
+}
+
+function GroupRow({
+  item,
+  isExpanded,
+  onToggleExpand,
+  onDelete,
+  onStartRename,
+  editingGroupId,
+  editingGroupName,
+  setEditingGroupName,
+  onFinishRename,
+  tdClass,
+  scoreMap,
+  trainingActivityIds,
+  toggleActivityCategory,
+  navigate,
+}: {
+  item: MergedGroup
+  isExpanded: boolean
+  onToggleExpand: () => void
+  onDelete: (e: React.MouseEvent) => void
+  onStartRename: (e: React.MouseEvent) => void
+  editingGroupId: string | null
+  editingGroupName: string
+  setEditingGroupName: (name: string) => void
+  onFinishRename: () => void
+  tdClass: string
+  scoreMap: Map<number, number>
+  trainingActivityIds: number[]
+  toggleActivityCategory: (id: number) => void
+  navigate: ReturnType<typeof useNavigate>
+}) {
+  const isEditing = editingGroupId === item.group.id
+
+  // Aggregate ride scores
+  const totalScore = item.activities.reduce((sum, a) => sum + (scoreMap.get(a.id) || 0), 0)
+  const scoredCount = item.activities.filter((a) => scoreMap.has(a.id)).length
+  const avgScore = scoredCount > 0 ? Math.round(totalScore / scoredCount) : null
+
+  // Get unique activity types
+  const types = [...new Set(item.activities.map((a) => a.type))]
+
+  return (
+    <>
+      <tr
+        className="transition-colors duration-150 hover:[&_td]:bg-bg-tertiary cursor-pointer [&_td]:bg-accent/[0.03]"
+        onClick={onToggleExpand}
+      >
+        <td className={tdClass}>
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className={`text-accent transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`}
+          >
+            <path d="M9 18l6-6-6-6" />
+          </svg>
+        </td>
+        <td className={tdClass}>
+          <span className="text-text-muted text-xs">
+            {formatDateFull(item.date)}
+            {item.activities.length > 1 && item.date !== item.latestDate && (
+              <> - {formatDateFull(item.latestDate)}</>
+            )}
+          </span>
+        </td>
+        <td className={`${tdClass} font-semibold max-w-[220px] max-md:max-w-[140px]`}>
+          <div className="flex items-center gap-2">
+            {isEditing ? (
+              <input
+                type="text"
+                value={editingGroupName}
+                onChange={(e) => setEditingGroupName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') onFinishRename(); if (e.key === 'Escape') { setEditingGroupName(''); onFinishRename() } }}
+                onBlur={onFinishRename}
+                autoFocus
+                onClick={(e) => e.stopPropagation()}
+                className="bg-bg-tertiary border border-accent text-text-primary py-0.5 px-2 rounded text-sm w-full focus:outline-none"
+              />
+            ) : (
+              <>
+                <span className="bg-linear-to-r from-accent to-accent-light bg-clip-text text-transparent font-bold">
+                  {item.group.name}
+                </span>
+                <span className="text-[0.65rem] text-text-muted bg-bg-tertiary py-0.5 px-1.5 rounded-full">
+                  {item.activities.length}
+                </span>
+              </>
+            )}
+          </div>
+        </td>
+        <td className={tdClass}>
+          <div className="flex flex-wrap gap-1">
+            {types.map((t) => (
+              <span key={t} className={`inline-block py-1 px-2 rounded-[var(--radius-sm)] text-[0.65rem] font-semibold uppercase tracking-wide ${activityTypeClasses[t.toLowerCase()] || 'bg-bg-tertiary text-text-secondary'}`}>
+                {t === 'VirtualRide' ? 'Zwift' : t}
+              </span>
+            ))}
+          </div>
+        </td>
+        <td className={`${tdClass} font-medium`}>{metersToKm(item.distance).toFixed(1)} km</td>
+        <td className={`${tdClass} font-medium`}>{secondsToHMS(item.movingTime)}</td>
+        <td className={`${tdClass} font-medium`}>{item.elevation.toFixed(0)} m</td>
+        <td className={`${tdClass} font-medium`}>
+          {item.avgWatts ? `${Math.round(item.avgWatts)} W` : '-'}
+        </td>
+        <td className={`${tdClass} font-medium`}>
+          {item.avgHR ? `${Math.round(item.avgHR)} bpm` : '-'}
+        </td>
+        <td className={`${tdClass} font-medium`}>
+          {avgScore != null ? (() => {
+            const label = getScoreLabel(avgScore)
+            return (
+              <span className={`inline-block py-1.5 px-3 rounded-[var(--radius-sm)] text-[0.7rem] font-semibold ${scoreLabelClasses[label]}`}>
+                {avgScore} · {label}
+              </span>
             )
-          })}
-        </tbody>
-      </table>
-    </div>
+          })() : '-'}
+        </td>
+        <td className={tdClass}>
+          <div className="flex items-center gap-1">
+            <button
+              className="py-1 px-2 rounded text-[0.65rem] font-medium cursor-pointer bg-bg-tertiary border border-border text-text-muted hover:text-text-primary hover:border-text-muted transition-all duration-150"
+              onClick={onStartRename}
+              title="Rename group"
+            >
+              Rename
+            </button>
+            <button
+              className="py-1 px-2 rounded text-[0.65rem] font-medium cursor-pointer bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#ef4444] hover:bg-[#ef4444]/20 hover:border-[#ef4444]/40 transition-all duration-150"
+              onClick={onDelete}
+              title="Ungroup activities"
+            >
+              Ungroup
+            </button>
+          </div>
+        </td>
+      </tr>
+
+      {/* Expanded child activities */}
+      {isExpanded && item.activities.map((activity) => {
+        const isTraining = trainingActivityIds.includes(activity.id)
+        return (
+          <ActivityRow
+            key={activity.id}
+            activity={activity}
+            isTraining={isTraining}
+            toggleActivityCategory={toggleActivityCategory}
+            navigate={navigate}
+            tdClass={tdClass}
+            scoreMap={scoreMap}
+            indent
+          />
+        )
+      })}
+    </>
   )
 }
