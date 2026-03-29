@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.6.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.5.0...v1.6.0) (2026-03-29)
+
+
+### Features
+
+* add activity grouping to merge activities into one ([a709527](https://github.com/captain-fatbeard/strava-performance-tracker/commit/a7095272bfb29b9042311301d9940b2a0ba1adfd))
+
 ## [1.5.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.4.0...v1.5.0) (2026-03-27)
 
 
