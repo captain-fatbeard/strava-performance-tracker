@@ -92,6 +92,7 @@ export function ActivityList({ activities }: ActivityListProps) {
   const { trainingActivityIds, toggleActivityCategory, activityGroups, createGroup, deleteGroup, updateGroupName } = useDashboard()
   const navigate = useNavigate()
 
+  const [groupMode, setGroupMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [showGroupNameModal, setShowGroupNameModal] = useState(false)
@@ -155,11 +156,18 @@ export function ActivityList({ activities }: ActivityListProps) {
       if (next.has(id)) {
         next.delete(id)
       } else {
+        // Enforce same category: check if adding this would mix categories
+        const isTraining = trainingActivityIds.includes(id)
+        if (next.size > 0) {
+          const firstId = next.values().next().value!
+          const firstIsTraining = trainingActivityIds.includes(firstId)
+          if (isTraining !== firstIsTraining) return prev
+        }
         next.add(id)
       }
       return next
     })
-  }, [])
+  }, [trainingActivityIds])
 
   const toggleGroupExpanded = useCallback((groupId: string) => {
     setExpandedGroups((prev) => {
@@ -205,7 +213,12 @@ export function ActivityList({ activities }: ActivityListProps) {
     setEditingGroupName('')
   }, [editingGroupId, editingGroupName, updateGroupName])
 
-  const selectionMode = selectedIds.size > 0
+  const toggleGroupMode = useCallback(() => {
+    setGroupMode((prev) => {
+      if (prev) setSelectedIds(new Set())
+      return !prev
+    })
+  }, [])
 
   if (activities.length === 0) {
     return (
@@ -220,30 +233,24 @@ export function ActivityList({ activities }: ActivityListProps) {
 
   return (
     <>
-      {/* Selection toolbar */}
-      {selectionMode && (
-        <div className="flex items-center gap-3 mb-3 p-3 bg-accent/10 border border-accent/30 rounded-[var(--radius-md)] animate-fade-in">
-          <span className="text-sm font-medium text-accent">
+      {/* Group mode toggle */}
+      <div className="flex items-center gap-3 mb-3">
+        <button
+          className={`py-1.5 px-4 rounded-[var(--radius-sm)] text-[0.8rem] font-semibold cursor-pointer transition-all duration-150 ${
+            groupMode
+              ? 'bg-accent text-white hover:bg-accent-dark'
+              : 'bg-bg-tertiary border border-border text-text-secondary hover:bg-bg-elevated hover:text-text-primary'
+          }`}
+          onClick={toggleGroupMode}
+        >
+          {groupMode ? 'Grouping On' : 'Group Activities'}
+        </button>
+        {groupMode && selectedIds.size > 0 && (
+          <span className="text-sm text-text-muted animate-fade-in">
             {selectedIds.size} selected
           </span>
-          <button
-            className="py-1.5 px-4 rounded-[var(--radius-sm)] text-[0.8rem] font-semibold cursor-pointer transition-all duration-150 bg-accent text-white hover:bg-accent-dark disabled:opacity-40 disabled:cursor-not-allowed"
-            disabled={selectedIds.size < 2}
-            onClick={() => {
-              setGroupName('')
-              setShowGroupNameModal(true)
-            }}
-          >
-            Group Activities
-          </button>
-          <button
-            className="py-1.5 px-4 rounded-[var(--radius-sm)] text-[0.8rem] font-medium cursor-pointer transition-all duration-150 bg-bg-tertiary border border-border text-text-secondary hover:bg-bg-elevated hover:text-text-primary"
-            onClick={() => setSelectedIds(new Set())}
-          >
-            Cancel
-          </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Group name modal */}
       {showGroupNameModal && (
@@ -287,7 +294,7 @@ export function ActivityList({ activities }: ActivityListProps) {
           <thead>
             <tr>
               <th className={`${thClass} first:rounded-tl-[var(--radius-lg)] w-10`}>
-                <span className="sr-only">Select</span>
+                <span className="sr-only">{groupMode ? 'Select' : ''}</span>
               </th>
               <th className={thClass}>Date</th>
               <th className={thClass}>Name</th>
@@ -322,6 +329,7 @@ export function ActivityList({ activities }: ActivityListProps) {
                     trainingActivityIds={trainingActivityIds}
                     toggleActivityCategory={toggleActivityCategory}
                     navigate={navigate}
+                    groupMode={groupMode}
                   />
                 )
               }
@@ -334,18 +342,35 @@ export function ActivityList({ activities }: ActivityListProps) {
                   key={activity.id}
                   activity={activity}
                   isTraining={isTraining}
-                  isSelected={isSelected}
-                  onToggleSelect={(e) => toggleSelect(activity.id, e)}
+                  isSelected={groupMode ? isSelected : undefined}
+                  onToggleSelect={groupMode ? (e) => toggleSelect(activity.id, e) : undefined}
                   toggleActivityCategory={toggleActivityCategory}
                   navigate={navigate}
                   tdClass={tdClass}
                   scoreMap={scoreMap}
+                  groupMode={groupMode}
                 />
               )
             })}
           </tbody>
         </table>
       </div>
+
+      {/* Sticky confirm group button */}
+      {groupMode && (
+        <div className="sticky bottom-4 z-30 flex justify-center mt-4 animate-fade-in">
+          <button
+            className="py-3 px-8 rounded-[var(--radius-md)] text-sm font-semibold cursor-pointer transition-all duration-150 bg-accent text-white hover:bg-accent-dark shadow-lg shadow-accent/25 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+            disabled={selectedIds.size < 2}
+            onClick={() => {
+              setGroupName('')
+              setShowGroupNameModal(true)
+            }}
+          >
+            Confirm Group{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}
+          </button>
+        </div>
+      )}
     </>
   )
 }
@@ -360,6 +385,7 @@ function ActivityRow({
   tdClass,
   scoreMap,
   indent,
+  groupMode,
 }: {
   activity: StravaActivity
   isTraining: boolean
@@ -370,6 +396,7 @@ function ActivityRow({
   tdClass: string
   scoreMap: Map<number, number>
   indent?: boolean
+  groupMode?: boolean
 }) {
   return (
     <tr
@@ -462,6 +489,7 @@ function GroupRow({
   trainingActivityIds,
   toggleActivityCategory,
   navigate,
+  groupMode,
 }: {
   item: MergedGroup
   isExpanded: boolean
@@ -477,6 +505,7 @@ function GroupRow({
   trainingActivityIds: number[]
   toggleActivityCategory: (id: number) => void
   navigate: ReturnType<typeof useNavigate>
+  groupMode: boolean
 }) {
   const isEditing = editingGroupId === item.group.id
 
@@ -569,22 +598,35 @@ function GroupRow({
           })() : '-'}
         </td>
         <td className={tdClass}>
-          <div className="flex items-center gap-1">
-            <button
-              className="py-1 px-2 rounded text-[0.65rem] font-medium cursor-pointer bg-bg-tertiary border border-border text-text-muted hover:text-text-primary hover:border-text-muted transition-all duration-150"
-              onClick={onStartRename}
-              title="Rename group"
-            >
-              Rename
-            </button>
-            <button
-              className="py-1 px-2 rounded text-[0.65rem] font-medium cursor-pointer bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#ef4444] hover:bg-[#ef4444]/20 hover:border-[#ef4444]/40 transition-all duration-150"
-              onClick={onDelete}
-              title="Ungroup activities"
-            >
-              Ungroup
-            </button>
-          </div>
+          {groupMode ? (
+            <div className="flex items-center gap-1">
+              <button
+                className="py-1 px-2 rounded text-[0.65rem] font-medium cursor-pointer bg-bg-tertiary border border-border text-text-muted hover:text-text-primary hover:border-text-muted transition-all duration-150"
+                onClick={onStartRename}
+                title="Rename group"
+              >
+                Rename
+              </button>
+              <button
+                className="py-1 px-2 rounded text-[0.65rem] font-medium cursor-pointer bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#ef4444] hover:bg-[#ef4444]/20 hover:border-[#ef4444]/40 transition-all duration-150"
+                onClick={onDelete}
+                title="Ungroup activities"
+              >
+                Ungroup
+              </button>
+            </div>
+          ) : (() => {
+            const groupIsTraining = item.activities.length > 0 && trainingActivityIds.includes(item.activities[0].id)
+            return (
+              <span className={`inline-block py-1.5 px-3 rounded-[var(--radius-sm)] text-[0.7rem] font-semibold whitespace-nowrap ${
+                groupIsTraining
+                  ? 'bg-[#f59e0b]/10 border border-[#f59e0b]/30 text-[#f59e0b]'
+                  : 'bg-accent/10 border border-accent/30 text-accent'
+              }`}>
+                {groupIsTraining ? 'Training' : 'Performance'}
+              </span>
+            )
+          })()}
         </td>
       </tr>
 
