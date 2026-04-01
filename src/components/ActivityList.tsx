@@ -9,6 +9,9 @@ interface ActivityListProps {
   activities: StravaActivity[]
 }
 
+type SortColumn = 'date' | 'type' | 'distance' | 'time' | 'elevation' | 'power' | 'hr' | 'score' | 'category' | null
+type SortDirection = 'asc' | 'desc'
+
 const activityTypeClasses: Record<string, string> = {
   ride: 'bg-info-muted text-[#60a5fa]',
   virtualride: 'bg-info-muted text-[#60a5fa]',
@@ -99,6 +102,9 @@ export function ActivityList({ activities }: ActivityListProps) {
   const [groupName, setGroupName] = useState('')
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null)
   const [editingGroupName, setEditingGroupName] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortColumn, setSortColumn] = useState<SortColumn>(null)
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
   const scoreMap = useMemo(() => {
     const rides = activities.filter((a) => a.type === 'Ride' || a.type === 'VirtualRide')
@@ -120,14 +126,20 @@ export function ActivityList({ activities }: ActivityListProps) {
     return ids
   }, [activityGroups])
 
-  // Build list items: groups + ungrouped singles
+  // Build list items: groups + ungrouped singles, with search filtering and sorting
   const listItems = useMemo(() => {
     const items: ListItem[] = []
+
+    const query = searchQuery.toLowerCase().trim()
 
     // Add groups (only if they have visible activities)
     for (const group of activityGroups) {
       const merged = aggregateGroup(group, activities)
       if (merged.activities.length > 0) {
+        if (query && !merged.group.name.toLowerCase().includes(query) &&
+            !merged.activities.some((a) => a.name.toLowerCase().includes(query))) {
+          continue
+        }
         items.push(merged)
       }
     }
@@ -135,19 +147,55 @@ export function ActivityList({ activities }: ActivityListProps) {
     // Add ungrouped activities
     for (const activity of activities) {
       if (!groupedActivityIds.has(activity.id)) {
+        if (query && !activity.name.toLowerCase().includes(query)) continue
         items.push({ type: 'single', activity })
       }
     }
 
-    // Sort by date descending
-    items.sort((a, b) => {
-      const dateA = a.type === 'single' ? a.activity.start_date : a.latestDate
-      const dateB = b.type === 'single' ? b.activity.start_date : b.latestDate
-      return new Date(dateB).getTime() - new Date(dateA).getTime()
-    })
+    // Sort helper: extract numeric value for a column
+    const getSortValue = (item: ListItem, col: SortColumn): number => {
+      if (item.type === 'single') {
+        const a = item.activity
+        switch (col) {
+          case 'date': return new Date(a.start_date).getTime()
+          case 'type': return a.type.toLowerCase().charCodeAt(0)
+          case 'distance': return a.distance
+          case 'time': return a.moving_time
+          case 'elevation': return a.total_elevation_gain
+          case 'power': return a.average_watts || 0
+          case 'hr': return a.average_heartrate || 0
+          case 'score': return scoreMap.get(a.id) || 0
+          case 'category': return trainingActivityIds.includes(a.id) ? 1 : 0
+          default: return 0
+        }
+      } else {
+        switch (col) {
+          case 'date': return new Date(item.latestDate).getTime()
+          case 'type': return item.activities[0]?.type.toLowerCase().charCodeAt(0) || 0
+          case 'distance': return item.distance
+          case 'time': return item.movingTime
+          case 'elevation': return item.elevation
+          case 'power': return item.avgWatts || 0
+          case 'hr': return item.avgHR || 0
+          case 'score': {
+            const total = item.activities.reduce((sum, a) => sum + (scoreMap.get(a.id) || 0), 0)
+            const count = item.activities.filter((a) => scoreMap.has(a.id)).length
+            return count > 0 ? total / count : 0
+          }
+          case 'category': return item.activities.length > 0 && trainingActivityIds.includes(item.activities[0].id) ? 1 : 0
+          default: return 0
+        }
+      }
+    }
+
+    // Sort: default to date descending when no column selected
+    const activeCol = sortColumn ?? 'date'
+    const activeDir = sortColumn ? sortDirection : 'desc'
+    const dir = activeDir === 'asc' ? 1 : -1
+    items.sort((a, b) => (getSortValue(a, activeCol) - getSortValue(b, activeCol)) * dir)
 
     return items
-  }, [activities, activityGroups, groupedActivityIds])
+  }, [activities, activityGroups, groupedActivityIds, searchQuery, sortColumn, sortDirection, scoreMap, trainingActivityIds])
 
   const toggleSelect = useCallback((id: number, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -220,6 +268,15 @@ export function ActivityList({ activities }: ActivityListProps) {
     })
   }, [])
 
+  const handleSort = useCallback((col: SortColumn) => {
+    if (sortColumn === col) {
+      setSortDirection((d) => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortColumn(col)
+      setSortDirection('desc')
+    }
+  }, [sortColumn])
+
   if (activities.length === 0) {
     return (
       <div className="text-center py-16 text-text-muted text-[0.9rem]">
@@ -233,8 +290,21 @@ export function ActivityList({ activities }: ActivityListProps) {
 
   return (
     <>
-      {/* Group mode toggle */}
+      {/* Toolbar: search + group toggle */}
       <div className="flex items-center gap-3 mb-3">
+        <div className="relative flex-1 max-w-[300px]">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search by name..."
+            className="w-full bg-bg-tertiary border border-border text-text-primary py-1.5 pl-9 pr-3 rounded-[var(--radius-sm)] text-[0.8rem] transition-all duration-150 hover:border-text-muted focus:outline-none focus:border-accent focus:ring-3 focus:ring-accent/15"
+          />
+        </div>
         <button
           className={`py-1.5 px-4 rounded-[var(--radius-sm)] text-[0.8rem] font-semibold cursor-pointer transition-all duration-150 ${
             groupMode
@@ -296,16 +366,41 @@ export function ActivityList({ activities }: ActivityListProps) {
               <th className={`${thClass} first:rounded-tl-[var(--radius-lg)] w-10`}>
                 <span className="sr-only">{groupMode ? 'Select' : ''}</span>
               </th>
-              <th className={thClass}>Date</th>
+              <th
+                className={`${thClass} cursor-pointer select-none hover:text-text-primary transition-colors`}
+                onClick={() => handleSort('date')}
+              >
+                <span className="inline-flex items-center gap-1">
+                  Date
+                  {(sortColumn === 'date' || sortColumn === null) && (
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className={`transition-transform ${(sortColumn === null ? 'desc' : sortDirection) === 'asc' ? 'rotate-180' : ''}`}>
+                      <path d="M7 10l5 5 5-5z" />
+                    </svg>
+                  )}
+                </span>
+              </th>
               <th className={thClass}>Name</th>
-              <th className={thClass}>Type</th>
-              <th className={thClass}>Distance</th>
-              <th className={thClass}>Time</th>
-              <th className={thClass}>Elevation</th>
-              <th className={thClass}>Power</th>
-              <th className={thClass}>HR</th>
-              <th className={thClass}>Ride Score</th>
-              <th className={`${thClass} last:rounded-tr-[var(--radius-lg)]`}>Category</th>
+              {(['type', 'distance', 'time', 'elevation', 'power', 'hr', 'score', 'category'] as SortColumn[]).map((col, i, arr) => {
+                const label = col === 'score' ? 'Ride Score' : col === 'hr' ? 'HR' : col!.charAt(0).toUpperCase() + col!.slice(1)
+                const isActive = sortColumn === col
+                const isLast = i === arr.length - 1
+                return (
+                  <th
+                    key={col}
+                    className={`${thClass} cursor-pointer select-none hover:text-text-primary transition-colors ${isLast ? 'last:rounded-tr-[var(--radius-lg)]' : ''}`}
+                    onClick={() => handleSort(col)}
+                  >
+                    <span className="inline-flex items-center gap-1">
+                      {label}
+                      {isActive && (
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className={`transition-transform ${sortDirection === 'asc' ? 'rotate-180' : ''}`}>
+                          <path d="M7 10l5 5 5-5z" />
+                        </svg>
+                      )}
+                    </span>
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody>
