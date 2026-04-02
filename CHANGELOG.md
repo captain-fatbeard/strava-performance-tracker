@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.7.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.6.0...v1.7.0) (2026-04-02)
+
+
+### Features
+
+* add name search and sortable columns to activity list ([b78e5ea](https://github.com/captain-fatbeard/strava-performance-tracker/commit/b78e5eab68fb227f25de447067130e8ded2eaf77))
+* add vitest testing setup with CI workflow ([fa689cd](https://github.com/captain-fatbeard/strava-performance-tracker/commit/fa689cdc20cc22da6032c93efba122f6e44d8ba7))
+* improve activity grouping UX with toggle mode and category enforcement ([ebdd757](https://github.com/captain-fatbeard/strava-performance-tracker/commit/ebdd7571a8e258281d74005c2b6027ec450da3f2))
+
 ## [1.6.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.5.0...v1.6.0) (2026-03-29)
 
 
