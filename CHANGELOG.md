@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.8.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.7.0...v1.8.0) (2026-04-04)
+
+
+### Features
+
+* use date-based FTP estimation for stable CTL calculation ([d1eea3b](https://github.com/captain-fatbeard/strava-performance-tracker/commit/d1eea3b1fcbbb18f5bb3cb4589f3f933c5549adf))
+
 ## [1.7.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.6.0...v1.7.0) (2026-04-02)
 
 
