@@ -223,6 +223,109 @@ export async function deleteWeightEntry(id: string): Promise<boolean> {
   }
 }
 
+// FTP Entries
+export interface FtpEntry {
+  id: string
+  athleteId: number
+  ftp: number
+  effectiveDate: string // 'YYYY-MM-DD'
+  createdAt: string
+}
+
+interface FtpEntryRow {
+  id: string
+  athlete_id: number
+  ftp: number
+  effective_date: string
+  created_at: string
+}
+
+function rowToFtpEntry(row: FtpEntryRow): FtpEntry {
+  return {
+    id: row.id,
+    athleteId: row.athlete_id,
+    ftp: row.ftp,
+    effectiveDate: row.effective_date,
+    createdAt: row.created_at,
+  }
+}
+
+export async function fetchFtpEntries(athleteId: number): Promise<FtpEntry[]> {
+  if (!supabase) return []
+
+  try {
+    const { data, error } = await supabase
+      .from('ftp_entries')
+      .select('*')
+      .eq('athlete_id', athleteId)
+      .order('effective_date', { ascending: false })
+
+    if (error) {
+      console.warn('Supabase fetch FTP entries error:', error.message)
+      return []
+    }
+
+    return (data as FtpEntryRow[]).map(rowToFtpEntry)
+  } catch (err) {
+    console.warn('Supabase fetch FTP entries error:', err)
+    return []
+  }
+}
+
+export async function addFtpEntry(
+  athleteId: number,
+  ftp: number,
+  effectiveDate: string
+): Promise<FtpEntry | null> {
+  if (!supabase) return null
+
+  try {
+    const { data, error } = await supabase
+      .from('ftp_entries')
+      .upsert(
+        {
+          athlete_id: athleteId,
+          ftp,
+          effective_date: effectiveDate,
+        },
+        { onConflict: 'athlete_id,effective_date' }
+      )
+      .select()
+      .single()
+
+    if (error) {
+      console.warn('Supabase add FTP entry error:', error.message)
+      return null
+    }
+
+    return rowToFtpEntry(data as FtpEntryRow)
+  } catch (err) {
+    console.warn('Supabase add FTP entry error:', err)
+    return null
+  }
+}
+
+export async function deleteFtpEntry(id: string): Promise<boolean> {
+  if (!supabase) return false
+
+  try {
+    const { error } = await supabase
+      .from('ftp_entries')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.warn('Supabase delete FTP entry error:', error.message)
+      return false
+    }
+
+    return true
+  } catch (err) {
+    console.warn('Supabase delete FTP entry error:', err)
+    return false
+  }
+}
+
 // Training-Only Activities (stored in excluded_activities table)
 export async function fetchTrainingActivityIds(athleteId: number): Promise<number[]> {
   if (!supabase) return []

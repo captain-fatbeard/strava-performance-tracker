@@ -11,7 +11,7 @@ import {
   Legend,
 } from 'recharts'
 import { type StravaActivity } from '~/lib/strava'
-import { calculateFitnessOverTime, estimateFTP } from '~/lib/performance'
+import { calculateFitnessOverTime, estimateFTPHistory } from '~/lib/performance'
 import { chartTheme, tooltipStyle, formatDateShort, formatDateFull } from '~/lib/chart-theme'
 
 interface FitnessChartProps {
@@ -42,20 +42,25 @@ function getATLLevel(atl: number): { label: string; color: string } {
 
 export function FitnessChart({ activities }: FitnessChartProps) {
   const [days, setDays] = useState(30)
-  const ftp = useMemo(() => estimateFTP(activities), [activities])
+
+  // Auto-estimate FTP history from activity data
+  const ftpHistory = useMemo(() => estimateFTPHistory(activities), [activities])
+
+  // Current FTP is the latest entry
+  const currentFtp = ftpHistory.length > 0 ? ftpHistory[ftpHistory.length - 1].ftp : null
 
   // Calculate full history once — CTL/ATL build up from the earliest activity
   const allFitnessData = useMemo(() => {
-    if (!ftp) return []
-    return calculateFitnessOverTime(activities, ftp)
-  }, [activities, ftp])
+    if (ftpHistory.length === 0) return []
+    return calculateFitnessOverTime(activities, ftpHistory)
+  }, [activities, ftpHistory])
 
   // Slice to the selected time range for display only
   const fitnessData = useMemo(() => {
     return allFitnessData.slice(-days)
   }, [allFitnessData, days])
 
-  if (!ftp || fitnessData.length === 0) {
+  if (!currentFtp || fitnessData.length === 0) {
     return (
       <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
         <h3 className="text-lg font-semibold mb-5 text-text-primary max-[480px]:text-base">Fitness & Form</h3>
@@ -121,6 +126,11 @@ export function FitnessChart({ activities }: FitnessChartProps) {
             </span>
             <span className="text-[0.65rem] font-medium mt-0.5 rounded-full px-2 py-0.5" style={{ color: formStatus.color, backgroundColor: `${formStatus.color}18` }}>{formStatus.label}</span>
           </span>
+          <span className="flex flex-col items-center">
+            <span className="text-[0.7rem] text-text-muted uppercase font-semibold tracking-wide">FTP</span>
+            <span className="text-2xl font-bold text-text-primary">{latestData.ftp}W</span>
+            <span className="text-[0.65rem] font-medium mt-0.5 rounded-full px-2 py-0.5 text-text-muted bg-bg-tertiary">Estimated</span>
+          </span>
         </div>
       </div>
 
@@ -138,13 +148,24 @@ export function FitnessChart({ activities }: FitnessChartProps) {
           <Tooltip
             {...tooltipStyle}
             labelFormatter={(date) => formatDateFull(date as string)}
-            formatter={(value: number, name: string) => {
-              const labels: Record<string, string> = {
-                ctl: 'Fitness (CTL)',
-                atl: 'Fatigue (ATL)',
-                tsb: 'Form (TSB)',
-              }
-              return [value, labels[name] || name]
+            content={({ active, payload, label }) => {
+              if (!active || !payload?.length) return null
+              const data = payload[0]?.payload
+              return (
+                <div style={tooltipStyle.contentStyle}>
+                  <p style={{ margin: '0 0 4px', color: tooltipStyle.labelStyle?.color }}>{formatDateFull(label as string)}</p>
+                  {payload.map((entry) => (
+                    <p key={entry.dataKey as string} style={{ margin: '2px 0', color: entry.color }}>
+                      {entry.name}: {entry.value}
+                    </p>
+                  ))}
+                  {data?.ftp && (
+                    <p style={{ margin: '2px 0', color: chartTheme.colors.neutral[400] }}>
+                      FTP: {data.ftp}W
+                    </p>
+                  )}
+                </div>
+              )
             }}
           />
           <Legend />

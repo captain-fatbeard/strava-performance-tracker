@@ -232,9 +232,11 @@ describe('calculateTSS', () => {
 // ===================================================================
 
 describe('calculateFitnessOverTime', () => {
+  const ftp200 = [{ date: '2020-01-01', ftp: 200 }]
+
   it('returns empty for no rides with power', () => {
-    expect(calculateFitnessOverTime([], 200)).toEqual([])
-    expect(calculateFitnessOverTime([makeRide()], 200)).toEqual([])
+    expect(calculateFitnessOverTime([], ftp200)).toEqual([])
+    expect(calculateFitnessOverTime([makeRide()], ftp200)).toEqual([])
   })
 
   it('returns data from earliest activity to today', () => {
@@ -245,7 +247,7 @@ describe('calculateFitnessOverTime', () => {
         start_date_local: '2025-03-01T09:00:00',
       }),
     ]
-    const result = calculateFitnessOverTime(activities, 200)
+    const result = calculateFitnessOverTime(activities, ftp200)
     expect(result.length).toBeGreaterThan(0)
     expect(result[0].date).toBe('2025-03-01')
     expect(result[0].tss).toBe(100)
@@ -259,7 +261,7 @@ describe('calculateFitnessOverTime', () => {
         start_date_local: '2025-03-01T09:00:00',
       }),
     ]
-    const result = calculateFitnessOverTime(activities, 200)
+    const result = calculateFitnessOverTime(activities, ftp200)
     const day1 = result[0]
     // ATL should respond faster than CTL
     expect(day1.atl).toBeGreaterThan(day1.ctl)
@@ -273,7 +275,7 @@ describe('calculateFitnessOverTime', () => {
         start_date_local: '2025-03-01T09:00:00',
       }),
     ]
-    const result = calculateFitnessOverTime(activities, 200)
+    const result = calculateFitnessOverTime(activities, ftp200)
     expect(result[0].tsb).toBeLessThan(0)
   })
 })

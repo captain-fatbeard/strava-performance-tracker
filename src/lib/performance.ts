@@ -2,6 +2,12 @@ import { startOfWeek, addWeeks } from 'date-fns'
 import { type StravaActivity } from './strava'
 import { zoneColors, formatDateShort } from './chart-theme'
 
+// FTP entry with effective date — FTP applies from this date until the next entry
+export interface FtpHistoryEntry {
+  date: string // 'YYYY-MM-DD'
+  ftp: number
+}
+
 // Estimate FTP from activities (95% of best 20-min power)
 export function estimateFTP(activities: StravaActivity[]): number | null {
   const ridesWithPower = activities.filter(
@@ -24,6 +30,65 @@ export function estimateFTP(activities: StravaActivity[]): number | null {
 
   const bestAvgPower = Math.max(...longRides.map((a) => a.average_watts || 0))
   return Math.round(bestAvgPower * 0.95)
+}
+
+// Estimate FTP at different points in time using a rolling 90-day window
+// Uses average_watts only (not Normalized Power) for a conservative estimate
+// Returns entries sorted by date ascending
+export function estimateFTPHistory(activities: StravaActivity[]): FtpHistoryEntry[] {
+  const ridesWithPower = activities
+    .filter((a) => (a.type === 'Ride' || a.type === 'VirtualRide') && a.average_watts && a.moving_time >= 1200)
+    .sort((a, b) => a.start_date_local.localeCompare(b.start_date_local))
+
+  if (ridesWithPower.length === 0) return []
+
+  // Group rides by month — use average_watts (not NP) for conservative FTP estimate
+  const monthlyBest: Record<string, number> = {}
+  ridesWithPower.forEach((a) => {
+    const month = a.start_date_local.substring(0, 7) // 'YYYY-MM'
+    const power = a.average_watts || 0
+    monthlyBest[month] = Math.max(monthlyBest[month] || 0, power)
+  })
+
+  // Create an FTP entry per month based on rolling 90-day best average power
+  const months = Object.keys(monthlyBest).sort()
+  const result: FtpHistoryEntry[] = []
+
+  for (const month of months) {
+    // Look back 3 months for best power
+    const monthDate = new Date(month + '-01')
+    let best = 0
+    for (const [m, power] of Object.entries(monthlyBest)) {
+      const mDate = new Date(m + '-01')
+      const diffMs = monthDate.getTime() - mDate.getTime()
+      const diffDays = diffMs / (1000 * 60 * 60 * 24)
+      if (diffDays >= 0 && diffDays <= 90) {
+        best = Math.max(best, power)
+      }
+    }
+
+    const ftp = Math.round(best * 0.95)
+    // Only add if different from last entry
+    if (result.length === 0 || result[result.length - 1].ftp !== ftp) {
+      result.push({ date: month + '-01', ftp })
+    }
+  }
+
+  return result
+}
+
+// Get the FTP value for a given date from FTP history
+export function getFTPForDate(date: string, ftpHistory: FtpHistoryEntry[]): number {
+  // ftpHistory must be sorted by date ascending
+  let ftp = ftpHistory[0]?.ftp || 0
+  for (const entry of ftpHistory) {
+    if (entry.date <= date) {
+      ftp = entry.ftp
+    } else {
+      break
+    }
+  }
+  return ftp
 }
 
 // Power zones based on FTP
@@ -98,24 +163,24 @@ export interface FitnessData {
   atl: number // Acute Training Load (fatigue)
   tsb: number // Training Stress Balance (form)
   tss: number // Daily TSS
+  ftp: number // FTP used for this date
 }
 
 export function calculateFitnessOverTime(
   activities: StravaActivity[],
-  ftp: number
+  ftpHistory: FtpHistoryEntry[]
 ): FitnessData[] {
-  // Group activities by date
-  const dailyTSS: Record<string, number> = {}
-
   const ridesWithPower = activities
     .filter((a) => (a.type === 'Ride' || a.type === 'VirtualRide') && a.average_watts)
 
-  if (ridesWithPower.length === 0) return []
+  if (ridesWithPower.length === 0 || ftpHistory.length === 0) return []
 
+  // Group activities by date, calculating TSS with the FTP active on that date
+  const dailyActivities: Record<string, StravaActivity[]> = {}
   ridesWithPower.forEach((activity) => {
     const date = activity.start_date_local.split('T')[0]
-    const tss = calculateTSS(activity, ftp)
-    dailyTSS[date] = (dailyTSS[date] || 0) + tss
+    if (!dailyActivities[date]) dailyActivities[date] = []
+    dailyActivities[date].push(activity)
   })
 
   // Start from earliest activity to build up CTL/ATL accurately
@@ -127,15 +192,24 @@ export function calculateFitnessOverTime(
   const today = new Date()
   today.setHours(23, 59, 59, 999)
 
+  const sortedFtp = [...ftpHistory].sort((a, b) => a.date.localeCompare(b.date))
+
   const result: FitnessData[] = []
   let ctl = 0
   let atl = 0
 
   // Iterate through each day from earliest activity to today (inclusive)
   for (let d = new Date(earliest); d <= today; d.setDate(d.getDate() + 1)) {
-    // Use local date to match activity.start_date_local format
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    const tss = dailyTSS[dateStr] || 0
+    const ftp = getFTPForDate(dateStr, sortedFtp)
+
+    // Calculate daily TSS using the FTP active on this date
+    let tss = 0
+    if (dailyActivities[dateStr] && ftp > 0) {
+      for (const activity of dailyActivities[dateStr]) {
+        tss += calculateTSS(activity, ftp)
+      }
+    }
 
     // Exponential weighted moving averages
     ctl = ctl + (tss - ctl) / 42 // 42-day time constant
@@ -148,6 +222,7 @@ export function calculateFitnessOverTime(
       atl: Math.round(atl),
       tsb: Math.round(tsb),
       tss,
+      ftp,
     })
   }
 

@@ -63,6 +63,7 @@ function DashboardLayout() {
   // Weight tracking state
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([])
 
+
   // Derive weight from most recent weight entry
   const weight = useMemo(() => {
     if (weightEntries.length === 0) return 75 // Default weight
