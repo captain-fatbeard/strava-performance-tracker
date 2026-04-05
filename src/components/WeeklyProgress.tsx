@@ -14,6 +14,7 @@ import { startOfWeek, addWeeks } from 'date-fns'
 import { type StravaActivity } from '~/lib/strava'
 import { calculateWeeklySummaries, estimateFTP } from '~/lib/performance'
 import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
+import { statCard, statCardAccent, statValue, statValueAccent } from '~/lib/styles'
 
 interface WeeklyProgressProps {
   activities: StravaActivity[]
@@ -105,27 +106,24 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
     return null
   }
 
-  const statCard = "bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-6 flex flex-col gap-1 transition-all duration-200 hover:border-border hover:-translate-y-0.5 hover:shadow-md max-md:p-4 max-[480px]:p-3.5"
-  const statValue = "text-[2rem] font-bold leading-tight bg-linear-to-br from-text-primary to-text-secondary bg-clip-text text-transparent max-md:text-2xl max-[480px]:text-xl"
-
   return (
     <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
       <h3 className="text-lg font-semibold mb-5 text-text-primary max-[480px]:text-base">Weekly Training Load</h3>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-4 mb-6">
-        <div className={`${statCard} text-center bg-linear-to-br from-accent/15 to-accent/5 border-accent/30`}>
-          <div className="text-[2rem] font-bold leading-tight bg-linear-to-br from-accent-light to-accent bg-clip-text text-transparent max-md:text-2xl max-[480px]:text-xl">
+        <div className={`${statCardAccent} text-center`}>
+          <div className={statValueAccent}>
             {currentStreak}
           </div>
           <div className="text-sm text-text-secondary font-medium">Current Streak</div>
           <div className="text-xs text-text-muted">weeks</div>
         </div>
-        <div className={`${statCard} text-center`}>
+        <div className={`${statCard} text-center gap-1`}>
           <div className={statValue}>{longestStreak}</div>
           <div className="text-sm text-text-secondary font-medium">Longest Streak</div>
           <div className="text-xs text-text-muted">weeks</div>
         </div>
-        <div className={`${statCard} text-center`}>
+        <div className={`${statCard} text-center gap-1`}>
           <div className={statValue}>{avgActivitiesPerWeek}</div>
           <div className="text-sm text-text-secondary font-medium">Avg/Week</div>
           <div className="text-xs text-text-muted">activities</div>

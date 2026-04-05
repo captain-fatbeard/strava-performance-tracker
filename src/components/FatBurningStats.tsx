@@ -20,6 +20,7 @@ import {
   calculateBMR,
 } from '~/lib/performance'
 import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
+import { statCard, statCardAccent, statValue, statValueAccent } from '~/lib/styles'
 
 interface FatBurningStatsProps {
   activities: StravaActivity[]
@@ -86,9 +87,6 @@ export function FatBurningStats({
 
   const fatMaxZone = hrZones[1] // Zone 2 is optimal for fat burning
 
-  const statCard = "bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-6 flex flex-col gap-2 transition-all duration-200 hover:border-border hover:-translate-y-0.5 hover:shadow-md max-md:p-4 max-[480px]:p-3.5"
-  const statValue = "text-[2rem] font-bold leading-tight bg-linear-to-br from-text-primary to-text-secondary bg-clip-text text-transparent max-md:text-2xl max-[480px]:text-xl"
-
   return (
     <div className="flex flex-col gap-8">
       {/* Total Fat Burn Summary - Including Resting */}
@@ -98,8 +96,8 @@ export function FatBurningStats({
           <span className="bg-linear-to-br from-accent to-accent-dark text-white py-1.5 px-4 rounded-full text-sm font-semibold shadow-[0_2px_8px_rgba(20,184,166,0.3)]">Last {periodDays} days</span>
         </div>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-4 mb-6">
-          <div className={`${statCard} text-center bg-linear-to-br from-accent/15 to-accent/5 border-accent/30`}>
-            <div className="text-[2rem] font-bold leading-tight bg-linear-to-br from-accent-light to-accent bg-clip-text text-transparent max-md:text-2xl max-[480px]:text-xl">{(summary.totalFatBurnWithResting / 1000).toFixed(2)} kg</div>
+          <div className={`${statCardAccent} text-center`}>
+            <div className={statValueAccent}>{(summary.totalFatBurnWithResting / 1000).toFixed(2)} kg</div>
             <div className="text-sm text-text-secondary font-medium">Total Fat Burned</div>
             <div className="text-xs text-text-muted mt-1">{summary.totalFatBurnWithResting}g (resting + activity)</div>
           </div>
@@ -109,7 +107,7 @@ export function FatBurningStats({
             <div className="text-xs text-text-muted mt-1">{summary.dailyRestingFatBurn}g/day × {periodDays} days</div>
           </div>
           <div className={`${statCard} text-center bg-linear-to-br from-success/15 to-success/5 border-success/30`}>
-            <div className="text-[2rem] font-bold leading-tight bg-linear-to-br from-accent-light to-accent bg-clip-text text-transparent max-md:text-2xl max-[480px]:text-xl">{(summary.totalFatBurned / 1000).toFixed(2)} kg</div>
+            <div className={statValueAccent}>{(summary.totalFatBurned / 1000).toFixed(2)} kg</div>
             <div className="text-sm text-text-secondary font-medium">Activity Fat Burn</div>
             <div className="text-xs text-text-muted mt-1">{summary.totalFatBurned}g from {summary.totalActivitiesWithHR} activities</div>
           </div>
@@ -168,7 +166,7 @@ export function FatBurningStats({
             <div className="text-xs text-text-muted mt-1">of exercise calories from fat</div>
           </div>
           <div className={`${statCard} text-center bg-linear-to-br from-success/15 to-success/5 border-success/30`}>
-            <div className="text-[2rem] font-bold leading-tight bg-linear-to-br from-accent-light to-accent bg-clip-text text-transparent max-md:text-2xl max-[480px]:text-xl">{secondsToHMS(summary.zone2Time)}</div>
+            <div className={statValueAccent}>{secondsToHMS(summary.zone2Time)}</div>
             <div className="text-sm text-text-secondary font-medium">Time in Fat Burn Zone</div>
             <div className="text-xs text-text-muted mt-1">{summary.zone2Percentage}% of training time</div>
           </div>

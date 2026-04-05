@@ -1,6 +1,9 @@
 import { useMemo } from 'react'
 import { type StravaActivity } from '~/lib/strava'
 import { calculateAdvancedMetrics, estimateFTP, getMotionistBenchmarks } from '~/lib/performance'
+import { isRide } from '~/lib/activities'
+import { badgeClasses } from '~/lib/styles'
+import { ComparisonBar } from './ComparisonBar'
 import type { Gender } from '~/lib/dashboard-context'
 
 interface AdvancedMetricsProps {
@@ -10,61 +13,8 @@ interface AdvancedMetricsProps {
   gender: Gender
 }
 
-function ComparisonBar({ value, benchmark, goodThreshold, unit, label }: {
-  value: number
-  benchmark: number
-  goodThreshold: number
-  unit: string
-  label: string
-}) {
-  const diff = value - benchmark
-  const diffPercent = Math.round((diff / benchmark) * 100)
-  const isAbove = diff > 0
-
-  // Scale: benchmark at ~40%, goodThreshold at ~70%, max at 100%
-  const range = goodThreshold * 1.5
-  const benchmarkPos = Math.min((benchmark / range) * 100, 95)
-  const valuePos = Math.min(Math.max((value / range) * 100, 5), 95)
-
-  return (
-    <div className="mt-3 pt-3 border-t border-border-subtle">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wide">vs {label}</span>
-        <span className={`text-xs font-bold ${isAbove ? 'text-success' : 'text-warning'}`}>
-          {isAbove ? '+' : ''}{diffPercent}%
-        </span>
-      </div>
-      <div className="relative h-2 bg-bg-secondary rounded-full overflow-hidden">
-        <div
-          className="absolute top-0 left-0 h-full rounded-full bg-accent/80"
-          style={{ width: `${valuePos}%` }}
-        />
-        <div
-          className="absolute top-0 h-full w-0.5 bg-text-muted/60"
-          style={{ left: `${benchmarkPos}%` }}
-          title={`Average: ${benchmark} ${unit}`}
-        />
-      </div>
-      <div className="flex justify-between mt-1.5">
-        <span className="text-[0.6rem] text-text-muted">Avg: {benchmark} {unit}</span>
-        <span className="text-[0.6rem] text-text-muted">Good: {goodThreshold}</span>
-      </div>
-    </div>
-  )
-}
-
-const badgeClasses: Record<string, string> = {
-  elite: 'bg-accent/20 text-accent',
-  excellent: 'bg-success-muted text-success',
-  good: 'bg-info-muted text-[#60a5fa]',
-  average: 'bg-warning-muted text-warning',
-  'below-average': 'bg-danger-muted text-danger',
-}
-
 export function AdvancedMetrics({ activities, weight, age, gender }: AdvancedMetricsProps) {
-  const rides = activities.filter(
-    (a) => a.type === 'Ride' || a.type === 'VirtualRide'
-  )
+  const rides = activities.filter(isRide)
   const ftp = estimateFTP(rides) || 0
 
   const metrics = useMemo(() => {

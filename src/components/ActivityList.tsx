@@ -4,6 +4,7 @@ import { type StravaActivity, metersToKm, secondsToHMS } from '~/lib/strava'
 import { useDashboard, type ActivityGroup } from '~/lib/dashboard-context'
 import { formatDateFull } from '~/lib/chart-theme'
 import { calculateActivityScores, estimateFTP } from '~/lib/performance'
+import { isRide, getScoreLabel, scoreLabelClasses, activityTypeClasses } from '~/lib/activities'
 
 interface ActivityListProps {
   activities: StravaActivity[]
@@ -11,28 +12,6 @@ interface ActivityListProps {
 
 type SortColumn = 'date' | 'type' | 'distance' | 'time' | 'elevation' | 'power' | 'hr' | 'score' | 'category' | null
 type SortDirection = 'asc' | 'desc'
-
-const activityTypeClasses: Record<string, string> = {
-  ride: 'bg-info-muted text-[#60a5fa]',
-  virtualride: 'bg-info-muted text-[#60a5fa]',
-  run: 'bg-success-muted text-[#4ade80]',
-}
-
-const scoreLabelClasses: Record<string, string> = {
-  Epic: 'bg-[#f97316]/15 text-[#f97316]',
-  Hard: 'bg-[#ef4444]/15 text-[#ef4444]',
-  Solid: 'bg-[#3b82f6]/15 text-[#3b82f6]',
-  Moderate: 'bg-[#a78bfa]/15 text-[#a78bfa]',
-  Easy: 'bg-bg-tertiary text-text-muted',
-}
-
-function getScoreLabel(score: number): string {
-  if (score >= 100) return 'Epic'
-  if (score >= 80) return 'Hard'
-  if (score >= 50) return 'Solid'
-  if (score >= 30) return 'Moderate'
-  return 'Easy'
-}
 
 interface MergedActivity {
   type: 'single'
@@ -107,7 +86,7 @@ export function ActivityList({ activities }: ActivityListProps) {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
   const scoreMap = useMemo(() => {
-    const rides = activities.filter((a) => a.type === 'Ride' || a.type === 'VirtualRide')
+    const rides = activities.filter(isRide)
     const ftp = estimateFTP(rides) || 0
     const scores = calculateActivityScores(activities, ftp)
     const map = new Map<number, number>()

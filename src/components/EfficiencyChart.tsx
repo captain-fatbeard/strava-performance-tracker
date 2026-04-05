@@ -19,6 +19,9 @@ import { type StravaActivity } from '~/lib/strava'
 import type { SegmentEffortWithActivity } from '~/lib/storage/supabase-client'
 import { calculateEF, estimateVO2max, classifyGradeBand, GRADE_BAND_ORDER } from '~/lib/performance'
 import { chartTheme, tooltipStyle, formatDateShort, activityTooltipLabel } from '~/lib/chart-theme'
+import { isRide } from '~/lib/activities'
+import { calculateTrendLine } from '~/lib/trend'
+import { trendClasses } from '~/lib/styles'
 import type { WeightEntry } from '~/lib/dashboard-context'
 
 interface EfficiencyChartProps {
@@ -50,12 +53,6 @@ function getWeightForDate(date: Date, weightEntries: WeightEntry[], fallback: nu
   return weightEntries[weightEntries.length - 1].weight
 }
 
-const trendClasses: Record<string, string> = {
-  improving: 'bg-success-muted text-success',
-  declining: 'bg-danger-muted text-danger',
-  stable: 'bg-warning-muted text-warning',
-}
-
 const BAND_COLORS = [
   chartTheme.colors.primary.main,
   chartTheme.colors.sky.main,
@@ -68,12 +65,7 @@ export function EfficiencyChart({ activities, weight, weightEntries, segmentData
   // Calculate EF for each ride over time
   const efficiencyData = useMemo(() => {
     const rides = activities
-      .filter(
-        (a) =>
-          (a.type === 'Ride' || a.type === 'VirtualRide') &&
-          a.average_watts &&
-          a.average_heartrate
-      )
+      .filter((a) => isRide(a) && a.average_watts && a.average_heartrate)
       .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
 
     return rides.map((ride) => {
@@ -93,12 +85,7 @@ export function EfficiencyChart({ activities, weight, weightEntries, segmentData
   // Calculate rolling VO2max based on rolling FTP estimate
   const vo2maxData = useMemo(() => {
     const rides = activities
-      .filter(
-        (a) =>
-          (a.type === 'Ride' || a.type === 'VirtualRide') &&
-          a.average_watts &&
-          a.moving_time >= 1200 // 20+ min rides for FTP estimation
-      )
+      .filter((a) => isRide(a) && a.average_watts && a.moving_time >= 1200)
       .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
 
     if (rides.length === 0) return []
@@ -138,11 +125,7 @@ export function EfficiencyChart({ activities, weight, weightEntries, segmentData
   // Calculate climbing speed (road km/h) for rides with significant climbing
   const climbSpeedData = useMemo(() => {
     const rides = activities
-      .filter(
-        (a) =>
-          (a.type === 'Ride' || a.type === 'VirtualRide') &&
-          a.total_elevation_gain >= 100 // At least 100m climbing
-      )
+      .filter((a) => isRide(a) && a.total_elevation_gain >= 100)
       .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
 
     return rides.map((ride) => {
@@ -156,47 +139,15 @@ export function EfficiencyChart({ activities, weight, weightEntries, segmentData
     })
   }, [activities])
 
-  // Calculate climbing speed trend line
-  const climbSpeedTrendLine = useMemo(() => {
-    if (climbSpeedData.length < 2) return null
+  const climbSpeedTrendLine = useMemo(
+    () => calculateTrendLine(climbSpeedData.map((d) => d.speed), 0.3),
+    [climbSpeedData],
+  )
 
-    const n = climbSpeedData.length
-    const sumX = climbSpeedData.reduce((sum, _, i) => sum + i, 0)
-    const sumY = climbSpeedData.reduce((sum, d) => sum + d.speed, 0)
-    const sumXY = climbSpeedData.reduce((sum, d, i) => sum + i * d.speed, 0)
-    const sumX2 = climbSpeedData.reduce((sum, _, i) => sum + i * i, 0)
-
-    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX)
-    const intercept = (sumY - slope * sumX) / n
-
-    return {
-      slope,
-      startValue: intercept,
-      endValue: slope * (n - 1) + intercept,
-      trend: slope > 0.3 ? 'improving' : slope < -0.3 ? 'declining' : 'stable',
-    }
-  }, [climbSpeedData])
-
-  // Calculate EF trend line
-  const efTrendLine = useMemo(() => {
-    if (efficiencyData.length < 2) return null
-
-    const n = efficiencyData.length
-    const sumX = efficiencyData.reduce((sum, _, i) => sum + i, 0)
-    const sumY = efficiencyData.reduce((sum, d) => sum + d.ef, 0)
-    const sumXY = efficiencyData.reduce((sum, d, i) => sum + i * d.ef, 0)
-    const sumX2 = efficiencyData.reduce((sum, _, i) => sum + i * i, 0)
-
-    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX)
-    const intercept = (sumY - slope * sumX) / n
-
-    return {
-      slope,
-      startValue: intercept,
-      endValue: slope * (n - 1) + intercept,
-      trend: slope > 0.01 ? 'improving' : slope < -0.01 ? 'declining' : 'stable',
-    }
-  }, [efficiencyData])
+  const efTrendLine = useMemo(
+    () => calculateTrendLine(efficiencyData.map((d) => d.ef), 0.01),
+    [efficiencyData],
+  )
 
   // Compute segment climbing speed (road km/h) grouped by gradient band
   const segmentSpeedData = useMemo((): SegmentSpeedData[] | null => {

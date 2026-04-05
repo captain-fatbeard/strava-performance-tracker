@@ -16,22 +16,19 @@ import {
 } from 'recharts'
 import { type StravaActivity } from '~/lib/strava'
 import { chartTheme, tooltipStyle, formatDateShort, activityTooltipLabel } from '~/lib/chart-theme'
+import { isRide } from '~/lib/activities'
+import { calculateTrendLine } from '~/lib/trend'
+import { trendClasses } from '~/lib/styles'
 
 interface PerformanceChartsProps {
   activities: StravaActivity[]
   showAllCharts?: boolean
 }
 
-const trendClasses: Record<string, string> = {
-  improving: 'bg-success-muted text-success',
-  declining: 'bg-danger-muted text-danger',
-  stable: 'bg-warning-muted text-warning',
-}
-
 export function PerformanceCharts({ activities, showAllCharts }: PerformanceChartsProps) {
   const powerTrendData = useMemo(() => {
     const rides = activities
-      .filter((a) => (a.type === 'Ride' || a.type === 'VirtualRide') && a.average_watts)
+      .filter((a) => isRide(a) && a.average_watts)
       .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
 
     return rides
@@ -45,34 +42,18 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
       .filter((d) => d.avgPower > 0)
   }, [activities])
 
-  const powerTrendLine = useMemo(() => {
-    if (powerTrendData.length < 2) return null
-
-    const n = powerTrendData.length
-    const sumX = powerTrendData.reduce((sum, _, i) => sum + i, 0)
-    const sumY = powerTrendData.reduce((sum, d) => sum + d.avgPower, 0)
-    const sumXY = powerTrendData.reduce((sum, d, i) => sum + i * d.avgPower, 0)
-    const sumX2 = powerTrendData.reduce((sum, _, i) => sum + i * i, 0)
-
-    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX)
-    const intercept = (sumY - slope * sumX) / n
-
-    return {
-      slope,
-      intercept,
-      startValue: intercept,
-      endValue: slope * (n - 1) + intercept,
-      trend: slope > 0.5 ? 'improving' : slope < -0.5 ? 'declining' : 'stable',
-    }
-  }, [powerTrendData])
+  const powerTrendLine = useMemo(
+    () => calculateTrendLine(powerTrendData.map((d) => d.avgPower)),
+    [powerTrendData],
+  )
 
   const hrTrendData = useMemo(() => {
     return activities
-      .filter((a) => (a.type === 'Ride' || a.type === 'VirtualRide') && a.average_heartrate)
+      .filter((a) => isRide(a) && a.average_heartrate)
       .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
       .map((activity) => ({
         fullDate: activity.start_date_local,
-                avgHR: Math.round(activity.average_heartrate || 0),
+        avgHR: Math.round(activity.average_heartrate || 0),
         maxHR: activity.max_heartrate || 0,
         name: activity.name,
       }))
@@ -80,11 +61,11 @@ export function PerformanceCharts({ activities, showAllCharts }: PerformanceChar
 
   const speedTrendData = useMemo(() => {
     return activities
-      .filter((a) => (a.type === 'Ride' || a.type === 'VirtualRide') && a.average_speed > 0)
+      .filter((a) => isRide(a) && a.average_speed > 0)
       .sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
       .map((activity) => ({
         fullDate: activity.start_date_local,
-                speed: Math.round((activity.average_speed * 3.6) * 10) / 10,
+        speed: Math.round((activity.average_speed * 3.6) * 10) / 10,
         maxSpeed: Math.round((activity.max_speed * 3.6) * 10) / 10,
         elevation: Math.round(activity.total_elevation_gain),
         name: activity.name,

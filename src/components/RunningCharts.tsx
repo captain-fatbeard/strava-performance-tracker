@@ -15,20 +15,17 @@ import {
 import { type StravaActivity } from '~/lib/strava'
 import { formatPace } from '~/lib/performance'
 import { chartTheme, tooltipStyle, formatDateShort, activityTooltipLabel } from '~/lib/chart-theme'
+import { isRun } from '~/lib/activities'
+import { calculateTrendLine } from '~/lib/trend'
+import { trendClasses } from '~/lib/styles'
 
 interface RunningChartsProps {
   activities: StravaActivity[]
 }
 
-const trendClasses: Record<string, string> = {
-  improving: 'bg-success-muted text-success',
-  declining: 'bg-danger-muted text-danger',
-  stable: 'bg-warning-muted text-warning',
-}
-
 export function RunningCharts({ activities }: RunningChartsProps) {
   const runs = useMemo(
-    () => activities.filter((a) => a.type === 'Run').sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()),
+    () => activities.filter(isRun).sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()),
     [activities]
   )
 
@@ -47,26 +44,10 @@ export function RunningCharts({ activities }: RunningChartsProps) {
       })
   }, [runs])
 
-  const paceTrendLine = useMemo(() => {
-    if (paceTrendData.length < 2) return null
-
-    const n = paceTrendData.length
-    const sumX = paceTrendData.reduce((sum, _, i) => sum + i, 0)
-    const sumY = paceTrendData.reduce((sum, d) => sum + d.pace, 0)
-    const sumXY = paceTrendData.reduce((sum, d, i) => sum + i * d.pace, 0)
-    const sumX2 = paceTrendData.reduce((sum, _, i) => sum + i * i, 0)
-
-    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX)
-    const intercept = (sumY - slope * sumX) / n
-
-    return {
-      slope,
-      startValue: intercept,
-      endValue: slope * (n - 1) + intercept,
-      // For pace, negative slope = improving (getting faster)
-      trend: slope < -1 ? 'improving' : slope > 1 ? 'declining' : 'stable',
-    }
-  }, [paceTrendData])
+  const paceTrendLine = useMemo(
+    () => calculateTrendLine(paceTrendData.map((d) => d.pace), 1, true),
+    [paceTrendData],
+  )
 
   const hrTrendData = useMemo(() => {
     return runs

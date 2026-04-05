@@ -9,31 +9,14 @@ import {
   type ActivityScore,
 } from '~/lib/performance'
 import { chartTheme, tooltipStyle, activityTooltipLabel, formatDateShort } from '~/lib/chart-theme'
+import { isRide, getScoreLabel } from '~/lib/activities'
 
 interface ActivityScoringProps {
   activities: StravaActivity[]
 }
 
-// Color for ride score based on value
-function scoreColor(score: number): string {
-  if (score >= 80) return chartTheme.colors.coral.main
-  if (score >= 50) return chartTheme.colors.amber.main
-  if (score >= 30) return chartTheme.colors.primary.main
-  return chartTheme.colors.neutral[400]
-}
-
-function scoreLabel(score: number): string {
-  if (score >= 100) return 'Epic'
-  if (score >= 80) return 'Hard'
-  if (score >= 50) return 'Solid'
-  if (score >= 30) return 'Moderate'
-  return 'Easy'
-}
-
 export function ActivityScoring({ activities }: ActivityScoringProps) {
-  const rides = activities.filter(
-    (a) => a.type === 'Ride' || a.type === 'VirtualRide'
-  )
+  const rides = activities.filter(isRide)
   const ftp = estimateFTP(rides) || 0
 
   const scores = useMemo(() => calculateActivityScores(activities, ftp), [activities, ftp])
@@ -65,7 +48,7 @@ export function ActivityScoring({ activities }: ActivityScoringProps) {
             </div>
             <span className="text-[2rem] font-bold leading-tight text-text-primary">{averages.avgRideScore}</span>
             <span className="text-sm text-text-secondary font-medium">Avg Ride Score</span>
-            <span className="text-xs text-text-muted">{scoreLabel(averages.avgRideScore)} intensity</span>
+            <span className="text-xs text-text-muted">{getScoreLabel(averages.avgRideScore)} intensity</span>
           </div>
 
           {/* Best Ride Score */}
@@ -78,7 +61,7 @@ export function ActivityScoring({ activities }: ActivityScoringProps) {
             </div>
             <span className="text-[2rem] font-bold leading-tight text-text-primary">{averages.bestRideScore}</span>
             <span className="text-sm text-text-secondary font-medium">Best Ride Score</span>
-            <span className="text-xs text-text-muted">{scoreLabel(averages.bestRideScore)}</span>
+            <span className="text-xs text-text-muted">{getScoreLabel(averages.bestRideScore)}</span>
           </div>
 
           {/* Avg Difficulty */}
