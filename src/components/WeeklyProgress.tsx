@@ -10,7 +10,8 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts'
-import { type StravaActivity, secondsToHMS } from '~/lib/strava'
+import { startOfWeek, addWeeks } from 'date-fns'
+import { type StravaActivity } from '~/lib/strava'
 import { calculateWeeklySummaries, estimateFTP } from '~/lib/performance'
 import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
 
@@ -18,24 +19,118 @@ interface WeeklyProgressProps {
   activities: StravaActivity[]
 }
 
+const STREAK_THRESHOLD_HOURS = 2
+
 export function WeeklyProgress({ activities }: WeeklyProgressProps) {
   const ftp = useMemo(() => estimateFTP(activities) || 200, [activities])
 
   const weeklyData = useMemo(
     () => calculateWeeklySummaries(activities, ftp, 12).map(week => ({
       ...week,
-      totalHours: Math.round(week.totalTime / 360) / 10, // Convert to hours with 1 decimal
+      totalHours: Math.round(week.totalTime / 360) / 10,
     })),
     [activities, ftp]
   )
+
+  const { currentStreak, longestStreak, avgActivitiesPerWeek } = useMemo(() => {
+    if (activities.length === 0) {
+      return { currentStreak: 0, longestStreak: 0, avgActivitiesPerWeek: 0 }
+    }
+
+    const now = new Date()
+    const currentWeekStart = startOfWeek(now, { weekStartsOn: 1 })
+
+    const sortedActivities = [...activities].sort(
+      (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
+    )
+
+    const earliestDate = new Date(sortedActivities[0].start_date)
+    const earliestWeekStart = startOfWeek(earliestDate, { weekStartsOn: 1 })
+
+    // Build weekly hours map for all weeks from earliest to current
+    const weeklyHoursMap = new Map<string, number>()
+    for (let ws = new Date(earliestWeekStart); ws <= currentWeekStart; ws = addWeeks(ws, 1)) {
+      const we = addWeeks(ws, 1)
+      const weekKey = ws.toISOString().split('T')[0]
+      const hours = activities
+        .filter((a) => {
+          const d = new Date(a.start_date)
+          return d >= ws && d < we
+        })
+        .reduce((sum, a) => sum + a.moving_time / 3600, 0)
+      weeklyHoursMap.set(weekKey, hours)
+    }
+
+    // Find longest streak
+    let longest = 0
+    let streak = 0
+    for (let ws = new Date(earliestWeekStart); ws <= currentWeekStart; ws = addWeeks(ws, 1)) {
+      const weekKey = ws.toISOString().split('T')[0]
+      const hours = weeklyHoursMap.get(weekKey) ?? 0
+      if (hours >= STREAK_THRESHOLD_HOURS) {
+        streak++
+        if (streak > longest) longest = streak
+      } else {
+        streak = 0
+      }
+    }
+
+    // Find current streak (count backward from current week)
+    let current = 0
+    for (let ws = new Date(currentWeekStart); ws >= earliestWeekStart; ws = addWeeks(ws, -1)) {
+      const weekKey = ws.toISOString().split('T')[0]
+      const hours = weeklyHoursMap.get(weekKey) ?? 0
+      if (hours >= STREAK_THRESHOLD_HOURS) {
+        current++
+      } else {
+        break
+      }
+    }
+
+    // Avg activities per week from the chart data
+    const totalActivities = weeklyData.reduce((s, d) => s + d.rides + d.runs, 0)
+    const weeksWithActivity = weeklyData.filter((d) => d.rides + d.runs > 0).length
+    const avgPerWeek = weeksWithActivity > 0
+      ? Math.round((totalActivities / weeksWithActivity) * 10) / 10
+      : 0
+
+    return {
+      currentStreak: current,
+      longestStreak: longest,
+      avgActivitiesPerWeek: avgPerWeek,
+    }
+  }, [activities, weeklyData])
 
   if (weeklyData.length === 0) {
     return null
   }
 
+  const statCard = "bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-6 flex flex-col gap-1 transition-all duration-200 hover:border-border hover:-translate-y-0.5 hover:shadow-md max-md:p-4 max-[480px]:p-3.5"
+  const statValue = "text-[2rem] font-bold leading-tight bg-linear-to-br from-text-primary to-text-secondary bg-clip-text text-transparent max-md:text-2xl max-[480px]:text-xl"
+
   return (
     <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
       <h3 className="text-lg font-semibold mb-5 text-text-primary max-[480px]:text-base">Weekly Training Load</h3>
+
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-4 mb-6">
+        <div className={`${statCard} text-center bg-linear-to-br from-accent/15 to-accent/5 border-accent/30`}>
+          <div className="text-[2rem] font-bold leading-tight bg-linear-to-br from-accent-light to-accent bg-clip-text text-transparent max-md:text-2xl max-[480px]:text-xl">
+            {currentStreak}
+          </div>
+          <div className="text-sm text-text-secondary font-medium">Current Streak</div>
+          <div className="text-xs text-text-muted">weeks</div>
+        </div>
+        <div className={`${statCard} text-center`}>
+          <div className={statValue}>{longestStreak}</div>
+          <div className="text-sm text-text-secondary font-medium">Longest Streak</div>
+          <div className="text-xs text-text-muted">weeks</div>
+        </div>
+        <div className={`${statCard} text-center`}>
+          <div className={statValue}>{avgActivitiesPerWeek}</div>
+          <div className="text-sm text-text-secondary font-medium">Avg/Week</div>
+          <div className="text-xs text-text-muted">activities</div>
+        </div>
+      </div>
 
       <ResponsiveContainer width="100%" height={300}>
         <ComposedChart data={weeklyData}>
