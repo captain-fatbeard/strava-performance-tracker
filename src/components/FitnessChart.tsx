@@ -13,17 +13,11 @@ import {
 import { type StravaActivity } from '~/lib/strava'
 import { calculateFitnessOverTime, estimateFTPHistory } from '~/lib/performance'
 import { chartTheme, tooltipStyle, formatDateShort, formatDateFull } from '~/lib/chart-theme'
+import { RangeSelector } from './RangeSelector'
 
 interface FitnessChartProps {
   activities: StravaActivity[]
 }
-
-const rangeOptions = [
-  { label: '30d', days: 30 },
-  { label: '90d', days: 90 },
-  { label: '6m', days: 180 },
-  { label: '1y', days: 365 },
-] as const
 
 function getCTLLevel(ctl: number): { label: string; color: string } {
   if (ctl >= 100) return { label: 'Elite', color: chartTheme.colors.semantic.positive }
@@ -57,6 +51,7 @@ export function FitnessChart({ activities }: FitnessChartProps) {
 
   // Slice to the selected time range for display only
   const fitnessData = useMemo(() => {
+    if (days === 0) return allFitnessData
     return allFitnessData.slice(-days)
   }, [allFitnessData, days])
 
@@ -92,21 +87,7 @@ export function FitnessChart({ activities }: FitnessChartProps) {
       <div className="flex justify-between items-center mb-5 max-md:flex-col max-md:items-start max-md:gap-3">
         <div className="flex items-center gap-4">
           <h3 className="text-lg font-semibold text-text-primary max-[480px]:text-base">Fitness & Form</h3>
-          <div className="flex gap-1 bg-bg-tertiary rounded-[var(--radius-sm)] p-0.5">
-            {rangeOptions.map((opt) => (
-              <button
-                key={opt.label}
-                onClick={() => setDays(opt.days)}
-                className={`text-[0.7rem] font-semibold px-2.5 py-1 rounded-[var(--radius-sm)] transition-colors ${
-                  days === opt.days
-                    ? 'bg-accent text-bg-primary'
-                    : 'text-text-muted hover:text-text-secondary'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+          <RangeSelector days={days} onChange={setDays} />
         </div>
         <div className="flex gap-8 flex-wrap max-md:gap-4">
           <span className="flex flex-col items-center">

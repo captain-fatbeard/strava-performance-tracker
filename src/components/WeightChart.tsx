@@ -11,6 +11,7 @@ import {
 import { format, parseISO, startOfWeek } from 'date-fns'
 import { chartTheme, tooltipStyle, formatDateShort, formatDateFull } from '~/lib/chart-theme'
 import type { WeightEntry } from '~/lib/storage/supabase-client'
+import { RangeSelector } from './RangeSelector'
 
 interface WeightChartProps {
   entries: WeightEntry[]
@@ -23,11 +24,19 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
   const [newWeight, setNewWeight] = useState('')
   const [newWeightDate, setNewWeightDate] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"))
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [days, setDays] = useState(90)
+
+  const rangedEntries = useMemo(() => {
+    if (days === 0) return entries
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() - days)
+    return entries.filter((e) => new Date(e.recordedAt) >= cutoff)
+  }, [entries, days])
 
   const chartData = useMemo(() => {
-    if (entries.length === 0) return []
+    if (rangedEntries.length === 0) return []
 
-    const sorted = [...entries].sort(
+    const sorted = [...rangedEntries].sort(
       (a, b) => new Date(a.recordedAt).getTime() - new Date(b.recordedAt).getTime(),
     )
 
@@ -56,7 +65,7 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
         weeklyAvg: weekAvgs.get(weekKey),
       }
     })
-  }, [entries])
+  }, [rangedEntries])
 
   const { minWeight, maxWeight } = useMemo(() => {
     if (chartData.length === 0) return { minWeight: 60, maxWeight: 90 }
@@ -92,7 +101,10 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
   return (
     <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
       <div className="flex justify-between items-center mb-5 max-md:flex-col max-md:items-start max-md:gap-3">
-        <h3 className="text-lg font-semibold text-text-primary max-[480px]:text-base">Weight History</h3>
+        <div className="flex items-center gap-4">
+          <h3 className="text-lg font-semibold text-text-primary max-[480px]:text-base">Weight History</h3>
+          <RangeSelector days={days} onChange={setDays} />
+        </div>
         <div className="flex items-center gap-6">
           {entries.length > 0 && (
             <div className="flex gap-8 flex-wrap max-md:gap-4">

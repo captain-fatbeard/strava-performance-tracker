@@ -1,5 +1,13 @@
 import { type StravaActivity } from './strava'
 
+/** Filter activities to those within the last N days. If days is 0, return all. */
+export function filterByDays(activities: StravaActivity[], days: number): StravaActivity[] {
+  if (days === 0) return activities
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - days)
+  return activities.filter((a) => new Date(a.start_date) >= cutoff)
+}
+
 /** Check if an activity is a cycling activity */
 export function isRide(a: StravaActivity): boolean {
   return a.type === 'Ride' || a.type === 'VirtualRide'
