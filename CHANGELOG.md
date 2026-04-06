@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.9.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.8.0...v1.9.0) (2026-04-06)
+
+
+### Features
+
+* add day streak and weekly streak continuation status ([bd97c22](https://github.com/captain-fatbeard/strava-performance-tracker/commit/bd97c22b562a982f98b3988f8e84c88be599ad38))
+* add shared RangeSelector to Weight History and Fitness charts ([9581a49](https://github.com/captain-fatbeard/strava-performance-tracker/commit/9581a498ccc9b73a4b41083ccda632ea50c50bf0))
+* merge activity consistency into weekly training load ([614d0d7](https://github.com/captain-fatbeard/strava-performance-tracker/commit/614d0d70752f5fcea3c31b01666b5e98f091dddd))
+
+
+### Refactoring
+
+* extract shared utilities and reduce code duplication ([43b427c](https://github.com/captain-fatbeard/strava-performance-tracker/commit/43b427c5d4fe7e4743672bc34d1cfd85421d99a2))
+
 ## [1.8.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.7.0...v1.8.0) (2026-04-04)
 
 
