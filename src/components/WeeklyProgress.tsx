@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts'
-import { startOfWeek, addWeeks } from 'date-fns'
+import { startOfWeek, addWeeks, addDays, startOfDay } from 'date-fns'
 import { type StravaActivity } from '~/lib/strava'
 import { calculateWeeklySummaries, estimateFTP } from '~/lib/performance'
 import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
@@ -33,12 +33,13 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
     [activities, ftp]
   )
 
-  const { currentStreak, longestStreak, avgActivitiesPerWeek } = useMemo(() => {
+  const { currentWeekStreak, longestStreak, avgActivitiesPerWeek, currentWeekHours, currentDayStreak } = useMemo(() => {
     if (activities.length === 0) {
-      return { currentStreak: 0, longestStreak: 0, avgActivitiesPerWeek: 0 }
+      return { currentWeekStreak: 0, longestStreak: 0, avgActivitiesPerWeek: 0, currentWeekHours: 0, currentDayStreak: 0 }
     }
 
     const now = new Date()
+    const today = startOfDay(now)
     const currentWeekStart = startOfWeek(now, { weekStartsOn: 1 })
 
     const sortedActivities = [...activities].sort(
@@ -76,13 +77,39 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
       }
     }
 
-    // Find current streak (count backward from current week)
+    // Current week hours
+    const currentWeekKey = currentWeekStart.toISOString().split('T')[0]
+    const thisWeekHours = weeklyHoursMap.get(currentWeekKey) ?? 0
+
+    // Find current weekly streak (count backward, skipping current week if not yet met)
     let current = 0
-    for (let ws = new Date(currentWeekStart); ws >= earliestWeekStart; ws = addWeeks(ws, -1)) {
+    const startFrom = thisWeekHours >= STREAK_THRESHOLD_HOURS
+      ? new Date(currentWeekStart)
+      : addWeeks(currentWeekStart, -1)
+
+    for (let ws = new Date(startFrom); ws >= earliestWeekStart; ws = addWeeks(ws, -1)) {
       const weekKey = ws.toISOString().split('T')[0]
       const hours = weeklyHoursMap.get(weekKey) ?? 0
       if (hours >= STREAK_THRESHOLD_HOURS) {
         current++
+      } else {
+        break
+      }
+    }
+
+    // Daily activity streak: count consecutive days with at least one activity
+    const activityDays = new Set(
+      activities.map((a) => startOfDay(new Date(a.start_date)).toISOString().split('T')[0])
+    )
+    let dayStreak = 0
+    // Start from today, if no activity today start from yesterday
+    let checkDay = activityDays.has(today.toISOString().split('T')[0])
+      ? today
+      : addDays(today, -1)
+    for (; ; checkDay = addDays(checkDay, -1)) {
+      const dayKey = checkDay.toISOString().split('T')[0]
+      if (activityDays.has(dayKey)) {
+        dayStreak++
       } else {
         break
       }
@@ -96,9 +123,11 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
       : 0
 
     return {
-      currentStreak: current,
+      currentWeekStreak: current,
       longestStreak: longest,
       avgActivitiesPerWeek: avgPerWeek,
+      currentWeekHours: thisWeekHours,
+      currentDayStreak: dayStreak,
     }
   }, [activities, weeklyData])
 
@@ -113,10 +142,25 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
       <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-4 mb-6">
         <div className={`${statCardAccent} text-center`}>
           <div className={statValueAccent}>
-            {currentStreak}
+            {currentWeekStreak}
           </div>
-          <div className="text-sm text-text-secondary font-medium">Current Streak</div>
+          <div className="text-sm text-text-secondary font-medium">Week Streak</div>
           <div className="text-xs text-text-muted">weeks</div>
+          {currentWeekHours < STREAK_THRESHOLD_HOURS && (
+            <div className="text-xs text-amber-400 font-medium mt-1.5">
+              Train {Math.ceil((STREAK_THRESHOLD_HOURS - currentWeekHours) * 60)}min more to {currentWeekStreak > 0 ? `continue ${currentWeekStreak} week streak` : 'start a streak'}
+            </div>
+          )}
+          {currentWeekHours >= STREAK_THRESHOLD_HOURS && (
+            <div className="text-xs text-emerald-400 font-medium mt-1.5">
+              Streak secured this week
+            </div>
+          )}
+        </div>
+        <div className={`${statCard} text-center gap-1`}>
+          <div className={statValue}>{currentDayStreak}</div>
+          <div className="text-sm text-text-secondary font-medium">Day Streak</div>
+          <div className="text-xs text-text-muted">days</div>
         </div>
         <div className={`${statCard} text-center gap-1`}>
           <div className={statValue}>{longestStreak}</div>
