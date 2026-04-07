@@ -33,9 +33,9 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
     [activities, ftp]
   )
 
-  const { currentWeekStreak, longestStreak, avgActivitiesPerWeek, currentWeekHours, currentDayStreak } = useMemo(() => {
+  const { currentWeekStreak, longestStreak, avgActivitiesPerWeek, avgTimePerWeek, avgDistPerWeek, currentWeekHours, currentDayStreak } = useMemo(() => {
     if (activities.length === 0) {
-      return { currentWeekStreak: 0, longestStreak: 0, avgActivitiesPerWeek: 0, currentWeekHours: 0, currentDayStreak: 0 }
+      return { currentWeekStreak: 0, longestStreak: 0, avgActivitiesPerWeek: 0, avgTimePerWeek: 0, avgDistPerWeek: 0, currentWeekHours: 0, currentDayStreak: 0 }
     }
 
     const now = new Date()
@@ -115,17 +115,27 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
       }
     }
 
-    // Avg activities per week from the chart data
-    const totalActivities = weeklyData.reduce((s, d) => s + d.rides + d.runs, 0)
+    // Avg per week from the chart data
     const weeksWithActivity = weeklyData.filter((d) => d.rides + d.runs > 0).length
+    const totalActivities = weeklyData.reduce((s, d) => s + d.rides + d.runs, 0)
+    const totalTime = weeklyData.reduce((s, d) => s + d.totalTime, 0)
+    const totalDist = weeklyData.reduce((s, d) => s + d.totalDistance, 0)
     const avgPerWeek = weeksWithActivity > 0
       ? Math.round((totalActivities / weeksWithActivity) * 10) / 10
+      : 0
+    const avgTimePerWeek = weeksWithActivity > 0
+      ? Math.round(totalTime / weeksWithActivity)
+      : 0
+    const avgDistPerWeek = weeksWithActivity > 0
+      ? Math.round((totalDist / weeksWithActivity) * 10) / 10
       : 0
 
     return {
       currentWeekStreak: current,
       longestStreak: longest,
       avgActivitiesPerWeek: avgPerWeek,
+      avgTimePerWeek,
+      avgDistPerWeek,
       currentWeekHours: thisWeekHours,
       currentDayStreak: dayStreak,
     }
@@ -168,9 +178,9 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
           <div className="text-xs text-text-muted">weeks</div>
         </div>
         <div className={`${statCard} text-center gap-1`}>
-          <div className={statValue}>{avgActivitiesPerWeek}</div>
+          <div className={statValue}>{Math.floor(avgTimePerWeek / 3600)}h {Math.floor((avgTimePerWeek % 3600) / 60)}m</div>
           <div className="text-sm text-text-secondary font-medium">Avg/Week</div>
-          <div className="text-xs text-text-muted">activities</div>
+          <div className="text-xs text-text-muted">{avgActivitiesPerWeek} activities · {avgDistPerWeek} km</div>
         </div>
       </div>
 
