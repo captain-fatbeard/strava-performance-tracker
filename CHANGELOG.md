@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.10.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.9.0...v1.10.0) (2026-04-07)
+
+
+### Features
+
+* add weight slider to VO2max card for what-if estimation ([c0436c1](https://github.com/captain-fatbeard/strava-performance-tracker/commit/c0436c16b7f61fb803454df4277c0f214e93b667))
+* show avg duration as primary value in Avg/Week card with activities and distance as sub values ([1cbde56](https://github.com/captain-fatbeard/strava-performance-tracker/commit/1cbde56f7b5c001e878648d14843862547334526))
+
 ## [1.9.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.8.0...v1.9.0) (2026-04-06)
 
 
