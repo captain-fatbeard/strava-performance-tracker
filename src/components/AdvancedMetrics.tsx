@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { type StravaActivity } from '~/lib/strava'
-import { calculateAdvancedMetrics, estimateFTP, getMotionistBenchmarks } from '~/lib/performance'
+import { calculateAdvancedMetrics, estimateFTP, estimateVO2max, getVO2maxCategory, getMotionistBenchmarks } from '~/lib/performance'
 import { isRide } from '~/lib/activities'
 import { badgeClasses } from '~/lib/styles'
 import { ComparisonBar } from './ComparisonBar'
@@ -16,10 +16,14 @@ interface AdvancedMetricsProps {
 export function AdvancedMetrics({ activities, weight, age, gender }: AdvancedMetricsProps) {
   const rides = activities.filter(isRide)
   const ftp = estimateFTP(rides) || 0
+  const [sliderWeight, setSliderWeight] = useState(weight)
 
   const metrics = useMemo(() => {
     return calculateAdvancedMetrics(activities, ftp, weight)
   }, [activities, ftp, weight])
+
+  const sliderVo2max = useMemo(() => estimateVO2max(ftp, sliderWeight), [ftp, sliderWeight])
+  const sliderVo2maxCategory = useMemo(() => getVO2maxCategory(sliderVo2max), [sliderVo2max])
 
   const benchmarks = useMemo(() => {
     return getMotionistBenchmarks(age, gender)
@@ -47,16 +51,43 @@ export function AdvancedMetrics({ activities, weight, age, gender }: AdvancedMet
             </svg>
           </div>
           <div className="flex flex-col">
-            <span className="text-[2rem] font-bold leading-tight text-text-primary">{metrics.vo2max}</span>
+            <span className="text-[2rem] font-bold leading-tight text-text-primary">{sliderVo2max}</span>
             <span className="text-sm text-text-secondary mt-1 font-medium">Est. VO2max</span>
             <span className="text-xs text-text-muted">ml/kg/min</span>
           </div>
-          <span className={`absolute top-4 right-4 text-[0.65rem] py-1 px-2.5 rounded-full font-bold uppercase tracking-wide ${badgeClasses[metrics.vo2maxCategory.toLowerCase().replace(' ', '-')] || ''}`}>
-            {metrics.vo2maxCategory}
+          <span className={`absolute top-4 right-4 text-[0.65rem] py-1 px-2.5 rounded-full font-bold uppercase tracking-wide ${badgeClasses[sliderVo2maxCategory.toLowerCase().replace(' ', '-')] || ''}`}>
+            {sliderVo2maxCategory}
           </span>
-          {metrics.vo2max > 0 && (
+          <div className="mt-2 pt-3 border-t border-border-subtle">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs text-text-muted">Weight</span>
+              <span className="text-xs font-semibold text-text-primary">{sliderWeight} kg</span>
+            </div>
+            <input
+              type="range"
+              min={40}
+              max={150}
+              step={0.5}
+              value={sliderWeight}
+              onChange={(e) => setSliderWeight(Number(e.target.value))}
+              className="w-full h-1.5 rounded-full appearance-none cursor-pointer bg-border-subtle accent-accent"
+            />
+            <div className="flex justify-between text-[0.6rem] text-text-muted mt-1">
+              <span>40 kg</span>
+              {sliderWeight !== weight && (
+                <button
+                  onClick={() => setSliderWeight(weight)}
+                  className="text-accent hover:text-accent/80 font-medium cursor-pointer"
+                >
+                  Reset to {weight} kg
+                </button>
+              )}
+              <span>150 kg</span>
+            </div>
+          </div>
+          {sliderVo2max > 0 && (
             <ComparisonBar
-              value={metrics.vo2max}
+              value={sliderVo2max}
               benchmark={benchmarks.vo2max}
               goodThreshold={benchmarks.vo2maxGood}
               unit="ml/kg/min"
