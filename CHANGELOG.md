@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.10.1](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.10.0...v1.10.1) (2026-04-09)
+
+
+### Bug Fixes
+
+* use all activities for week streak calculation instead of time-range-filtered ([b8b29d4](https://github.com/captain-fatbeard/strava-performance-tracker/commit/b8b29d4067922735d6f5a74fb9e3c015513693f5))
+
 ## [1.10.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.9.0...v1.10.0) (2026-04-07)
 
 
