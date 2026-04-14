@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.11.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.10.1...v1.11.0) (2026-04-14)
+
+
+### Features
+
+* show streak motivation message on day streak card ([0302af6](https://github.com/captain-fatbeard/strava-performance-tracker/commit/0302af67feb1294bfc6dc6f061a9e9d48c53dd61))
+
 ### [1.10.1](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.10.0...v1.10.1) (2026-04-09)
 
 
