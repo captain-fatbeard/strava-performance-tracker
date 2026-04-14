@@ -33,9 +33,9 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
     [activities, ftp]
   )
 
-  const { currentWeekStreak, longestStreak, avgActivitiesPerWeek, avgTimePerWeek, avgDistPerWeek, currentWeekHours, currentDayStreak } = useMemo(() => {
+  const { currentWeekStreak, longestStreak, avgActivitiesPerWeek, avgTimePerWeek, avgDistPerWeek, currentWeekHours, currentDayStreak, hasActivityToday } = useMemo(() => {
     if (activities.length === 0) {
-      return { currentWeekStreak: 0, longestStreak: 0, avgActivitiesPerWeek: 0, avgTimePerWeek: 0, avgDistPerWeek: 0, currentWeekHours: 0, currentDayStreak: 0 }
+      return { currentWeekStreak: 0, longestStreak: 0, avgActivitiesPerWeek: 0, avgTimePerWeek: 0, avgDistPerWeek: 0, currentWeekHours: 0, currentDayStreak: 0, hasActivityToday: false }
     }
 
     const now = new Date()
@@ -101,11 +101,11 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
     const activityDays = new Set(
       activities.map((a) => startOfDay(new Date(a.start_date)).toISOString().split('T')[0])
     )
+    const todayKey = today.toISOString().split('T')[0]
+    const activityToday = activityDays.has(todayKey)
     let dayStreak = 0
     // Start from today, if no activity today start from yesterday
-    let checkDay = activityDays.has(today.toISOString().split('T')[0])
-      ? today
-      : addDays(today, -1)
+    let checkDay = activityToday ? today : addDays(today, -1)
     for (; ; checkDay = addDays(checkDay, -1)) {
       const dayKey = checkDay.toISOString().split('T')[0]
       if (activityDays.has(dayKey)) {
@@ -138,6 +138,7 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
       avgDistPerWeek,
       currentWeekHours: thisWeekHours,
       currentDayStreak: dayStreak,
+      hasActivityToday: activityToday,
     }
   }, [activities, weeklyData])
 
@@ -171,6 +172,16 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
           <div className={statValue}>{currentDayStreak}</div>
           <div className="text-sm text-text-secondary font-medium">Day Streak</div>
           <div className="text-xs text-text-muted">days</div>
+          {currentDayStreak > 0 && !hasActivityToday && (
+            <div className="text-xs text-amber-400 font-medium mt-1.5">
+              Train today for a {currentDayStreak + 1} day streak
+            </div>
+          )}
+          {currentDayStreak > 0 && hasActivityToday && (
+            <div className="text-xs text-emerald-400 font-medium mt-1.5">
+              Streak extended today
+            </div>
+          )}
         </div>
         <div className={`${statCard} text-center gap-1`}>
           <div className={statValue}>{longestStreak}</div>
