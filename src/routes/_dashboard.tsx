@@ -55,6 +55,8 @@ function DashboardLayout() {
   const [activityType, setActivityType] = useState<ActivityType>(DEFAULT_SETTINGS.activityType)
   const [birthday, setBirthday] = useState<string | null>(DEFAULT_SETTINGS.birthday)
   const [gender, setGender] = useState<'male' | 'female'>(DEFAULT_SETTINGS.gender)
+  const [maxHROverride, setMaxHROverride] = useState<number | null>(DEFAULT_SETTINGS.maxHR)
+  const [restingHROverride, setRestingHROverride] = useState<number | null>(DEFAULT_SETTINGS.restingHR)
   const [trainingActivityIds, setTrainingActivityIds] = useState<number[]>([])
 
   // Activity groups state
@@ -76,8 +78,11 @@ function DashboardLayout() {
   // Auto-calculate Max HR and Resting HR from activity data
   const maxHRData = useMemo(() => calculateMaxHR(activities, age), [activities, age])
   const restingHRData = useMemo(() => calculateRestingHR(activities, age, gender), [activities, age, gender])
-  const maxHR = maxHRData.value
-  const restingHR = restingHRData.value
+  // Use manual override if set, otherwise use calculated value
+  const maxHR = maxHROverride ?? maxHRData.value
+  const maxHRSource = maxHROverride ? 'manual' as const : maxHRData.source
+  const restingHR = restingHROverride ?? restingHRData.value
+  const restingHRSource = restingHROverride ? 'manual' as const : restingHRData.source
 
   // Track if settings have been loaded to avoid overwriting on mount
   const settingsLoaded = useRef(false)
@@ -246,12 +251,14 @@ function DashboardLayout() {
           gender,
           timeRange,
           activityType,
+          maxHR: maxHROverride,
+          restingHR: restingHROverride,
         })
       }
     }, 500)
 
     return () => clearTimeout(timeoutId)
-  }, [athlete, birthday, gender, timeRange, activityType])
+  }, [athlete, birthday, gender, timeRange, activityType, maxHROverride, restingHROverride])
 
   useEffect(() => {
     async function init() {
@@ -282,6 +289,8 @@ function DashboardLayout() {
           setActivityType(settings.activityType)
           setBirthday(settings.birthday)
           setGender(settings.gender)
+          setMaxHROverride(settings.maxHR)
+          setRestingHROverride(settings.restingHR)
         }
         setTrainingActivityIds(trainingIds)
         setActivityGroups(groups)
@@ -576,10 +585,10 @@ function DashboardLayout() {
     setActivityType,
     weight,
     maxHR,
-    maxHRSource: maxHRData.source,
+    maxHRSource,
     maxHRActivityCount: maxHRData.activityCount,
     restingHR,
-    restingHRSource: restingHRData.source,
+    restingHRSource,
     restingHRActivityCount: restingHRData.activityCount,
     age,
     birthday,
@@ -802,28 +811,50 @@ function DashboardLayout() {
 
             <div>
               <h3 className="text-xs text-text-muted uppercase tracking-wider font-semibold mb-4 pb-2 border-b border-border-subtle">User Profile</h3>
-              <div className="flex flex-col gap-1.5 mb-5">
+              <div className="flex flex-col gap-2 mb-5">
                 <label className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">Max HR</label>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-lg font-semibold text-text-primary">{maxHR} bpm</span>
-                  <span className="text-xs text-text-muted">
-                    {maxHRData.source === 'observed'
-                      ? `from ${maxHRData.activityCount} activities`
-                      : 'estimated (Tanaka formula)'}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <input
+                    className="w-20 bg-bg-tertiary border border-border text-text-primary py-2 px-3 rounded-[var(--radius-sm)] text-sm transition-all duration-150 hover:border-text-muted focus:outline-none focus:border-accent focus:ring-3 focus:ring-accent/15 data-value"
+                    type="number"
+                    min="100"
+                    max="230"
+                    placeholder={String(maxHRData.value)}
+                    value={maxHROverride ?? ''}
+                    onChange={(e) => setMaxHROverride(e.target.value ? Number(e.target.value) : null)}
+                  />
+                  <span className="text-sm text-text-secondary">bpm</span>
                 </div>
+                <span className="text-[0.65rem] text-text-muted">
+                  {maxHROverride
+                    ? 'manual override'
+                    : maxHRData.source === 'observed'
+                      ? `auto: ${maxHRData.value} bpm from ${maxHRData.activityCount} activities`
+                      : `auto: ${maxHRData.value} bpm (Tanaka formula)`}
+                </span>
               </div>
 
-              <div className="flex flex-col gap-1.5 mb-5">
+              <div className="flex flex-col gap-2 mb-5">
                 <label className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">Resting HR</label>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-lg font-semibold text-text-primary">{restingHR} bpm</span>
-                  <span className="text-xs text-text-muted">
-                    {restingHRData.source === 'observed'
-                      ? `from ${restingHRData.activityCount} activities`
-                      : 'estimated (age-based)'}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <input
+                    className="w-20 bg-bg-tertiary border border-border text-text-primary py-2 px-3 rounded-[var(--radius-sm)] text-sm transition-all duration-150 hover:border-text-muted focus:outline-none focus:border-accent focus:ring-3 focus:ring-accent/15 data-value"
+                    type="number"
+                    min="30"
+                    max="120"
+                    placeholder={String(restingHRData.value)}
+                    value={restingHROverride ?? ''}
+                    onChange={(e) => setRestingHROverride(e.target.value ? Number(e.target.value) : null)}
+                  />
+                  <span className="text-sm text-text-secondary">bpm</span>
                 </div>
+                <span className="text-[0.65rem] text-text-muted">
+                  {restingHROverride
+                    ? 'manual override'
+                    : restingHRData.source === 'observed'
+                      ? `auto: ${restingHRData.value} bpm from ${restingHRData.activityCount} activities`
+                      : `auto: ${restingHRData.value} bpm (age-based estimate)`}
+                </span>
               </div>
 
               <div className="flex flex-col gap-2 mb-5">

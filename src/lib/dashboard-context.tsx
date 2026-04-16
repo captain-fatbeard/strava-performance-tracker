@@ -37,10 +37,10 @@ export interface DashboardContextType {
   setActivityType: (type: ActivityType) => void
   weight: number
   maxHR: number
-  maxHRSource: 'observed' | 'estimated'
+  maxHRSource: 'observed' | 'estimated' | 'manual'
   maxHRActivityCount: number
   restingHR: number
-  restingHRSource: 'observed' | 'estimated'
+  restingHRSource: 'observed' | 'estimated' | 'manual'
   restingHRActivityCount: number
   age: number
   birthday: string | null

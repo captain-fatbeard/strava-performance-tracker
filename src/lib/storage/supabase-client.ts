@@ -11,6 +11,8 @@ export interface AppSettings {
   gender: Gender
   timeRange: TimeRange
   activityType: ActivityType
+  maxHR: number | null     // manual override, null = auto-calculate
+  restingHR: number | null // manual override, null = auto-calculate
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -18,6 +20,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   gender: 'male',
   timeRange: '90d',
   activityType: 'all',
+  maxHR: null,
+  restingHR: null,
 }
 
 // Get env vars - try both Vite style and Node style for SSR compatibility
@@ -65,6 +69,8 @@ function rowToSettings(row: UserSettingsRow): AppSettings {
     gender: row.gender as Gender,
     timeRange: row.time_range as TimeRange,
     activityType: row.activity_type as ActivityType,
+    maxHR: row.max_hr || null,
+    restingHR: row.resting_hr || null,
   }
 }
 
@@ -106,6 +112,8 @@ export async function upsertUserSettings(
         gender: settings.gender,
         time_range: settings.timeRange,
         activity_type: settings.activityType,
+        max_hr: settings.maxHR ?? 0,
+        resting_hr: settings.restingHR ?? 0,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'athlete_id' }
