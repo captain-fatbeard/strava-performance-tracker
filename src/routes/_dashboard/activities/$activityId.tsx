@@ -39,9 +39,9 @@ export const Route = createFileRoute('/_dashboard/activities/$activityId')({
 })
 
 const activityTypeClasses: Record<string, string> = {
-  ride: 'bg-info-muted text-[#60a5fa]',
-  virtualride: 'bg-info-muted text-[#60a5fa]',
-  run: 'bg-success-muted text-[#4ade80]',
+  ride: 'bg-ride-muted text-ride',
+  virtualride: 'bg-ride-muted text-ride',
+  run: 'bg-run-muted text-run',
 }
 
 const workoutTypeLabels: Record<string, Record<number, string>> = {
@@ -247,7 +247,7 @@ function ActivityDetailPage() {
               {refreshing ? 'Refreshing...' : 'Refresh'}
             </button>
             {details?.workout_type != null && details.workout_type > 0 && (
-              <span className="inline-block py-1.5 px-3 rounded-[var(--radius-sm)] text-[0.7rem] font-semibold uppercase tracking-wide bg-[rgba(251,191,36,0.12)] text-[#fbbf24]">
+              <span className="inline-block py-1.5 px-3 rounded-[var(--radius-sm)] text-[0.7rem] font-semibold uppercase tracking-wide bg-warning-muted text-warning">
                 {workoutTypeLabel(summary.type, details.workout_type)}
               </span>
             )}
@@ -706,9 +706,9 @@ function Td({ children, className = '' }: { children: React.ReactNode; className
 }
 
 const achievementColors: Record<number, { bg: string; text: string; label: string }> = {
-  1: { bg: 'bg-[rgba(255,215,0,0.15)]', text: 'text-[#ffd700]', label: 'KOM/QOM' },
-  2: { bg: 'bg-[rgba(192,192,192,0.15)]', text: 'text-[#c0c0c0]', label: '2nd' },
-  3: { bg: 'bg-[rgba(205,127,50,0.15)]', text: 'text-[#cd7f32]', label: '3rd' },
+  1: { bg: 'bg-gold-muted', text: 'text-gold', label: 'KOM/QOM' },
+  2: { bg: 'bg-silver-muted', text: 'text-silver', label: '2nd' },
+  3: { bg: 'bg-bronze-muted', text: 'text-bronze', label: '3rd' },
 }
 
 function AchievementBadges({ achievements }: { achievements?: Array<{ type_id: number; type: string; rank: number }> }) {

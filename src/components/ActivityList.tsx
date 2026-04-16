@@ -535,7 +535,7 @@ function ActivityRow({
         <button
           className={`py-1.5 px-3 rounded-[var(--radius-sm)] text-[0.7rem] font-semibold cursor-pointer transition-all duration-150 whitespace-nowrap ${
             isTraining
-              ? 'bg-[#f59e0b]/10 border border-[#f59e0b]/30 text-[#f59e0b] hover:bg-[#f59e0b]/20 hover:border-[#f59e0b]/50'
+              ? 'bg-warning/10 border border-warning/30 text-warning hover:bg-warning/20 hover:border-warning/50'
               : 'bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20 hover:border-accent/50'
           }`}
           onClick={() => toggleActivityCategory(activity.id)}
@@ -682,7 +682,7 @@ function GroupRow({
                 Rename
               </button>
               <button
-                className="py-1 px-2 rounded text-[0.65rem] font-medium cursor-pointer bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#ef4444] hover:bg-[#ef4444]/20 hover:border-[#ef4444]/40 transition-all duration-150"
+                className="py-1 px-2 rounded text-[0.65rem] font-medium cursor-pointer bg-danger/10 border border-danger/20 text-danger hover:bg-danger/20 hover:border-danger/40 transition-all duration-150"
                 onClick={onDelete}
                 title="Ungroup activities"
               >
@@ -694,7 +694,7 @@ function GroupRow({
             return (
               <span className={`inline-block py-1.5 px-3 rounded-[var(--radius-sm)] text-[0.7rem] font-semibold whitespace-nowrap ${
                 groupIsTraining
-                  ? 'bg-[#f59e0b]/10 border border-[#f59e0b]/30 text-[#f59e0b]'
+                  ? 'bg-warning/10 border border-warning/30 text-warning'
                   : 'bg-accent/10 border border-accent/30 text-accent'
               }`}>
                 {groupIsTraining ? 'Training' : 'Performance'}

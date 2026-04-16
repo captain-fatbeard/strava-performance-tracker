@@ -187,14 +187,14 @@ export function FatBurningStats({
       <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 transition-all duration-200 hover:border-border max-md:p-4 max-[480px]:p-3.5">
         <div className="flex justify-between items-center mb-5 max-md:flex-col max-md:items-start max-md:gap-3">
           <h3 className="text-lg font-semibold text-text-primary max-[480px]:text-base">Your FatMax Zone</h3>
-          <span className="py-1.5 px-4 rounded-full text-sm font-semibold text-white shadow-[0_2px_8px_rgba(20,184,166,0.3)]" style={{ backgroundColor: '#34d399' }}>
+          <span className="py-1.5 px-4 rounded-full text-sm font-semibold text-white shadow-[0_2px_8px_rgba(20,184,166,0.3)] bg-success">
             Optimal Fat Burning
           </span>
         </div>
         <div className="grid grid-cols-[auto_1fr] gap-8 p-6 bg-bg-secondary rounded-[var(--radius-md)] border border-success/20 max-md:grid-cols-1 max-md:gap-4">
           <div className="flex flex-col items-center justify-center py-4 px-8 bg-success/10 rounded-[var(--radius-md)] max-md:p-4 max-[480px]:p-3">
             <div className="text-sm text-text-secondary mb-2">Target Heart Rate</div>
-            <div className="text-[1.75rem] font-bold text-[#34d399] max-[480px]:text-2xl">
+            <div className="text-[1.75rem] font-bold text-success max-[480px]:text-2xl">
               {fatMaxZone.min} - {fatMaxZone.max} bpm
             </div>
           </div>
@@ -258,7 +258,7 @@ export function FatBurningStats({
               <span className="inline-block size-2.5 rounded-full" style={{ backgroundColor: zone.color }} />
               <span className="text-text-primary font-medium">{zone.name}</span>
               <span className="text-text-muted">{zone.min}-{zone.max} bpm</span>
-              <span className="text-[#34d399] font-medium">{Math.round(zone.fatBurnRatio * 100)}% fat</span>
+              <span className="text-success font-medium">{Math.round(zone.fatBurnRatio * 100)}% fat</span>
             </div>
           ))}
         </div>
@@ -347,14 +347,13 @@ export function FatBurningStats({
                     <td className="p-3 border-b border-border-subtle text-text-primary">{stats!.avgHR} bpm</td>
                     <td className="p-3 border-b border-border-subtle">
                       <span
-                        className="inline-block py-1 px-2 rounded-[var(--radius-sm)] text-xs font-semibold text-white"
-                        style={{
-                          backgroundColor: stats!.isOptimalFatBurn
-                            ? '#34d399'
+                        className={`inline-block py-1 px-2 rounded-[var(--radius-sm)] text-xs font-semibold text-white ${
+                          stats!.isOptimalFatBurn
+                            ? 'bg-success'
                             : stats!.intensity > 80
-                              ? '#14b8a6'
-                              : '#71717a',
-                        }}
+                              ? 'bg-accent'
+                              : 'bg-text-muted'
+                        }`}
                       >
                         {stats!.intensity}%
                       </span>
@@ -362,7 +361,7 @@ export function FatBurningStats({
                     <td className="p-3 border-b border-border-subtle text-text-primary">{stats!.calories}</td>
                     <td className="p-3 border-b border-border-subtle text-accent font-semibold">{stats!.fatBurned}g</td>
                     <td className="p-3 border-b border-border-subtle">
-                      <span className={`inline-block py-1 px-2 rounded-[var(--radius-sm)] text-xs ${stats!.isOptimalFatBurn ? 'bg-success/20 text-[#34d399]' : 'bg-bg-tertiary text-text-secondary'}`}>
+                      <span className={`inline-block py-1 px-2 rounded-[var(--radius-sm)] text-xs ${stats!.isOptimalFatBurn ? 'bg-success/20 text-success' : 'bg-bg-tertiary text-text-secondary'}`}>
                         {stats!.zone.split(' ')[0]} {stats!.zone.split(' ')[1]}
                       </span>
                     </td>

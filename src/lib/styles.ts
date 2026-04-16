@@ -35,7 +35,7 @@ export const trendClasses: Record<string, string> = {
 export const badgeClasses: Record<string, string> = {
   elite: 'bg-accent/20 text-accent',
   excellent: 'bg-success-muted text-success',
-  good: 'bg-info-muted text-[#60a5fa]',
+  good: 'bg-info-muted text-info',
   average: 'bg-warning-muted text-warning',
   'below-average': 'bg-danger-muted text-danger',
 }

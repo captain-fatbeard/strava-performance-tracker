@@ -364,7 +364,7 @@ function RecordsPage() {
       {/* Power Records Section */}
       {powerRecords.some((p) => p.top3.length > 0) && (
         <section className="mb-12">
-          <h2 className="text-xl font-bold mb-6 bg-linear-to-br from-[#38bdf8] to-[#0ea5e9] bg-clip-text text-transparent">
+          <h2 className="text-xl font-bold mb-6 bg-linear-to-br from-info to-accent-secondary bg-clip-text text-transparent">
             Power Records
           </h2>
 
@@ -403,7 +403,7 @@ function RecordsPage() {
                         </div>
                         <div className={`text-lg font-bold shrink-0 ${
                           i === 0
-                            ? 'bg-linear-to-br from-[#38bdf8] to-[#0ea5e9] bg-clip-text text-transparent'
+                            ? 'bg-linear-to-br from-info to-accent-secondary bg-clip-text text-transparent'
                             : 'text-text-secondary'
                         }`}>
                           {activity.average_watts}<span className="text-xs font-medium ml-0.5">W</span>
@@ -421,7 +421,7 @@ function RecordsPage() {
       {/* Best Efforts Section (Running) */}
       {bestEffortSummaries.length > 0 && (
         <section className="mb-12">
-          <h2 className="text-xl font-bold mb-6 bg-linear-to-br from-[#f472b6] to-[#ec4899] bg-clip-text text-transparent">
+          <h2 className="text-xl font-bold mb-6 bg-linear-to-br from-run to-success bg-clip-text text-transparent">
             Best Efforts
           </h2>
 
@@ -489,7 +489,7 @@ function RecordsPage() {
       {/* Segments Section */}
       <section>
         <div className="flex items-center justify-between mb-6 max-md:flex-col max-md:items-start max-md:gap-3">
-          <h2 className="text-xl font-bold bg-linear-to-br from-[#8b5cf6] to-[#7c3aed] bg-clip-text text-transparent">
+          <h2 className="text-xl font-bold bg-linear-to-br from-moderate to-[#6366f1] bg-clip-text text-transparent">
             Popular Segments
           </h2>
           <div className="flex items-center gap-4 max-[480px]:flex-col max-[480px]:items-start max-[480px]:gap-2">

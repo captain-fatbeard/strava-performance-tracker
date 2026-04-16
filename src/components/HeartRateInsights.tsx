@@ -55,9 +55,9 @@ function getTrend(data: (number | null)[]): 'Improving' | 'Stable' | 'Declining'
 }
 
 const trendBadgeClass: Record<string, string> = {
-  Improving: 'bg-success/20 text-[#34d399]',
+  Improving: 'bg-success-muted text-success',
   Stable: 'bg-bg-tertiary text-text-secondary',
-  Declining: 'bg-error/20 text-[#f87171]',
+  Declining: 'bg-danger-muted text-danger',
 }
 
 export function HeartRateInsights({ activities, maxHR, restingHR }: HeartRateInsightsProps) {

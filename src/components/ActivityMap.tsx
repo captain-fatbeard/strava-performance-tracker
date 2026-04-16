@@ -57,9 +57,9 @@ export function ActivityMap({ polyline }: ActivityMapProps) {
         // Start marker (green)
         L.default.circleMarker(latLngs[0], {
           radius: 7,
-          fillColor: '#34d399',
+          fillColor: '#14b8a6',
           fillOpacity: 1,
-          color: '#111919',
+          color: '#0e1515',
           weight: 2,
         }).addTo(map)
 
