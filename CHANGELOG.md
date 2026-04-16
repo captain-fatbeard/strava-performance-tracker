@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.12.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.11.0...v1.12.0) (2026-04-16)
+
+
+### Features
+
+* add manual override inputs for Max HR and Resting HR ([2ed8869](https://github.com/captain-fatbeard/strava-performance-tracker/commit/2ed88696befcbf1724f52e408d840c40b83f17e2))
+* redesign UI with premium typography, unified top bar, and refined aesthetics ([431d715](https://github.com/captain-fatbeard/strava-performance-tracker/commit/431d715c5426e3773b18eea3db30f9e724db6f71))
+* unify color system with vibrant chart palette and themed variables ([a566252](https://github.com/captain-fatbeard/strava-performance-tracker/commit/a566252028cfe069c9dc2a27611dcbfa674d825c)), closes [#fbbf24](https://github.com/captain-fatbeard/strava-performance-tracker/issues/fbbf24)
+
 ## [1.11.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.10.1...v1.11.0) (2026-04-14)
 
 
