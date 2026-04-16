@@ -91,26 +91,26 @@ export function FitnessChart({ activities }: FitnessChartProps) {
         </div>
         <div className="flex gap-8 flex-wrap max-md:gap-4">
           <span className="flex flex-col items-center">
-            <span className="text-[0.7rem] text-text-muted uppercase font-semibold tracking-wide">CTL</span>
-            <span className="text-2xl font-bold" style={{ color: chartTheme.colors.primary.main }}>{latestData.ctl}</span>
-            <span className="text-[0.65rem] font-medium mt-0.5 rounded-full px-2 py-0.5" style={{ color: ctlLevel.color, backgroundColor: `${ctlLevel.color}18` }}>{ctlLevel.label}</span>
+            <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wider">CTL</span>
+            <span className="data-value text-2xl font-medium" style={{ color: chartTheme.colors.primary.main }}>{latestData.ctl}</span>
+            <span className="text-[0.625rem] font-medium mt-0.5 rounded-full px-2 py-0.5" style={{ color: ctlLevel.color, backgroundColor: `${ctlLevel.color}15` }}>{ctlLevel.label}</span>
           </span>
           <span className="flex flex-col items-center">
-            <span className="text-[0.7rem] text-text-muted uppercase font-semibold tracking-wide">ATL</span>
-            <span className="text-2xl font-bold" style={{ color: chartTheme.colors.secondary.main }}>{latestData.atl}</span>
-            <span className="text-[0.65rem] font-medium mt-0.5 rounded-full px-2 py-0.5" style={{ color: atlLevel.color, backgroundColor: `${atlLevel.color}18` }}>{atlLevel.label}</span>
+            <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wider">ATL</span>
+            <span className="data-value text-2xl font-medium" style={{ color: chartTheme.colors.secondary.main }}>{latestData.atl}</span>
+            <span className="text-[0.625rem] font-medium mt-0.5 rounded-full px-2 py-0.5" style={{ color: atlLevel.color, backgroundColor: `${atlLevel.color}15` }}>{atlLevel.label}</span>
           </span>
           <span className="flex flex-col items-center">
-            <span className="text-[0.7rem] text-text-muted uppercase font-semibold tracking-wide">Form</span>
-            <span className="text-2xl font-bold" style={{ color: formStatus.color }}>
+            <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wider">Form</span>
+            <span className="data-value text-2xl font-medium" style={{ color: formStatus.color }}>
               {latestData.tsb}
             </span>
-            <span className="text-[0.65rem] font-medium mt-0.5 rounded-full px-2 py-0.5" style={{ color: formStatus.color, backgroundColor: `${formStatus.color}18` }}>{formStatus.label}</span>
+            <span className="text-[0.625rem] font-medium mt-0.5 rounded-full px-2 py-0.5" style={{ color: formStatus.color, backgroundColor: `${formStatus.color}15` }}>{formStatus.label}</span>
           </span>
           <span className="flex flex-col items-center">
-            <span className="text-[0.7rem] text-text-muted uppercase font-semibold tracking-wide">FTP</span>
-            <span className="text-2xl font-bold text-text-primary">{latestData.ftp}W</span>
-            <span className="text-[0.65rem] font-medium mt-0.5 rounded-full px-2 py-0.5 text-text-muted bg-bg-tertiary">Estimated</span>
+            <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wider">FTP</span>
+            <span className="data-value text-2xl font-medium text-text-primary">{latestData.ftp}W</span>
+            <span className="text-[0.625rem] font-medium mt-0.5 rounded-full px-2 py-0.5 text-text-muted bg-bg-tertiary">Estimated</span>
           </span>
         </div>
       </div>

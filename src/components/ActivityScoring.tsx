@@ -46,7 +46,7 @@ export function ActivityScoring({ activities }: ActivityScoringProps) {
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
               </svg>
             </div>
-            <span className="text-[2rem] font-bold leading-tight text-text-primary">{averages.avgRideScore}</span>
+            <span className="data-value text-[2rem] font-medium leading-tight text-text-primary">{averages.avgRideScore}</span>
             <span className="text-sm text-text-secondary font-medium">Avg Ride Score</span>
             <span className="text-xs text-text-muted">{getScoreLabel(averages.avgRideScore)} intensity</span>
           </div>
@@ -59,7 +59,7 @@ export function ActivityScoring({ activities }: ActivityScoringProps) {
                 <path d="M18 9v10a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9" />
               </svg>
             </div>
-            <span className="text-[2rem] font-bold leading-tight text-text-primary">{averages.bestRideScore}</span>
+            <span className="data-value text-[2rem] font-medium leading-tight text-text-primary">{averages.bestRideScore}</span>
             <span className="text-sm text-text-secondary font-medium">Best Ride Score</span>
             <span className="text-xs text-text-muted">{getScoreLabel(averages.bestRideScore)}</span>
           </div>
@@ -74,7 +74,7 @@ export function ActivityScoring({ activities }: ActivityScoringProps) {
                 <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
               </svg>
             </div>
-            <span className="text-[2rem] font-bold leading-tight text-text-primary">{averages.avgDifficulty}</span>
+            <span className="data-value text-[2rem] font-medium leading-tight text-text-primary">{averages.avgDifficulty}</span>
             <span className="text-sm text-text-secondary font-medium">Avg Difficulty</span>
             <span className="text-xs text-text-muted">Equivalent flat km</span>
           </div>
@@ -86,7 +86,7 @@ export function ActivityScoring({ activities }: ActivityScoringProps) {
                 <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
               </svg>
             </div>
-            <span className="text-[2rem] font-bold leading-tight text-text-primary">{averages.avgPowerPerDifficulty}</span>
+            <span className="data-value text-[2rem] font-medium leading-tight text-text-primary">{averages.avgPowerPerDifficulty}</span>
             <span className="text-sm text-text-secondary font-medium">W / Difficulty</span>
             <span className="text-xs text-text-muted">Higher = stronger on hard terrain</span>
           </div>

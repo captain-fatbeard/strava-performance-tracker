@@ -38,7 +38,7 @@ export function RunningMetrics({ activities, age, gender }: RunningMetricsProps)
               </svg>
             </div>
             <div className="flex flex-col">
-              <span className="text-[2rem] font-bold leading-tight text-text-primary">{metrics.vo2max}</span>
+              <span className="data-value text-[2rem] font-medium leading-tight text-text-primary">{metrics.vo2max}</span>
               <span className="text-sm text-text-secondary mt-1 font-medium">Est. VO2max (Running)</span>
               <span className="text-xs text-text-muted">ml/kg/min</span>
             </div>
@@ -64,7 +64,7 @@ export function RunningMetrics({ activities, age, gender }: RunningMetricsProps)
               </svg>
             </div>
             <div className="flex flex-col">
-              <span className="text-[2rem] font-bold leading-tight text-text-primary">{formatPace(metrics.bestPace)}</span>
+              <span className="data-value text-[2rem] font-medium leading-tight text-text-primary">{formatPace(metrics.bestPace)}</span>
               <span className="text-sm text-text-secondary mt-1 font-medium">Best Pace</span>
               <span className="text-xs text-text-muted">min/km (runs 5km+)</span>
             </div>
@@ -80,7 +80,7 @@ export function RunningMetrics({ activities, age, gender }: RunningMetricsProps)
             </svg>
           </div>
           <div className="flex flex-col">
-            <span className="text-[2rem] font-bold leading-tight text-text-primary">{formatPace(metrics.avgPace)}</span>
+            <span className="data-value text-[2rem] font-medium leading-tight text-text-primary">{formatPace(metrics.avgPace)}</span>
             <span className="text-sm text-text-secondary mt-1 font-medium">Avg Pace</span>
             <span className="text-xs text-text-muted">min/km across {metrics.totalRuns} runs</span>
           </div>
@@ -99,7 +99,7 @@ export function RunningMetrics({ activities, age, gender }: RunningMetricsProps)
               </svg>
             </div>
             <div className="flex flex-col">
-              <span className="text-[2rem] font-bold leading-tight text-text-primary">{metrics.avgCadence}</span>
+              <span className="data-value text-[2rem] font-medium leading-tight text-text-primary">{metrics.avgCadence}</span>
               <span className="text-sm text-text-secondary mt-1 font-medium">Avg Cadence</span>
               <span className="text-xs text-text-muted">steps/min</span>
             </div>
@@ -119,7 +119,7 @@ export function RunningMetrics({ activities, age, gender }: RunningMetricsProps)
               </svg>
             </div>
             <div className="flex flex-col">
-              <span className="text-[2rem] font-bold leading-tight text-text-primary">{metrics.avgHR}</span>
+              <span className="data-value text-[2rem] font-medium leading-tight text-text-primary">{metrics.avgHR}</span>
               <span className="text-sm text-text-secondary mt-1 font-medium">Avg Heart Rate</span>
               <span className="text-xs text-text-muted">bpm across runs</span>
             </div>

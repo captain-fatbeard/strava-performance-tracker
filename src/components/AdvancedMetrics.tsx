@@ -51,7 +51,7 @@ export function AdvancedMetrics({ activities, weight, age, gender }: AdvancedMet
             </svg>
           </div>
           <div className="flex flex-col">
-            <span className="text-[2rem] font-bold leading-tight text-text-primary">{sliderVo2max}</span>
+            <span className="data-value text-[2rem] font-medium leading-tight text-text-primary">{sliderVo2max}</span>
             <span className="text-sm text-text-secondary mt-1 font-medium">Est. VO2max</span>
             <span className="text-xs text-text-muted">ml/kg/min</span>
           </div>
@@ -104,7 +104,7 @@ export function AdvancedMetrics({ activities, weight, age, gender }: AdvancedMet
             </svg>
           </div>
           <div className="flex flex-col">
-            <span className="text-[2rem] font-bold leading-tight text-text-primary">{metrics.avgIF}</span>
+            <span className="data-value text-[2rem] font-medium leading-tight text-text-primary">{metrics.avgIF}</span>
             <span className="text-sm text-text-secondary mt-1 font-medium">Avg Intensity Factor</span>
             <span className="text-xs text-text-muted">NP / FTP</span>
           </div>
@@ -124,7 +124,7 @@ export function AdvancedMetrics({ activities, weight, age, gender }: AdvancedMet
             </svg>
           </div>
           <div className="flex flex-col">
-            <span className="text-[2rem] font-bold leading-tight text-text-primary">{metrics.avgVI}</span>
+            <span className="data-value text-[2rem] font-medium leading-tight text-text-primary">{metrics.avgVI}</span>
             <span className="text-sm text-text-secondary mt-1 font-medium">Avg Variability Index</span>
             <span className="text-xs text-text-muted">NP / Avg Power</span>
           </div>
@@ -143,7 +143,7 @@ export function AdvancedMetrics({ activities, weight, age, gender }: AdvancedMet
               </svg>
             </div>
             <div className="flex flex-col">
-              <span className="text-[2rem] font-bold leading-tight text-text-primary">{metrics.avgEF}</span>
+              <span className="data-value text-[2rem] font-medium leading-tight text-text-primary">{metrics.avgEF}</span>
               <span className="text-sm text-text-secondary mt-1 font-medium">Avg Efficiency Factor</span>
               <span className="text-xs text-text-muted">NP / Avg HR</span>
             </div>
@@ -161,7 +161,7 @@ export function AdvancedMetrics({ activities, weight, age, gender }: AdvancedMet
               </svg>
             </div>
             <div className="flex flex-col">
-              <span className="text-[2rem] font-bold leading-tight text-text-primary">{metrics.avgPowerHR}</span>
+              <span className="data-value text-[2rem] font-medium leading-tight text-text-primary">{metrics.avgPowerHR}</span>
               <span className="text-sm text-text-secondary mt-1 font-medium">Power:HR Ratio</span>
               <span className="text-xs text-text-muted">W per beat</span>
             </div>
@@ -178,7 +178,7 @@ export function AdvancedMetrics({ activities, weight, age, gender }: AdvancedMet
               </svg>
             </div>
             <div className="flex flex-col">
-              <span className="text-[2rem] font-bold leading-tight text-text-primary">{metrics.avgVAM}</span>
+              <span className="data-value text-[2rem] font-medium leading-tight text-text-primary">{metrics.avgVAM}</span>
               <span className="text-sm text-text-secondary mt-1 font-medium">Avg VAM</span>
               <span className="text-xs text-text-muted">m/hour</span>
             </div>

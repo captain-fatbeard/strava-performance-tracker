@@ -127,7 +127,7 @@ export function FatBurningStats({
             <div className="text-2xl w-10 text-center">😴</div>
             <div className="flex-1">
               <div className="text-sm text-text-secondary mb-1">Resting (BMR)</div>
-              <div className="text-xl font-bold text-text-primary max-[480px]:text-base">{summary.dailyRestingFatBurn}g/day</div>
+              <div className="data-value text-xl font-medium text-text-primary max-[480px]:text-base">{summary.dailyRestingFatBurn}g/day</div>
               <div className="text-xs text-text-muted mt-1">~77% of BMR calories come from fat while at rest</div>
             </div>
           </div>
@@ -135,7 +135,7 @@ export function FatBurningStats({
             <div className="text-2xl w-10 text-center">+</div>
             <div className="flex-1">
               <div className="text-sm text-text-secondary mb-1">Average Daily Activity</div>
-              <div className="text-xl font-bold text-text-primary max-[480px]:text-base">
+              <div className="data-value text-xl font-medium text-text-primary max-[480px]:text-base">
                 {periodDays > 0 ? Math.round(summary.totalFatBurned / periodDays) : 0}g/day
               </div>
               <div className="text-xs text-text-muted mt-1">From your {summary.totalActivitiesWithHR} recorded activities</div>
@@ -145,7 +145,7 @@ export function FatBurningStats({
             <div className="text-2xl w-10 text-center">=</div>
             <div className="flex-1">
               <div className="text-sm text-text-secondary mb-1">Estimated Daily Total</div>
-              <div className="text-xl font-bold text-accent max-[480px]:text-base">
+              <div className="data-value text-xl font-medium text-accent max-[480px]:text-base">
                 {summary.dailyRestingFatBurn + (periodDays > 0 ? Math.round(summary.totalFatBurned / periodDays) : 0)}g/day
               </div>
               <div className="text-xs text-text-muted mt-1">

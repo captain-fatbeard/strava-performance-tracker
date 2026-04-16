@@ -253,19 +253,19 @@ export function WeeklyProgress({ activities }: WeeklyProgressProps) {
             <div className="text-sm font-semibold text-text-primary mb-4 pb-3 border-b border-border-subtle">{week.week}</div>
             <div className="grid grid-cols-2 gap-4">
               <div className="text-center">
-                <span className="block text-[1.375rem] font-bold text-text-primary max-md:text-lg max-[480px]:text-base">{week.rides + week.runs}</span>
+                <span className="block data-value text-[1.375rem] font-medium text-text-primary max-md:text-lg max-[480px]:text-base">{week.rides + week.runs}</span>
                 <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wide max-[480px]:text-xs">activities</span>
               </div>
               <div className="text-center">
-                <span className="block text-[1.375rem] font-bold text-text-primary max-md:text-lg max-[480px]:text-base">{week.totalDistance}</span>
+                <span className="block data-value text-[1.375rem] font-medium text-text-primary max-md:text-lg max-[480px]:text-base">{week.totalDistance}</span>
                 <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wide max-[480px]:text-xs">km</span>
               </div>
               <div className="text-center">
-                <span className="block text-[1.375rem] font-bold text-text-primary max-md:text-lg max-[480px]:text-base">{Math.floor(week.totalTime / 3600)}h {Math.floor((week.totalTime % 3600) / 60)}m</span>
+                <span className="block data-value text-[1.375rem] font-medium text-text-primary max-md:text-lg max-[480px]:text-base">{Math.floor(week.totalTime / 3600)}h {Math.floor((week.totalTime % 3600) / 60)}m</span>
                 <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wide max-[480px]:text-xs">time</span>
               </div>
               <div className="text-center">
-                <span className="block text-[1.375rem] font-bold text-text-primary max-md:text-lg max-[480px]:text-base">{week.totalTSS}</span>
+                <span className="block data-value text-[1.375rem] font-medium text-text-primary max-md:text-lg max-[480px]:text-base">{week.totalTSS}</span>
                 <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wide max-[480px]:text-xs">TSS</span>
               </div>
             </div>

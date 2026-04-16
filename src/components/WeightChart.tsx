@@ -110,7 +110,7 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
             <div className="flex gap-8 flex-wrap max-md:gap-4">
               <span className="flex flex-col items-center">
                 <span className="text-[0.7rem] text-text-muted uppercase font-semibold tracking-wide">Current</span>
-                <span className="text-xl font-bold" style={{ color: chartTheme.colors.primary.main }}>
+                <span className="data-value text-xl font-medium" style={{ color: chartTheme.colors.primary.main }}>
                   {latestEntry.weight.toFixed(1)} kg
                 </span>
               </span>
@@ -118,7 +118,7 @@ export function WeightChart({ entries, onAddEntry, onDeleteEntry }: WeightChartP
                 <span className="flex flex-col items-center">
                   <span className="text-[0.7rem] text-text-muted uppercase font-semibold tracking-wide">Change</span>
                   <span
-                    className="text-xl font-bold"
+                    className="data-value text-xl font-medium"
                     style={{
                       color: weightChange < 0
                         ? chartTheme.colors.semantic.positive

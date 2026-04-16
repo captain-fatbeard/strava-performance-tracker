@@ -548,18 +548,18 @@ function DashboardLayout() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-8 text-center bg-[radial-gradient(ellipse_at_top,var(--color-bg-secondary)_0%,var(--color-bg-primary)_70%)]">
-        <div className="size-12 border-3 border-border-subtle border-t-accent rounded-full animate-spin" />
-        <p>Loading your data...</p>
+      <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-8 text-center hero-gradient">
+        <div className="size-10 border-2 border-border-subtle border-t-accent rounded-full animate-spin" />
+        <p className="text-text-secondary text-sm font-light tracking-wide">Loading your data...</p>
       </div>
     )
   }
 
   if (error || !athlete) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-8 text-center bg-[radial-gradient(ellipse_at_top,var(--color-bg-secondary)_0%,var(--color-bg-primary)_70%)]">
-        <p className="text-danger bg-danger-muted px-6 py-4 rounded-[var(--radius-md)] border border-red-500/30">{error || 'Not authenticated'}</p>
-        <Link to="/" className="bg-linear-to-br from-accent to-accent-dark text-white border-none py-3.5 px-7 text-[0.9rem] font-semibold rounded-[var(--radius-md)] cursor-pointer no-underline transition-all duration-200 shadow-md hover:-translate-y-0.5 hover:shadow-lg hover:shadow-glow">Back to Login</Link>
+      <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-8 text-center hero-gradient">
+        <p className="text-danger bg-danger-muted px-6 py-4 rounded-[var(--radius-md)] border border-red-500/20 text-sm">{error || 'Not authenticated'}</p>
+        <Link to="/" className="bg-linear-to-br from-accent to-accent-dark text-white border border-accent/30 py-3 px-7 text-[0.875rem] font-semibold rounded-[var(--radius-md)] cursor-pointer no-underline transition-all duration-200 shadow-[0_4px_16px_rgba(20,184,166,0.25)] hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(20,184,166,0.35)]">Back to Login</Link>
       </div>
     )
   }
@@ -598,13 +598,17 @@ function DashboardLayout() {
     deleteWeightEntry: handleDeleteWeightEntry,
   }
 
+  const initials = `${athlete.firstname?.[0] || ''}${athlete.lastname?.[0] || ''}`
+
   return (
     <DashboardContext.Provider value={contextValue}>
-      <div className="max-w-[1440px] mx-auto p-8 relative max-md:p-4 max-[480px]:p-3">
-        <header className="flex justify-between items-center mb-8 pb-6 border-b border-border-subtle max-md:gap-3 max-md:mb-4 max-md:pb-4">
-          <div className="flex flex-col">
-            <Link to="/overview" className="flex items-center gap-3 no-underline">
-              <svg className="shrink-0" width="32" height="32" viewBox="0 0 32 32" fill="none">
+      <div className="noise-bg relative">
+        {/* ── Unified top bar ── */}
+        <header className="top-bar">
+          <div className="max-w-[1440px] mx-auto flex items-center h-14 px-6 gap-6 max-md:px-4 max-md:gap-3">
+            {/* Logo */}
+            <Link to="/overview" className="flex items-center gap-2.5 no-underline shrink-0 group">
+              <svg className="shrink-0 transition-transform duration-300 group-hover:scale-105" width="26" height="26" viewBox="0 0 32 32" fill="none">
                 <rect width="32" height="32" rx="8" fill="url(#logo-gradient)"/>
                 <path d="M8 22L12 14L16 18L20 10L24 16" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
                 <circle cx="12" cy="14" r="2" fill="white"/>
@@ -617,34 +621,70 @@ function DashboardLayout() {
                   </linearGradient>
                 </defs>
               </svg>
-              <h1 className="text-[1.75rem] font-bold bg-linear-to-br from-text-primary to-accent-light bg-clip-text text-transparent max-md:text-xl max-[480px]:text-[1.1rem]">FormLab</h1>
+              <span className="text-lg font-semibold tracking-tight text-text-primary max-md:text-base">FormLab</span>
             </Link>
-            <span className="text-text-muted text-sm mt-1 max-md:hidden">
-              {athlete.firstname} {athlete.lastname}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              className="flex items-center justify-center bg-bg-tertiary border border-border text-text-secondary size-10 rounded-[var(--radius-md)] cursor-pointer transition-all duration-150 hover:bg-bg-elevated hover:text-text-primary hover:border-accent max-md:hidden"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              aria-label="Toggle settings"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-                <circle cx="12" cy="12" r="3"/>
-              </svg>
-            </button>
-            <button
-              className="hidden max-md:flex items-center justify-center bg-bg-tertiary border border-border text-text-secondary size-10 rounded-[var(--radius-md)] cursor-pointer transition-all duration-150 shrink-0 hover:bg-bg-elevated hover:text-text-primary hover:border-accent"
-              onClick={() => setMobileNavOpen(!mobileNavOpen)}
-              aria-label="Toggle navigation"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <line x1="3" y1="6" x2="21" y2="6"/>
-                <line x1="3" y1="12" x2="21" y2="12"/>
-                <line x1="3" y1="18" x2="21" y2="18"/>
-              </svg>
-            </button>
+
+            {/* Divider */}
+            <div className="w-px h-5 bg-border-subtle max-md:hidden" />
+
+            {/* Desktop navigation */}
+            <nav className="nav-links flex items-center gap-0.5 flex-1 max-md:hidden">
+              <Link to="/training" activeProps={{ className: 'active' }} className="flex items-center gap-1.5 text-text-muted py-3.5 px-3 text-[0.8125rem] font-medium cursor-pointer relative transition-all duration-200 no-underline hover:text-text-secondary">
+                <svg className="nav-icon size-[15px] transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
+                Training
+              </Link>
+              <Link to="/health" activeProps={{ className: 'active' }} className="flex items-center gap-1.5 text-text-muted py-3.5 px-3 text-[0.8125rem] font-medium cursor-pointer relative transition-all duration-200 no-underline hover:text-text-secondary">
+                <svg className="nav-icon size-[15px] transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                </svg>
+                Health
+              </Link>
+              <Link to="/performance" activeProps={{ className: 'active' }} className="flex items-center gap-1.5 text-text-muted py-3.5 px-3 text-[0.8125rem] font-medium cursor-pointer relative transition-all duration-200 no-underline hover:text-text-secondary">
+                <svg className="nav-icon size-[15px] transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+                Performance
+              </Link>
+              <Link to="/records" activeProps={{ className: 'active' }} className="flex items-center gap-1.5 text-text-muted py-3.5 px-3 text-[0.8125rem] font-medium cursor-pointer relative transition-all duration-200 no-underline hover:text-text-secondary">
+                <svg className="nav-icon size-[15px] transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 7 7 7 7" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5C17 4 17 7 17 7" /><path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" /><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+                </svg>
+                Records
+              </Link>
+              <Link to="/activities" activeProps={{ className: 'active' }} className="flex items-center gap-1.5 text-text-muted py-3.5 px-3 text-[0.8125rem] font-medium cursor-pointer relative transition-all duration-200 no-underline hover:text-text-secondary">
+                <svg className="nav-icon size-[15px] transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+                Activities
+              </Link>
+            </nav>
+
+            {/* Right side: avatar + mobile hamburger */}
+            <div className="flex items-center gap-2 ml-auto">
+              {/* Avatar — opens settings */}
+              <button
+                className="size-8 rounded-full bg-accent/15 border border-accent/30 text-accent text-[0.6875rem] font-semibold flex items-center justify-center cursor-pointer transition-all duration-200 hover:bg-accent/25 hover:border-accent/50 max-md:hidden"
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                title={`${athlete.firstname} ${athlete.lastname}`}
+              >
+                {initials}
+              </button>
+
+              {/* Mobile hamburger */}
+              <button
+                className="hidden max-md:flex items-center justify-center text-text-muted size-8 rounded-[var(--radius-sm)] cursor-pointer transition-all duration-200 hover:bg-bg-tertiary hover:text-text-primary"
+                onClick={() => setMobileNavOpen(!mobileNavOpen)}
+                aria-label="Toggle navigation"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <line x1="3" y1="6" x2="21" y2="6"/>
+                  <line x1="3" y1="12" x2="21" y2="12"/>
+                  <line x1="3" y1="18" x2="21" y2="18"/>
+                </svg>
+              </button>
+            </div>
           </div>
         </header>
 
@@ -653,51 +693,53 @@ function DashboardLayout() {
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 animate-fade-in" onClick={() => setMobileNavOpen(false)} />
         )}
         <aside className={`hidden max-md:flex flex-col fixed top-0 right-0 h-screen w-70 bg-bg-secondary border-l border-border z-50 shadow-lg transition-transform duration-300 max-[480px]:w-full ${mobileNavOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-          <div className="flex justify-between items-center p-6 border-b border-border-subtle">
-            <h2 className="text-xl font-semibold text-text-primary">Navigation</h2>
+          <div className="flex justify-between items-center p-5 border-b border-border-subtle">
+            <span className="text-base font-semibold text-text-primary">Menu</span>
             <button
-              className="flex items-center justify-center bg-bg-tertiary border border-border text-text-secondary size-9 rounded-[var(--radius-sm)] cursor-pointer transition-all duration-150 hover:bg-bg-elevated hover:text-text-primary hover:border-text-muted"
+              className="flex items-center justify-center text-text-muted size-8 rounded-[var(--radius-sm)] cursor-pointer transition-all duration-150 hover:bg-bg-tertiary hover:text-text-primary"
               onClick={() => setMobileNavOpen(false)}
               aria-label="Close navigation"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M18 6L6 18M6 6l12 12"/>
               </svg>
             </button>
           </div>
-          <div className="mobile-nav-links flex-1 flex flex-col gap-1 p-4 overflow-y-auto">
-            <Link to="/overview" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="block py-3 px-4 text-text-secondary no-underline text-[0.9375rem] font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
-              Overview
-            </Link>
-            <Link to="/training" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="block py-3 px-4 text-text-secondary no-underline text-[0.9375rem] font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
+          <div className="mobile-nav-links flex-1 flex flex-col gap-0.5 p-3 overflow-y-auto">
+            <Link to="/training" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="flex items-center gap-2.5 py-2.5 px-3 text-text-secondary no-underline text-sm font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
+              <svg className="nav-icon size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
               Training
             </Link>
-            <Link to="/health" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="block py-3 px-4 text-text-secondary no-underline text-[0.9375rem] font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
+            <Link to="/health" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="flex items-center gap-2.5 py-2.5 px-3 text-text-secondary no-underline text-sm font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
+              <svg className="nav-icon size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /></svg>
               Health
             </Link>
-            <Link to="/performance" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="block py-3 px-4 text-text-secondary no-underline text-[0.9375rem] font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
+            <Link to="/performance" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="flex items-center gap-2.5 py-2.5 px-3 text-text-secondary no-underline text-sm font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
+              <svg className="nav-icon size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
               Performance
             </Link>
-            <Link to="/records" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="block py-3 px-4 text-text-secondary no-underline text-[0.9375rem] font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
+            <Link to="/records" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="flex items-center gap-2.5 py-2.5 px-3 text-text-secondary no-underline text-sm font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
+              <svg className="nav-icon size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 7 7 7 7" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5C17 4 17 7 17 7" /><path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" /><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" /><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" /></svg>
               Records
             </Link>
-            <Link to="/activities" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="block py-3 px-4 text-text-secondary no-underline text-[0.9375rem] font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
+            <Link to="/activities" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="flex items-center gap-2.5 py-2.5 px-3 text-text-secondary no-underline text-sm font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
+              <svg className="nav-icon size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>
               Activities
             </Link>
           </div>
-          <div className="p-4 border-t border-border-subtle flex flex-col gap-2">
+          <div className="p-3 border-t border-border-subtle flex flex-col gap-1.5">
             <button
-              className="flex items-center gap-2 bg-bg-tertiary border border-border text-text-secondary py-2.5 px-4 rounded-[var(--radius-sm)] cursor-pointer text-sm font-medium transition-all duration-150 w-full hover:bg-bg-elevated hover:text-text-primary hover:border-accent"
+              className="flex items-center gap-2.5 py-2.5 px-3 text-text-secondary text-sm font-medium rounded-[var(--radius-md)] cursor-pointer transition-all duration-150 w-full hover:bg-bg-tertiary hover:text-text-primary"
               onClick={() => { setMobileNavOpen(false); setSidebarOpen(true) }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
                 <circle cx="12" cy="12" r="3"/>
               </svg>
               Settings
             </button>
-            <button onClick={() => { setMobileNavOpen(false); handleLogout() }} className="bg-bg-tertiary border border-border text-text-secondary py-2.5 px-5 rounded-[var(--radius-sm)] cursor-pointer text-sm font-medium transition-all duration-150 hover:bg-bg-elevated hover:text-text-primary hover:border-text-muted w-full flex items-center justify-center gap-2">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <button onClick={() => { setMobileNavOpen(false); handleLogout() }} className="flex items-center gap-2.5 py-2.5 px-3 text-text-secondary text-sm font-medium rounded-[var(--radius-md)] cursor-pointer transition-all duration-150 w-full hover:bg-bg-tertiary hover:text-text-primary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
                 <polyline points="16 17 21 12 16 7"/>
                 <line x1="21" y1="12" x2="9" y2="12"/>
@@ -868,34 +910,10 @@ function DashboardLayout() {
           </div>
         </aside>
 
-        <div className="w-full">
-          <nav className="mb-8 max-md:hidden">
-            <div className="nav-links flex gap-2 p-2 bg-bg-secondary rounded-[var(--radius-lg)] border border-border-subtle">
-              <Link to="/overview" activeProps={{ className: 'active' }} className="bg-transparent border-none text-text-muted py-3 px-6 text-sm font-medium cursor-pointer relative transition-all duration-150 no-underline rounded-[var(--radius-md)] hover:text-text-primary hover:bg-bg-tertiary">
-                Overview
-              </Link>
-              <Link to="/training" activeProps={{ className: 'active' }} className="bg-transparent border-none text-text-muted py-3 px-6 text-sm font-medium cursor-pointer relative transition-all duration-150 no-underline rounded-[var(--radius-md)] hover:text-text-primary hover:bg-bg-tertiary">
-                Training
-              </Link>
-              <Link to="/health" activeProps={{ className: 'active' }} className="bg-transparent border-none text-text-muted py-3 px-6 text-sm font-medium cursor-pointer relative transition-all duration-150 no-underline rounded-[var(--radius-md)] hover:text-text-primary hover:bg-bg-tertiary">
-                Health
-              </Link>
-              <Link to="/performance" activeProps={{ className: 'active' }} className="bg-transparent border-none text-text-muted py-3 px-6 text-sm font-medium cursor-pointer relative transition-all duration-150 no-underline rounded-[var(--radius-md)] hover:text-text-primary hover:bg-bg-tertiary">
-                Performance
-              </Link>
-              <Link to="/records" activeProps={{ className: 'active' }} className="bg-transparent border-none text-text-muted py-3 px-6 text-sm font-medium cursor-pointer relative transition-all duration-150 no-underline rounded-[var(--radius-md)] hover:text-text-primary hover:bg-bg-tertiary">
-                Records
-              </Link>
-              <Link to="/activities" activeProps={{ className: 'active' }} className="bg-transparent border-none text-text-muted py-3 px-6 text-sm font-medium cursor-pointer relative transition-all duration-150 no-underline rounded-[var(--radius-md)] hover:text-text-primary hover:bg-bg-tertiary">
-                Activities
-              </Link>
-            </div>
-          </nav>
-
-          <main>
-            <Outlet />
-          </main>
-        </div>
+        {/* Main content */}
+        <main className="max-w-[1440px] mx-auto px-6 pt-8 pb-12 max-md:px-4 max-md:pt-6 max-[480px]:px-3">
+          <Outlet />
+        </main>
       </div>
     </DashboardContext.Provider>
   )

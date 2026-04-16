@@ -155,18 +155,22 @@ export const tooltipStyle = {
   contentStyle: {
     backgroundColor: chartTheme.tooltip.background,
     border: `1px solid ${chartTheme.tooltip.border}`,
-    borderRadius: '10px',
-    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+    borderRadius: '12px',
+    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
     padding: '12px 16px',
+    fontFamily: "'Lexend Deca', system-ui, sans-serif",
   },
   labelStyle: {
     color: chartTheme.tooltip.text,
-    fontWeight: 600,
+    fontWeight: 500,
     marginBottom: '8px',
     whiteSpace: 'pre-line' as const,
+    fontSize: '0.8125rem',
   },
   itemStyle: {
     color: chartTheme.colors.neutral[400],
     padding: '3px 0',
+    fontFamily: "'DM Mono', monospace",
+    fontSize: '0.8125rem',
   },
 }
