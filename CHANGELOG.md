@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.13.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.12.0...v1.13.0) (2026-04-20)
+
+
+### Features
+
+* add training plan page with live targets and weekly template ([2f03046](https://github.com/captain-fatbeard/strava-performance-tracker/commit/2f03046eba5687c7cd8371a30fb42070a37ce66f))
+
 ## [1.12.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.11.0...v1.12.0) (2026-04-16)
 
 
