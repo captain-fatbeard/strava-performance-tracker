@@ -638,6 +638,12 @@ function DashboardLayout() {
 
             {/* Desktop navigation */}
             <nav className="nav-links flex items-center gap-0.5 flex-1 max-md:hidden">
+              <Link to="/plan" activeProps={{ className: 'active' }} className="flex items-center gap-1.5 text-text-muted py-3.5 px-3 text-[0.8125rem] font-medium cursor-pointer relative transition-all duration-200 no-underline hover:text-text-secondary">
+                <svg className="nav-icon size-[15px] transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                </svg>
+                Plan
+              </Link>
               <Link to="/training" activeProps={{ className: 'active' }} className="flex items-center gap-1.5 text-text-muted py-3.5 px-3 text-[0.8125rem] font-medium cursor-pointer relative transition-all duration-200 no-underline hover:text-text-secondary">
                 <svg className="nav-icon size-[15px] transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
@@ -667,12 +673,6 @@ function DashboardLayout() {
                   <line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" />
                 </svg>
                 Activities
-              </Link>
-              <Link to="/plan" activeProps={{ className: 'active' }} className="flex items-center gap-1.5 text-text-muted py-3.5 px-3 text-[0.8125rem] font-medium cursor-pointer relative transition-all duration-200 no-underline hover:text-text-secondary">
-                <svg className="nav-icon size-[15px] transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-                </svg>
-                Plan
               </Link>
             </nav>
 
@@ -721,6 +721,10 @@ function DashboardLayout() {
             </button>
           </div>
           <div className="mobile-nav-links flex-1 flex flex-col gap-0.5 p-3 overflow-y-auto">
+            <Link to="/plan" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="flex items-center gap-2.5 py-2.5 px-3 text-text-secondary no-underline text-sm font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
+              <svg className="nav-icon size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
+              Plan
+            </Link>
             <Link to="/training" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="flex items-center gap-2.5 py-2.5 px-3 text-text-secondary no-underline text-sm font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
               <svg className="nav-icon size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
               Training
@@ -740,10 +744,6 @@ function DashboardLayout() {
             <Link to="/activities" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="flex items-center gap-2.5 py-2.5 px-3 text-text-secondary no-underline text-sm font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
               <svg className="nav-icon size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>
               Activities
-            </Link>
-            <Link to="/plan" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="flex items-center gap-2.5 py-2.5 px-3 text-text-secondary no-underline text-sm font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
-              <svg className="nav-icon size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>
-              Plan
             </Link>
           </div>
           <div className="p-3 border-t border-border-subtle flex flex-col gap-1.5">
