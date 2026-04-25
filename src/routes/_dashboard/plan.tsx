@@ -370,10 +370,15 @@ function PlanPage() {
     }
   }, [])
 
-  // Resolve active phase (from saved setting + TSB/ATL auto-detection)
-  const latestTsb = fitnessSeries.length > 0 ? fitnessSeries[fitnessSeries.length - 1].tsb : null
-  const latestAtl = fitnessSeries.length > 0 ? fitnessSeries[fitnessSeries.length - 1].atl : null
-  const autoPhase: PlanPhase = detectPhase(latestTsb, latestAtl)
+  // Resolve active phase from the snapshot at week start, so the phase stays
+  // stable Monday→Sunday and doesn't flip mid-week as new rides shift ATL/TSB.
+  const weekStartSnap = useMemo(() => {
+    const key = format(subDays(weekStart, 1), 'yyyy-MM-dd')
+    return fitnessSeries.find((p) => p.date === key) ?? null
+  }, [fitnessSeries, weekStart])
+  const phaseTsb = weekStartSnap?.tsb ?? null
+  const phaseAtl = weekStartSnap?.atl ?? null
+  const autoPhase: PlanPhase = detectPhase(phaseTsb, phaseAtl)
   const activePhase: PlanPhase = phaseSetting === 'auto' ? autoPhase : phaseSetting
 
   // Current week (uses user-selected phase)
@@ -677,13 +682,13 @@ function PlanPage() {
             {phaseSetting === 'auto' ? (
               <>
                 Auto-selected <span className="text-text-secondary font-medium">{activePhase === 'recovery' ? 'Recovery' : 'Build'}</span>
-                {latestTsb !== null && (
-                  <> · TSB <span className="data-value text-text-secondary">{latestTsb >= 0 ? '+' : ''}{latestTsb}</span></>
+                {phaseTsb !== null && (
+                  <> · TSB <span className="data-value text-text-secondary">{phaseTsb >= 0 ? '+' : ''}{phaseTsb}</span></>
                 )}
-                {latestAtl !== null && (
-                  <> · ATL <span className="data-value text-text-secondary">{latestAtl}</span></>
+                {phaseAtl !== null && (
+                  <> · ATL <span className="data-value text-text-secondary">{phaseAtl}</span></>
                 )}
-                <span className="text-text-muted/70"> · recovery if TSB &lt; −3 or ATL ≥ 65</span>
+                <span className="text-text-muted/70"> at week start · recovery if TSB &lt; −3 or ATL ≥ 65</span>
               </>
             ) : (
               <>
