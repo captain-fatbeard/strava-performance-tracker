@@ -29,3 +29,10 @@ pnpm-debug.log*
 # Generated
 src/routeTree.gen.ts
 .vercel
+
+# Test / dev artifacts
+.playwright-mcp
+*-page-*.png
+
+# Local-only video sources for the bike fit page (too large for git)
+public/bike-position*.mov

@@ -674,6 +674,12 @@ function DashboardLayout() {
                 </svg>
                 Activities
               </Link>
+              <Link to="/bike-fit" activeProps={{ className: 'active' }} className="flex items-center gap-1.5 text-text-muted py-3.5 px-3 text-[0.8125rem] font-medium cursor-pointer relative transition-all duration-200 no-underline hover:text-text-secondary">
+                <svg className="nav-icon size-[15px] transition-colors duration-200" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="18.5" cy="17.5" r="3.5" /><circle cx="5.5" cy="17.5" r="3.5" /><circle cx="15" cy="5" r="1" /><path d="M12 17.5V14l-3-3 4-3 2 3h2" />
+                </svg>
+                Bike Fit
+              </Link>
             </nav>
 
             {/* Right side: avatar + mobile hamburger */}
@@ -744,6 +750,10 @@ function DashboardLayout() {
             <Link to="/activities" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="flex items-center gap-2.5 py-2.5 px-3 text-text-secondary no-underline text-sm font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
               <svg className="nav-icon size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6" /><line x1="8" y1="12" x2="21" y2="12" /><line x1="8" y1="18" x2="21" y2="18" /><line x1="3" y1="6" x2="3.01" y2="6" /><line x1="3" y1="12" x2="3.01" y2="12" /><line x1="3" y1="18" x2="3.01" y2="18" /></svg>
               Activities
+            </Link>
+            <Link to="/bike-fit" activeProps={{ className: 'active' }} onClick={() => setMobileNavOpen(false)} className="flex items-center gap-2.5 py-2.5 px-3 text-text-secondary no-underline text-sm font-medium rounded-[var(--radius-md)] transition-all duration-150 relative hover:text-text-primary hover:bg-bg-tertiary">
+              <svg className="nav-icon size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18.5" cy="17.5" r="3.5" /><circle cx="5.5" cy="17.5" r="3.5" /><circle cx="15" cy="5" r="1" /><path d="M12 17.5V14l-3-3 4-3 2 3h2" /></svg>
+              Bike Fit
             </Link>
           </div>
           <div className="p-3 border-t border-border-subtle flex flex-col gap-1.5">
