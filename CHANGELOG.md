@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.14.1](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.14.0...v1.14.1) (2026-04-25)
+
+
+### Bug Fixes
+
+* lock auto plan phase to week start so it doesn't flip mid-week ([10a9ba9](https://github.com/captain-fatbeard/strava-performance-tracker/commit/10a9ba9f729d771bb1190569224c568e11ff2b9a))
+
 ## [1.14.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.13.0...v1.14.0) (2026-04-22)
 
 
