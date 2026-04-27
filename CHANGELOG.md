@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.15.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.14.1...v1.15.0) (2026-04-27)
+
+
+### Features
+
+* add bike fit page with live pose analysis ([3819fa1](https://github.com/captain-fatbeard/strava-performance-tracker/commit/3819fa1c91e310c3c44836f8f1206b2b663093d2))
+* customizable weekly plan with auto-classified phase + CTL-aware recommendations ([22225ba](https://github.com/captain-fatbeard/strava-performance-tracker/commit/22225ba22ebbb3bde5b34c0477629d2fcf35ef75))
+
 ### [1.14.1](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.14.0...v1.14.1) (2026-04-25)
 
 
