@@ -899,3 +899,182 @@ export async function fetchCachedBestEfforts(
     return []
   }
 }
+
+// ---------------------------------------------------------------------------
+// Plan week phase overrides. Persists the chosen phase per past week so the
+// Plan History view doesn't drift when TSB/ATL recalculate from late syncs.
+
+export type PlanPhaseValue = 'recovery' | 'build'
+
+export interface PlanWeekPhase {
+  weekStart: string // YYYY-MM-DD (Monday)
+  phase: PlanPhaseValue
+}
+
+interface PlanWeekHistoryRow {
+  athlete_id: number
+  week_start: string
+  phase: PlanPhaseValue
+}
+
+export async function fetchPlanWeekPhases(athleteId: number): Promise<PlanWeekPhase[]> {
+  if (!supabase) return []
+  try {
+    const { data, error } = await supabase
+      .from('plan_week_history')
+      .select('week_start, phase')
+      .eq('athlete_id', athleteId)
+      .order('week_start', { ascending: false })
+
+    if (error) {
+      console.warn('Supabase fetch plan week phases error:', error.message)
+      return []
+    }
+    return (data as Pick<PlanWeekHistoryRow, 'week_start' | 'phase'>[]).map((r) => ({
+      weekStart: r.week_start,
+      phase: r.phase,
+    }))
+  } catch (err) {
+    console.warn('Supabase fetch plan week phases error:', err)
+    return []
+  }
+}
+
+export async function upsertPlanWeekPhase(
+  athleteId: number,
+  weekStart: string,
+  phase: PlanPhaseValue,
+): Promise<boolean> {
+  if (!supabase) return false
+  try {
+    const { error } = await supabase.from('plan_week_history').upsert(
+      {
+        athlete_id: athleteId,
+        week_start: weekStart,
+        phase,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'athlete_id,week_start' },
+    )
+    if (error) {
+      console.warn('Supabase upsert plan week phase error:', error.message)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.warn('Supabase upsert plan week phase error:', err)
+    return false
+  }
+}
+
+export async function deletePlanWeekPhase(
+  athleteId: number,
+  weekStart: string,
+): Promise<boolean> {
+  if (!supabase) return false
+  try {
+    const { error } = await supabase
+      .from('plan_week_history')
+      .delete()
+      .eq('athlete_id', athleteId)
+      .eq('week_start', weekStart)
+    if (error) {
+      console.warn('Supabase delete plan week phase error:', error.message)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.warn('Supabase delete plan week phase error:', err)
+    return false
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Plan day overrides — per-day session-type overrides within a plan week.
+
+export interface PlanDayOverride {
+  weekStart: string // YYYY-MM-DD (Monday)
+  dayIndex: number // 0..6, Monday = 0
+  sessionType: string
+}
+
+interface PlanDayOverrideRow {
+  week_start: string
+  day_index: number
+  session_type: string
+}
+
+export async function fetchPlanDayOverrides(athleteId: number): Promise<PlanDayOverride[]> {
+  if (!supabase) return []
+  try {
+    const { data, error } = await supabase
+      .from('plan_day_overrides')
+      .select('week_start, day_index, session_type')
+      .eq('athlete_id', athleteId)
+    if (error) {
+      console.warn('Supabase fetch plan day overrides error:', error.message)
+      return []
+    }
+    return (data as PlanDayOverrideRow[]).map((r) => ({
+      weekStart: r.week_start,
+      dayIndex: r.day_index,
+      sessionType: r.session_type,
+    }))
+  } catch (err) {
+    console.warn('Supabase fetch plan day overrides error:', err)
+    return []
+  }
+}
+
+export async function upsertPlanDayOverride(
+  athleteId: number,
+  weekStart: string,
+  dayIndex: number,
+  sessionType: string,
+): Promise<boolean> {
+  if (!supabase) return false
+  try {
+    const { error } = await supabase.from('plan_day_overrides').upsert(
+      {
+        athlete_id: athleteId,
+        week_start: weekStart,
+        day_index: dayIndex,
+        session_type: sessionType,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'athlete_id,week_start,day_index' },
+    )
+    if (error) {
+      console.warn('Supabase upsert plan day override error:', error.message)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.warn('Supabase upsert plan day override error:', err)
+    return false
+  }
+}
+
+export async function deletePlanDayOverride(
+  athleteId: number,
+  weekStart: string,
+  dayIndex: number,
+): Promise<boolean> {
+  if (!supabase) return false
+  try {
+    const { error } = await supabase
+      .from('plan_day_overrides')
+      .delete()
+      .eq('athlete_id', athleteId)
+      .eq('week_start', weekStart)
+      .eq('day_index', dayIndex)
+    if (error) {
+      console.warn('Supabase delete plan day override error:', error.message)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.warn('Supabase delete plan day override error:', err)
+    return false
+  }
+}

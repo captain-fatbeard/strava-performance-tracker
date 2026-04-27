@@ -8,6 +8,7 @@ import {
   isToday,
   subDays,
   differenceInDays,
+  parseISO,
 } from 'date-fns'
 import { da } from 'date-fns/locale'
 import {
@@ -25,12 +26,20 @@ import { useDashboard } from '~/lib/dashboard-context'
 import { calculateFitnessOverTime, estimateFTPHistory } from '~/lib/performance'
 import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
 import { type StravaActivity } from '~/lib/strava'
+import {
+  deletePlanDayOverride,
+  fetchPlanDayOverrides,
+  fetchPlanWeekPhases,
+  isSupabaseConfigured,
+  upsertPlanDayOverride,
+  upsertPlanWeekPhase,
+} from '~/lib/storage/supabase-client'
 
 export const Route = createFileRoute('/_dashboard/plan')({
   component: PlanPage,
 })
 
-type SessionType = 'z2' | 'rest' | 'opener' | 'test' | 'threshold' | 'vo2' | 'long'
+type SessionType = 'z2' | 'rest' | 'opener' | 'test' | 'threshold' | 'vo2' | 'long' | 'run' | 'tempo-run'
 
 interface PlanSession {
   type: SessionType
@@ -44,6 +53,255 @@ interface PlanSession {
   powerCeiling: number | null
   /** if true, finishing below powerFloor is acceptable (e.g. Z1 on a recovery day) */
   allowBelow: boolean
+}
+
+// Default session definition for each type, used when a day is overridden
+// to a different type than the template's default.
+const SESSION_CATALOG: Record<SessionType, PlanSession> = {
+  z2: { type: 'z2', label: 'Z2 Endurance', detail: 'Easy aerobic base', duration: '60–90 min', durationMinMin: 45, durationMaxMin: 100, powerFloor: 0.55, powerCeiling: 0.8, allowBelow: true },
+  rest: { type: 'rest', label: 'Rest', detail: 'Full off day', duration: '—', durationMinMin: 0, durationMaxMin: 30, powerFloor: null, powerCeiling: null, allowBelow: true },
+  opener: { type: 'opener', label: 'Opener', detail: 'Z2 with 3×1 min short openers', duration: '45 min', durationMinMin: 30, durationMaxMin: 60, powerFloor: 0.55, powerCeiling: 1.05, allowBelow: true },
+  test: { type: 'test', label: 'Test ride', detail: 'Climb portal or structured effort', duration: '60–90 min', durationMinMin: 45, durationMaxMin: 120, powerFloor: null, powerCeiling: null, allowBelow: true },
+  threshold: { type: 'threshold', label: 'Threshold', detail: '2×20 min at FTP', duration: '~60 min', durationMinMin: 40, durationMaxMin: 85, powerFloor: 0.7, powerCeiling: 1.05, allowBelow: false },
+  vo2: { type: 'vo2', label: 'VO2max', detail: '5×4 min at 110–115% FTP', duration: '~60 min', durationMinMin: 40, durationMaxMin: 85, powerFloor: 0.65, powerCeiling: 1.1, allowBelow: false },
+  long: { type: 'long', label: 'Long Z2', detail: 'Aerobic volume, flat or rolling', duration: '90–120 min', durationMinMin: 75, durationMaxMin: 150, powerFloor: 0.55, powerCeiling: 0.8, allowBelow: true },
+  run: { type: 'run', label: 'Easy run', detail: 'Truly easy, conversational pace', duration: '30 min', durationMinMin: 20, durationMaxMin: 40, powerFloor: null, powerCeiling: null, allowBelow: true },
+  'tempo-run': { type: 'tempo-run', label: 'Tempo run', detail: 'Steady, comfortably hard', duration: '30–40 min', durationMinMin: 25, durationMaxMin: 45, powerFloor: null, powerCeiling: null, allowBelow: false },
+}
+
+// Type categories used for the "weekly shape" check after day overrides.
+const INTENSITY_TYPES: SessionType[] = ['threshold', 'vo2', 'tempo-run']
+const EASY_TYPES: SessionType[] = ['z2', 'long', 'run']
+
+// Expected weekly counts per phase, derived from the default RECOVERY_PLAN
+// and BUILD_PLAN. The "shape" banner warns if the customized week drifts
+// far from these.
+const PHASE_WEEK_TARGETS: Record<PlanPhase, { intensity: number; easy: number; rest: number }> = {
+  recovery: { intensity: 0, easy: 4, rest: 1 },
+  build: { intensity: 2, easy: 3, rest: 2 },
+}
+
+function countWeekShape(template: PlanSession[]): { intensity: number; easy: number; rest: number } {
+  let intensity = 0
+  let easy = 0
+  let rest = 0
+  for (const s of template) {
+    if (INTENSITY_TYPES.includes(s.type)) intensity++
+    else if (EASY_TYPES.includes(s.type)) easy++
+    else if (s.type === 'rest') rest++
+  }
+  return { intensity, easy, rest }
+}
+
+// Derived phase classification. Drives the displayed label/colors based on
+// the actual planned lineup, regardless of which template was originally
+// loaded. Still binary at the storage layer — this is purely cosmetic.
+type DerivedPhase = 'recovery' | 'build' | 'peak'
+
+const DERIVED_PHASE_META: Record<DerivedPhase, { title: string; tone: string; description: string }> = {
+  recovery: {
+    title: 'Recovery Week',
+    tone: 'text-teal-300 bg-teal-500/10 border-teal-500/30',
+    description: 'No intensity sessions — fatigue bleeds off, fitness held with aerobic work',
+  },
+  build: {
+    title: 'Build Week',
+    tone: 'text-orange-300 bg-orange-500/10 border-orange-500/30',
+    description: 'Mix of intensity + endurance — fitness climbs while form stays neutral',
+  },
+  peak: {
+    title: 'Peak Week',
+    tone: 'text-rose-300 bg-rose-500/10 border-rose-500/30',
+    description: '3+ intensity days — sharpening fitness, form drops short-term',
+  },
+}
+
+// Hard-intensity types (threshold/VO2) drive Peak classification. Tempo-run is
+// counted as "non-easy" for polarization and shape, but doesn't on its own bump
+// a week to Peak — three tempo runs is still a Build week, three threshold/VO2
+// days is a Peak week.
+const HARD_INTENSITY_TYPES: SessionType[] = ['threshold', 'vo2']
+
+function classifyDerivedPhase(template: PlanSession[]): DerivedPhase {
+  const hardCount = template.filter((s) => HARD_INTENSITY_TYPES.includes(s.type)).length
+  if (hardCount >= 3) return 'peak'
+  if (hardCount >= 1) return 'build'
+  return 'recovery'
+}
+
+// Estimated training stress per minute by session type. Coarse — uses
+// single-IF approximations rather than per-interval modeling. Good enough
+// to get a weekly TSS ballpark in the Stats panel.
+const TSS_PER_MIN: Record<SessionType, number> = {
+  rest: 0,
+  z2: 0.5,
+  long: 0.55,
+  opener: 0.6,
+  run: 1.0, // bumped from 0.75 — easy runs typically come back at higher HR
+  test: 0.85,
+  threshold: 0.95,
+  vo2: 1.1,
+  'tempo-run': 1.3,
+}
+
+function plannedSessionTSS(s: PlanSession): number {
+  const minutes = (s.durationMinMin + s.durationMaxMin) / 2
+  return Math.round(minutes * TSS_PER_MIN[s.type])
+}
+
+function plannedSessionMinutes(s: PlanSession): number {
+  return (s.durationMinMin + s.durationMaxMin) / 2
+}
+
+interface WeekStats {
+  totalMinutes: number
+  totalTSS: number
+  sessions: number // non-rest days
+  rest: number
+  intensity: number
+  easy: number
+  easyMinutes: number
+  intensityMinutes: number
+}
+
+// Healthy weekly intensity/rest ranges per derived phase. TSS targets are
+// computed dynamically from the rider's current CTL — see buildPlanRecommendations.
+const PHASE_TARGETS: Record<DerivedPhase, {
+  intensityMin: number
+  intensityMax: number
+  restMin: number
+  intensityPctMax: number // share of riding time that should be hard
+}> = {
+  recovery: { intensityMin: 0, intensityMax: 0, restMin: 1, intensityPctMax: 5 },
+  build: { intensityMin: 1, intensityMax: 2, restMin: 1, intensityPctMax: 25 },
+  peak: { intensityMin: 2, intensityMax: 3, restMin: 1, intensityPctMax: 30 },
+}
+
+// TSS bands as multiples of weekly maintenance (CTL × 7). Recovery sits below
+// maintenance (so CTL drops), build is around maintenance, peak slightly above.
+const PHASE_TSS_FACTORS: Record<DerivedPhase, { min: number; max: number }> = {
+  recovery: { min: 0.6, max: 0.85 },
+  build: { min: 0.95, max: 1.25 },
+  peak: { min: 1.15, max: 1.55 },
+}
+
+// Absolute fallback ranges when no CTL data is available (new account etc).
+const PHASE_TSS_FALLBACK: Record<DerivedPhase, { min: number; max: number }> = {
+  recovery: { min: 150, max: 320 },
+  build: { min: 300, max: 500 },
+  peak: { min: 450, max: 700 },
+}
+
+function buildPlanRecommendations(
+  stats: WeekStats,
+  phase: DerivedPhase,
+  ctl: number | null,
+): string[] {
+  const recs: string[] = []
+  const t = PHASE_TARGETS[phase]
+  const totalNonRest = stats.easyMinutes + stats.intensityMinutes
+  const intensityPct = totalNonRest > 0 ? (stats.intensityMinutes / totalNonRest) * 100 : 0
+
+  // Personalize TSS bounds against the rider's current CTL when available.
+  const maintenance = ctl ? Math.round(ctl * 7) : null
+  const factors = PHASE_TSS_FACTORS[phase]
+  const fallback = PHASE_TSS_FALLBACK[phase]
+  const tssMin = maintenance ? Math.round(maintenance * factors.min) : fallback.min
+  const tssMax = maintenance ? Math.round(maintenance * factors.max) : fallback.max
+  const ctlNote = maintenance ? ` (maintenance ≈ ${maintenance} at CTL ${ctl})` : ''
+
+  const tssLow = stats.totalTSS < tssMin
+  const tssHigh = stats.totalTSS > tssMax
+  const intensityHigh = stats.intensity > t.intensityMax
+  const intensityLow = stats.intensity < t.intensityMin
+  const polarizationOff = intensityPct > t.intensityPctMax && stats.intensity > 0
+
+  // Combined situations first — say it as one coherent fix instead of three
+  // overlapping nags pointing at the same problem.
+  if (intensityHigh && tssLow) {
+    recs.push(
+      `${stats.intensity} hard days but only ${stats.totalTSS} TSS — heavy on intensity, light on volume. Swap one threshold/VO2 for a long Z2: drops you to a polarized 80/20 mix and lifts weekly TSS toward target ${tssMin}–${tssMax}${ctlNote} in one move.`,
+    )
+  } else if (intensityHigh && polarizationOff) {
+    recs.push(
+      `${stats.intensity} hard days = ${Math.round(intensityPct)}% of riding time at intensity (above the ~80/20 norm). Swap one threshold/VO2 for endurance.`,
+    )
+  } else if (intensityHigh) {
+    recs.push(
+      `${stats.intensity} intensity days is heavy for a ${phase} week (typical ${t.intensityMin}${t.intensityMax > t.intensityMin ? `–${t.intensityMax}` : ''}). Swap one for endurance to protect recovery.`,
+    )
+  } else if (intensityLow && tssLow) {
+    recs.push(
+      `No intensity yet and only ${stats.totalTSS} TSS — looks like a recovery week, not a ${phase}. Either lock it in as Recovery (drop a session) or add a threshold/VO2 day to hit ${tssMin}+ TSS${ctlNote}.`,
+    )
+  } else if (intensityLow) {
+    recs.push(
+      `Only ${stats.intensity} intensity ${stats.intensity === 1 ? 'day' : 'days'} — a ${phase} week typically has ${t.intensityMin}${t.intensityMax > t.intensityMin ? `–${t.intensityMax}` : ''}. Swap a Z2 day for a Threshold or VO2max session.`,
+    )
+  } else if (tssLow) {
+    const gap = tssMin - stats.totalTSS
+    recs.push(
+      `Weekly TSS ${stats.totalTSS} is light for a ${phase} week — target ${tssMin}–${tssMax}${ctlNote}. Add ~${gap} TSS by extending a Z2 session or adding a long ride.`,
+    )
+  } else if (tssHigh) {
+    recs.push(
+      `Weekly TSS ${stats.totalTSS} is high for a ${phase} week — target ${tssMin}–${tssMax}${ctlNote}. Watch ATL; drop one session by 15–30 min if fatigue piles up.`,
+    )
+  } else if (polarizationOff) {
+    // Intensity count is fine but the time-share is still off — tempo runs
+    // can land you here.
+    recs.push(
+      `${Math.round(intensityPct)}% of riding time is hard — above the ~80/20 polarized norm. Lengthen the easy days rather than cutting intensity.`,
+    )
+  }
+
+  if (stats.rest < t.restMin) {
+    recs.push('No rest day this week. Schedule at least one full off-day so adaptation can happen.')
+  }
+
+  if (recs.length === 0) {
+    recs.push(`Numbers line up with a ${phase} week. Stick to the schedule.`)
+  }
+
+  return recs
+}
+
+function computeWeekStats(template: PlanSession[]): WeekStats {
+  let totalMinutes = 0
+  let totalTSS = 0
+  let sessions = 0
+  let rest = 0
+  let intensity = 0
+  let easy = 0
+  let easyMinutes = 0
+  let intensityMinutes = 0
+  for (const s of template) {
+    const min = plannedSessionMinutes(s)
+    totalMinutes += min
+    totalTSS += plannedSessionTSS(s)
+    if (s.type === 'rest') {
+      rest++
+    } else {
+      sessions++
+      if (INTENSITY_TYPES.includes(s.type)) {
+        intensity++
+        intensityMinutes += min
+      } else {
+        easy++
+        easyMinutes += min
+      }
+    }
+  }
+  return {
+    totalMinutes,
+    totalTSS,
+    sessions,
+    rest,
+    intensity,
+    easy,
+    easyMinutes,
+    intensityMinutes,
+  }
 }
 
 const RECOVERY_PLAN: PlanSession[] = [
@@ -106,6 +364,8 @@ const SESSION_COLORS: Record<SessionType, { bg: string; text: string; border: st
   threshold: { bg: 'bg-orange-500/10', text: 'text-orange-300', border: 'border-orange-500/30', dot: 'bg-orange-400' },
   vo2: { bg: 'bg-rose-500/10', text: 'text-rose-300', border: 'border-rose-500/30', dot: 'bg-rose-400' },
   long: { bg: 'bg-sky-500/10', text: 'text-sky-300', border: 'border-sky-500/30', dot: 'bg-sky-400' },
+  run: { bg: 'bg-emerald-500/10', text: 'text-emerald-300', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
+  'tempo-run': { bg: 'bg-lime-500/10', text: 'text-lime-300', border: 'border-lime-500/30', dot: 'bg-lime-400' },
 }
 
 type FitVerdict = 'on-target' | 'below' | 'above' | 'over-duration' | 'under-duration' | 'rest-skipped' | 'pending' | 'none' | 'future'
@@ -200,8 +460,16 @@ function formatDuration(mins: number): string {
   return `${h}h ${String(m).padStart(2, '0')}m`
 }
 
-/** Power/HR target string for a planned session, tuned to the user's live FTP. */
-function targetPowerLabel(session: PlanSession, ftp: number, z2HrCeiling: number): string | null {
+/** Power/HR target string for a planned session, tuned to the user's live FTP and HR profile. */
+function targetPowerLabel(
+  session: PlanSession,
+  ftp: number,
+  z2HrCeiling: number,
+  maxHR: number,
+): string | null {
+  // Approximate lactate threshold heart rate at ~88% of max — used for tempo
+  // and threshold-style efforts when the rider has no power meter on the run.
+  const lthr = Math.round(maxHR * 0.88)
   switch (session.type) {
     case 'z2':
     case 'long':
@@ -212,6 +480,10 @@ function targetPowerLabel(session: PlanSession, ftp: number, z2HrCeiling: number
       return `intervals at ${Math.round(ftp * 1.1)}–${Math.round(ftp * 1.15)}W`
     case 'opener':
       return `short surges at ${Math.round(ftp * 0.95)}W near end`
+    case 'run':
+      return `HR <${z2HrCeiling} · easy / conversational`
+    case 'tempo-run':
+      return `HR ${z2HrCeiling}–${lthr} · steady, comfortably hard`
     case 'rest':
     case 'test':
     default:
@@ -249,8 +521,14 @@ function summarizeWeek(
   fitnessSeries: Array<{ date: string; ctl: number; atl: number; tsb: number }>,
   ftp: number,
   phase: PlanPhase,
+  dayOverrides?: Record<number, SessionType>,
 ): WeekSummary {
-  const template = phase === 'recovery' ? RECOVERY_PLAN : BUILD_PLAN
+  const baseTemplate = phase === 'recovery' ? RECOVERY_PLAN : BUILD_PLAN
+  const template = dayOverrides
+    ? baseTemplate.map((s, i) =>
+        i in dayOverrides ? SESSION_CATALOG[dayOverrides[i]] : s,
+      )
+    : baseTemplate
 
   const days: PlanDay[] = template.map((session, i) => {
     const date = addDays(weekStart, i)
@@ -304,7 +582,7 @@ function summarizeWeek(
 }
 
 function PlanPage() {
-  const { activities, stats, maxHR, restingHR } = useDashboard()
+  const { athlete, activities, stats, maxHR, restingHR } = useDashboard()
 
   const ftp = stats.ftp || 236
 
@@ -346,12 +624,114 @@ function PlanPage() {
       setPhaseSetting(stored)
     }
   }, [])
-  const updatePhaseSetting = (next: PlanPhaseSetting) => {
-    setPhaseSetting(next)
-    try {
-      window.localStorage.setItem(PHASE_STORAGE_KEY, next)
-    } catch {
-      // ignore
+
+  // Per-week phase overrides loaded from Supabase, keyed by week_start (yyyy-MM-dd)
+  const [weekPhaseOverrides, setWeekPhaseOverrides] = useState<Record<string, PlanPhase>>({})
+  const [overridesLoaded, setOverridesLoaded] = useState(false)
+  useEffect(() => {
+    if (!athlete || !isSupabaseConfigured()) {
+      setOverridesLoaded(true)
+      return
+    }
+    fetchPlanWeekPhases(athlete.id).then((rows) => {
+      const map = Object.fromEntries(rows.map((r) => [r.weekStart, r.phase]))
+      setWeekPhaseOverrides(map)
+      const wsKey = format(weekStart, 'yyyy-MM-dd')
+      if (wsKey in map) setPhaseSetting(map[wsKey])
+      // Extend planStartDate to the earliest persisted week so saved phases
+      // never render as "Pre-plan" after a reload or on a new device.
+      if (rows.length > 0) {
+        const earliestKey = rows.reduce(
+          (min, r) => (r.weekStart < min ? r.weekStart : min),
+          rows[0].weekStart,
+        )
+        const earliestDate = parseISO(earliestKey)
+        setPlanStartDate((prev) => {
+          if (!prev || earliestDate < prev) {
+            try {
+              window.localStorage.setItem(PLAN_START_STORAGE_KEY, earliestKey)
+            } catch {
+              // ignore
+            }
+            return earliestDate
+          }
+          return prev
+        })
+      }
+      setOverridesLoaded(true)
+    })
+  }, [athlete, weekStart])
+
+  // Per-day session-type overrides, keyed as `${weekStart YYYY-MM-DD}:${dayIndex}`
+  const [dayOverrides, setDayOverrides] = useState<Record<string, SessionType>>({})
+  // Which day card has its type-picker popover open (current week only)
+  const [editingDayIdx, setEditingDayIdx] = useState<number | null>(null)
+  useEffect(() => {
+    if (!athlete || !isSupabaseConfigured()) return
+    fetchPlanDayOverrides(athlete.id).then((rows) => {
+      const map: Record<string, SessionType> = {}
+      for (const r of rows) {
+        // Validate session_type matches our enum
+        if (r.sessionType in SESSION_CATALOG) {
+          map[`${r.weekStart}:${r.dayIndex}`] = r.sessionType as SessionType
+        }
+      }
+      setDayOverrides(map)
+    })
+  }, [athlete])
+
+  const dayOverridesForWeek = (ws: Date): Record<number, SessionType> => {
+    const wsKey = format(ws, 'yyyy-MM-dd')
+    const out: Record<number, SessionType> = {}
+    for (const [k, v] of Object.entries(dayOverrides)) {
+      const [wk, idx] = k.split(':')
+      if (wk === wsKey) out[Number(idx)] = v
+    }
+    return out
+  }
+
+  const setDayType = async (ws: Date, dayIndex: number, type: SessionType | null) => {
+    const wsKey = format(ws, 'yyyy-MM-dd')
+    const k = `${wsKey}:${dayIndex}`
+    if (type === null) {
+      setDayOverrides((prev) => {
+        const next = { ...prev }
+        delete next[k]
+        return next
+      })
+      if (athlete && isSupabaseConfigured()) {
+        await deletePlanDayOverride(athlete.id, wsKey, dayIndex)
+      }
+    } else {
+      setDayOverrides((prev) => ({ ...prev, [k]: type }))
+      if (athlete && isSupabaseConfigured()) {
+        await upsertPlanDayOverride(athlete.id, wsKey, dayIndex, type)
+      }
+    }
+  }
+
+  const overrideWeekPhase = async (weekStart: Date, phase: PlanPhase) => {
+    const key = format(weekStart, 'yyyy-MM-dd')
+    setWeekPhaseOverrides((prev) => ({ ...prev, [key]: phase }))
+    // If the user manually claims a week as part of the plan, extend
+    // planStartDate back to that week so it stops rendering as "Pre-plan".
+    if (planStartDate && weekStart < planStartDate) {
+      setPlanStartDate(weekStart)
+      try {
+        window.localStorage.setItem(PLAN_START_STORAGE_KEY, key)
+      } catch {
+        // ignore
+      }
+    }
+    if (athlete && isSupabaseConfigured()) {
+      const ok = await upsertPlanWeekPhase(athlete.id, key, phase)
+      if (!ok) {
+        setWeekPhaseOverrides((prev) => {
+          const next = { ...prev }
+          delete next[key]
+          return next
+        })
+      }
     }
   }
 
@@ -361,7 +741,10 @@ function PlanPage() {
   useEffect(() => {
     const stored = window.localStorage.getItem(PLAN_START_STORAGE_KEY)
     if (stored && /^\d{4}-\d{2}-\d{2}$/.test(stored)) {
-      setPlanStartDate(new Date(stored))
+      // parseISO interprets a date-only string as local midnight, matching
+      // what startOfWeek/subDays return. new Date(string) would parse as UTC
+      // and break the < comparison against locally-anchored week starts.
+      setPlanStartDate(parseISO(stored))
     } else {
       const monday = startOfWeek(new Date(), { weekStartsOn: 1 })
       const key = format(monday, 'yyyy-MM-dd')
@@ -381,29 +764,63 @@ function PlanPage() {
   const autoPhase: PlanPhase = detectPhase(phaseTsb, phaseAtl)
   const activePhase: PlanPhase = phaseSetting === 'auto' ? autoPhase : phaseSetting
 
+  // First time entering this week: persist the auto-detected phase so the
+  // plan is locked in from the start. The user can still toggle Recovery/Build
+  // to override; the DB row is the source of truth from here on.
+  useEffect(() => {
+    if (!overridesLoaded) return
+    if (!athlete || !isSupabaseConfigured()) return
+    if (fitnessSeries.length === 0) return
+    const wsKey = format(weekStart, 'yyyy-MM-dd')
+    if (wsKey in weekPhaseOverrides) return
+    upsertPlanWeekPhase(athlete.id, wsKey, autoPhase)
+    setWeekPhaseOverrides((prev) => ({ ...prev, [wsKey]: autoPhase }))
+    setPhaseSetting(autoPhase)
+  }, [overridesLoaded, athlete, weekStart, weekPhaseOverrides, autoPhase, fitnessSeries.length])
+
   // Current week (uses user-selected phase)
   const currentWeek = useMemo(
-    () => summarizeWeek(weekStart, today, activities, fitnessSeries, ftp, activePhase),
-    [weekStart, today, activities, fitnessSeries, ftp, activePhase],
+    () =>
+      summarizeWeek(
+        weekStart,
+        today,
+        activities,
+        fitnessSeries,
+        ftp,
+        activePhase,
+        dayOverridesForWeek(weekStart),
+      ),
+    [weekStart, today, activities, fitnessSeries, ftp, activePhase, dayOverrides],
   )
   const planDays = currentWeek.days
   const baseline = currentWeek.startSnap
   const fitnessNow = currentWeek.endSnap
 
-  // Past weeks (phase auto-detected from TSB/ATL at the start of each week)
+  // Past weeks. Phase comes from the persisted per-week override if present;
+  // otherwise auto-detected from TSB/ATL at the start of that week.
   const pastWeeks = useMemo(() => {
     if (fitnessSeries.length === 0) return []
     const out: WeekSummary[] = []
     for (let i = 1; i <= 12; i++) {
       const ws = subDays(weekStart, i * 7)
-      const key = format(subDays(ws, 1), 'yyyy-MM-dd')
-      const snap = fitnessSeries.find((p) => p.date === key)
-      const phase: PlanPhase = detectPhase(snap?.tsb ?? null, snap?.atl ?? null)
-      const summary = summarizeWeek(ws, today, activities, fitnessSeries, ftp, phase)
+      const wsKey = format(ws, 'yyyy-MM-dd')
+      const snapKey = format(subDays(ws, 1), 'yyyy-MM-dd')
+      const snap = fitnessSeries.find((p) => p.date === snapKey)
+      const phase: PlanPhase =
+        weekPhaseOverrides[wsKey] ?? detectPhase(snap?.tsb ?? null, snap?.atl ?? null)
+      const summary = summarizeWeek(
+        ws,
+        today,
+        activities,
+        fitnessSeries,
+        ftp,
+        phase,
+        dayOverridesForWeek(ws),
+      )
       if (summary.totalActivities > 0) out.push(summary)
     }
     return out
-  }, [weekStart, today, activities, fitnessSeries, ftp])
+  }, [weekStart, today, activities, fitnessSeries, ftp, weekPhaseOverrides, dayOverrides])
 
   // Trajectory: 14 days ending today
   const trajectoryData = useMemo(() => {
@@ -648,69 +1065,153 @@ function PlanPage() {
 
       {/* This Week — enhanced with actuals */}
       <div className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-7 max-md:p-4 max-[480px]:p-3.5">
-        <div className="flex items-baseline justify-between mb-4 flex-wrap gap-2">
-          <h3 className="text-lg font-semibold text-text-primary max-[480px]:text-base">
-            This Week — {PHASE_META[activePhase].title}
-          </h3>
-          <span className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">
-            Planned vs actual
-          </span>
-        </div>
-
-        {/* Phase toggle */}
-        <div className="flex items-center gap-3 mb-6 flex-wrap">
-          <div className="inline-flex items-center bg-bg-tertiary border border-border-subtle rounded-[var(--radius-sm)] p-0.5">
-            {(['auto', 'recovery', 'build'] as const).map((opt) => {
-              const active = phaseSetting === opt
-              const label = opt === 'auto' ? 'Auto' : opt === 'recovery' ? 'Recovery' : 'Build'
-              return (
-                <button
-                  key={opt}
-                  onClick={() => updatePhaseSetting(opt)}
-                  className={`text-xs font-medium py-1.5 px-3 rounded-[var(--radius-xs,4px)] transition-all duration-150 cursor-pointer ${
-                    active
-                      ? 'bg-accent/20 text-accent border border-accent/40'
-                      : 'text-text-muted border border-transparent hover:text-text-secondary'
-                  }`}
-                >
-                  {label}
-                </button>
-              )
-            })}
-          </div>
-          <div className="text-[0.7rem] text-text-muted leading-relaxed flex-1 min-w-0">
-            {phaseSetting === 'auto' ? (
-              <>
-                Auto-selected <span className="text-text-secondary font-medium">{activePhase === 'recovery' ? 'Recovery' : 'Build'}</span>
+        {(() => {
+          const template = planDays.map((d) => d.session)
+          const derived = classifyDerivedPhase(template)
+          const meta = DERIVED_PHASE_META[derived]
+          const stats = computeWeekStats(template)
+          const totalNonRest = stats.easyMinutes + stats.intensityMinutes
+          const easyPct = totalNonRest > 0 ? (stats.easyMinutes / totalNonRest) * 100 : 0
+          const intensityPct = totalNonRest > 0 ? (stats.intensityMinutes / totalNonRest) * 100 : 0
+          return (
+            <>
+              <div className="flex items-baseline justify-between mb-4 flex-wrap gap-3">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h3 className="text-lg font-semibold text-text-primary max-[480px]:text-base">This Week</h3>
+                  <span className={`text-[0.7rem] uppercase tracking-wider font-semibold px-2 py-0.5 rounded border ${meta.tone}`}>
+                    {meta.title}
+                  </span>
+                </div>
+                <span className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">
+                  Planned vs actual
+                </span>
+              </div>
+              <p className="text-[0.7rem] text-text-muted leading-relaxed mb-4">
+                {meta.description} · auto-classified from your selected sessions
                 {phaseTsb !== null && (
                   <> · TSB <span className="data-value text-text-secondary">{phaseTsb >= 0 ? '+' : ''}{phaseTsb}</span></>
                 )}
                 {phaseAtl !== null && (
                   <> · ATL <span className="data-value text-text-secondary">{phaseAtl}</span></>
                 )}
-                <span className="text-text-muted/70"> at week start · recovery if TSB &lt; −3 or ATL ≥ 65</span>
-              </>
-            ) : (
-              <>
-                Manual override active.{' '}
-                {activePhase !== autoPhase && (
-                  <>Auto would suggest <span className="text-text-secondary font-medium">{autoPhase === 'recovery' ? 'Recovery' : 'Build'}</span>. </>
-                )}
-                <button
-                  onClick={() => updatePhaseSetting('auto')}
-                  className="text-accent hover:text-accent-light underline underline-offset-2 cursor-pointer"
-                >
-                  Reset to auto
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+              </p>
+
+              {/* Stats panel */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                <StatTile
+                  label="Planned time"
+                  big={formatDuration(stats.totalMinutes)}
+                  hint={`${stats.sessions} session${stats.sessions === 1 ? '' : 's'}`}
+                  accentPositive={false}
+                />
+                <StatTile
+                  label="Intensity"
+                  big={`${stats.intensity}d`}
+                  hint={stats.intensity === 0 ? 'aerobic only' : `${formatDuration(stats.intensityMinutes)} hard`}
+                  accentPositive={false}
+                />
+                <StatTile
+                  label="Rest"
+                  big={`${stats.rest}d`}
+                  hint={stats.rest === 0 ? 'no off-day' : 'recovery'}
+                  accentPositive={false}
+                />
+                <StatTile
+                  label="Est. TSS"
+                  big={stats.totalTSS.toString()}
+                  hint="weekly load"
+                  accentPositive
+                />
+              </div>
+              {totalNonRest > 0 && (
+                <div className="mb-6">
+                  <div className="flex items-center justify-between text-[0.65rem] text-text-muted uppercase tracking-wider font-semibold mb-1.5">
+                    <span>Riding time mix</span>
+                    <span className="data-value normal-case tracking-normal text-text-muted/70">
+                      {Math.round(easyPct)}% easy · {Math.round(intensityPct)}% intensity
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full overflow-hidden flex bg-bg-tertiary">
+                    {easyPct > 0 && (
+                      <div className="bg-teal-400" style={{ width: `${easyPct}%` }} title={`Easy ${formatDuration(stats.easyMinutes)}`} />
+                    )}
+                    {intensityPct > 0 && (
+                      <div className="bg-rose-400" style={{ width: `${intensityPct}%` }} title={`Intensity ${formatDuration(stats.intensityMinutes)}`} />
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Plan Recommendations */}
+              {(() => {
+                const currentCtl =
+                  fitnessSeries.length > 0 ? fitnessSeries[fitnessSeries.length - 1].ctl : null
+                const recs = buildPlanRecommendations(stats, derived, currentCtl)
+                const inLine = recs.length === 1 && recs[0].startsWith('Numbers line up')
+                return (
+                  <div
+                    className={`rounded-[var(--radius-md)] p-3 mb-4 border ${
+                      inLine
+                        ? 'bg-success-muted border-success/30'
+                        : 'bg-bg-tertiary border-border-subtle'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[0.65rem] uppercase tracking-wider font-semibold text-text-muted">
+                        Plan recommendations
+                      </span>
+                      {inLine ? (
+                        <span className="text-[0.6rem] text-success uppercase tracking-wider">Balanced</span>
+                      ) : (
+                        <span className="text-[0.6rem] text-warning uppercase tracking-wider">{recs.length} suggestion{recs.length === 1 ? '' : 's'}</span>
+                      )}
+                    </div>
+                    <ol className="flex flex-col gap-1.5 list-decimal list-inside">
+                      {recs.map((r, i) => (
+                        <li
+                          key={i}
+                          className={`text-xs leading-relaxed marker:text-text-muted ${
+                            inLine ? 'text-success' : 'text-text-secondary'
+                          }`}
+                        >
+                          {r}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )
+              })()}
+            </>
+          )
+        })()}
+
+        {(() => {
+          const shape = countWeekShape(planDays.map((d) => d.session))
+          const target = PHASE_WEEK_TARGETS[activePhase]
+          const issues: string[] = []
+          if (shape.intensity > target.intensity + 1)
+            issues.push(`${shape.intensity} intensity days (template ${target.intensity})`)
+          if (shape.intensity < target.intensity - 1)
+            issues.push(`${shape.intensity} intensity days (template ${target.intensity})`)
+          if (shape.rest > target.rest + 1)
+            issues.push(`${shape.rest} rest days (template ${target.rest})`)
+          if (shape.rest < target.rest - 1)
+            issues.push(`${shape.rest} rest days (template ${target.rest})`)
+          if (issues.length === 0) return null
+          return (
+            <div className="bg-warning-muted border border-warning/30 rounded-[var(--radius-md)] p-3 mb-4 text-xs text-warning leading-relaxed">
+              Weekly shape drift: {issues.join(' · ')}. Adjust day types to bring it back in line with a {activePhase} week.
+            </div>
+          )
+        })()}
 
         <div className="grid grid-cols-7 gap-3 max-lg:grid-cols-4 max-md:grid-cols-2 max-[480px]:grid-cols-1">
-          {planDays.map(({ session, date, actual, verdict, isToday: thisDayIsToday, isPastOrToday }) => {
+          {planDays.map(({ session, date, actual, verdict, isToday: thisDayIsToday, isPastOrToday }, dayIdx) => {
             const colors = SESSION_COLORS[session.type]
             const fit = FIT_META[verdict]
+            const dayKey = `${format(weekStart, 'yyyy-MM-dd')}:${dayIdx}`
+            const isCustomized = dayKey in dayOverrides
+            const editing = editingDayIdx === dayIdx
             return (
               <div
                 key={date.toISOString()}
@@ -725,15 +1226,67 @@ function PlanPage() {
                       <span className="ml-1.5 text-accent">· Today</span>
                     )}
                   </span>
-                  <span className="text-[0.65rem] text-text-muted data-value">
-                    {format(date, 'd. MMM', { locale: da })}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[0.65rem] text-text-muted data-value">
+                      {format(date, 'd. MMM', { locale: da })}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setEditingDayIdx(editing ? null : dayIdx)}
+                      title="Change session type"
+                      className="text-[0.7rem] text-text-muted hover:text-text-secondary transition-colors px-1 leading-none"
+                    >
+                      ⋯
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2">
                   <span className={`size-2 rounded-full ${colors.dot}`} />
                   <span className={`text-sm font-semibold ${colors.text}`}>{session.label}</span>
+                  {isCustomized && (
+                    <span className="text-[0.55rem] text-text-muted/70 italic" title="Customized for this week">·</span>
+                  )}
                 </div>
+
+                {editing && (
+                  <div className="absolute z-20 top-9 right-2 bg-bg-elevated border border-border rounded-[var(--radius-md)] shadow-xl p-1.5 flex flex-col gap-0.5 min-w-[140px]">
+                    {(Object.keys(SESSION_CATALOG) as SessionType[]).map((t) => {
+                      const cat = SESSION_CATALOG[t]
+                      const active = session.type === t
+                      return (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => {
+                            setDayType(weekStart, dayIdx, t)
+                            setEditingDayIdx(null)
+                          }}
+                          className={`text-left text-xs py-1 px-2 rounded transition-colors ${
+                            active
+                              ? 'bg-accent/15 text-accent'
+                              : 'text-text-secondary hover:bg-bg-tertiary hover:text-text-primary'
+                          }`}
+                        >
+                          {cat.label}
+                          <span className="text-[0.65rem] text-text-muted/70 ml-1">{cat.duration}</span>
+                        </button>
+                      )
+                    })}
+                    {isCustomized && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDayType(weekStart, dayIdx, null)
+                          setEditingDayIdx(null)
+                        }}
+                        className="text-left text-[0.7rem] py-1 px-2 mt-0.5 border-t border-border-subtle text-text-muted hover:text-text-secondary transition-colors"
+                      >
+                        ↺ Reset to template
+                      </button>
+                    )}
+                  </div>
+                )}
 
                 {/* ACTUAL — shown when an activity exists */}
                 {actual && (
@@ -775,9 +1328,9 @@ function PlanPage() {
                     <div className="text-xs text-text-primary data-value">
                       {session.duration}
                     </div>
-                    {targetPowerLabel(session, ftp, z2HrCeiling) && (
+                    {targetPowerLabel(session, ftp, z2HrCeiling, maxHR) && (
                       <div className="text-[0.7rem] text-text-muted data-value">
-                        {targetPowerLabel(session, ftp, z2HrCeiling)}
+                        {targetPowerLabel(session, ftp, z2HrCeiling, maxHR)}
                       </div>
                     )}
                     <div className="text-[0.7rem] text-text-muted leading-relaxed">
@@ -854,11 +1407,17 @@ function PlanPage() {
           <div className="flex flex-col gap-2">
             {pastWeeks.map((w) => {
               const isPrePlan = planStartDate !== null && w.weekStart < planStartDate
+              const wsKey = format(w.weekStart, 'yyyy-MM-dd')
+              const isOverridden = wsKey in weekPhaseOverrides
               return (
                 <WeekHistoryRow
                   key={w.weekStart.toISOString()}
                   summary={w}
                   isPrePlan={isPrePlan}
+                  isOverridden={isOverridden}
+                  onPhaseChange={
+                    isPrePlan ? undefined : (next) => overrideWeekPhase(w.weekStart, next)
+                  }
                 />
               )
             })}
@@ -1038,7 +1597,17 @@ function Rule({ n, title, body }: { n: string; title: string; body: string }) {
   )
 }
 
-function WeekHistoryRow({ summary, isPrePlan }: { summary: WeekSummary; isPrePlan: boolean }) {
+function WeekHistoryRow({
+  summary,
+  isPrePlan,
+  isOverridden,
+  onPhaseChange,
+}: {
+  summary: WeekSummary
+  isPrePlan: boolean
+  isOverridden?: boolean
+  onPhaseChange?: (next: PlanPhase) => void
+}) {
   const { weekStart, weekEnd, phase, adherencePct, sessionsLogged, scoredCount, startSnap, endSnap, totalTimeMin, totalActivities } = summary
 
   const ctlDelta = startSnap && endSnap ? endSnap.ctl - startSnap.ctl : null
@@ -1070,9 +1639,25 @@ function WeekHistoryRow({ summary, isPrePlan }: { summary: WeekSummary; isPrePla
             {formatDuration(totalTimeMin)} · {totalActivities} rides
           </div>
         </div>
-        <span className={`text-[0.6rem] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded border ${phaseTone}`}>
-          {isPrePlan ? 'Pre-plan' : phase === 'recovery' ? 'Recovery' : 'Build'}
-        </span>
+        {onPhaseChange ? (
+          <button
+            type="button"
+            onClick={() => onPhaseChange(phase === 'recovery' ? 'build' : 'recovery')}
+            title={
+              isPrePlan
+                ? 'Pre-plan week. Click to mark as Recovery or Build and include in your plan.'
+                : `Currently ${phase}${isOverridden ? ' (manual)' : ' (auto)'}. Click to switch.`
+            }
+            className={`text-[0.6rem] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded border cursor-pointer transition-opacity hover:opacity-80 ${phaseTone}`}
+          >
+            {isPrePlan ? 'Pre-plan' : phase === 'recovery' ? 'Recovery' : 'Build'}
+            {isOverridden && <span className="ml-1 opacity-70">·</span>}
+          </button>
+        ) : (
+          <span className={`text-[0.6rem] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded border ${phaseTone}`}>
+            {isPrePlan ? 'Pre-plan' : phase === 'recovery' ? 'Recovery' : 'Build'}
+          </span>
+        )}
       </div>
 
       {/* Middle: adherence bar OR training-load summary for pre-plan */}
