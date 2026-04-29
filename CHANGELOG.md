@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.16.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.15.0...v1.16.0) (2026-04-29)
+
+
+### Features
+
+* **plan:** lock history, future-only swap, surface actual vs est. TSS ([ab73603](https://github.com/captain-fatbeard/strava-performance-tracker/commit/ab73603b5cf4fa2d67293b9ff2e4acba785533ed))
+
 ## [1.15.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.14.1...v1.15.0) (2026-04-27)
 
 
