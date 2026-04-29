@@ -23,7 +23,7 @@ import {
   Legend,
 } from 'recharts'
 import { useDashboard } from '~/lib/dashboard-context'
-import { calculateFitnessOverTime, estimateFTPHistory } from '~/lib/performance'
+import { calculateFitnessOverTime, calculateTSS, estimateFTPHistory } from '~/lib/performance'
 import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
 import { type StravaActivity } from '~/lib/strava'
 import {
@@ -512,6 +512,7 @@ interface WeekSummary {
   endSnap: { ctl: number; atl: number; tsb: number } | null
   totalTimeMin: number
   totalActivities: number
+  actualTSS: number
 }
 
 function summarizeWeek(
@@ -565,6 +566,7 @@ function summarizeWeek(
     return ad >= weekStart && ad < addDays(weekStart, 7)
   })
   const totalTimeMin = weekActivities.reduce((s, a) => s + a.moving_time, 0) / 60
+  const actualTSS = weekActivities.reduce((s, a) => s + calculateTSS(a, ftp), 0)
 
   return {
     weekStart,
@@ -578,6 +580,7 @@ function summarizeWeek(
     endSnap,
     totalTimeMin,
     totalActivities: weekActivities.length,
+    actualTSS,
   }
 }
 
@@ -710,31 +713,6 @@ function PlanPage() {
     }
   }
 
-  const overrideWeekPhase = async (weekStart: Date, phase: PlanPhase) => {
-    const key = format(weekStart, 'yyyy-MM-dd')
-    setWeekPhaseOverrides((prev) => ({ ...prev, [key]: phase }))
-    // If the user manually claims a week as part of the plan, extend
-    // planStartDate back to that week so it stops rendering as "Pre-plan".
-    if (planStartDate && weekStart < planStartDate) {
-      setPlanStartDate(weekStart)
-      try {
-        window.localStorage.setItem(PLAN_START_STORAGE_KEY, key)
-      } catch {
-        // ignore
-      }
-    }
-    if (athlete && isSupabaseConfigured()) {
-      const ok = await upsertPlanWeekPhase(athlete.id, key, phase)
-      if (!ok) {
-        setWeekPhaseOverrides((prev) => {
-          const next = { ...prev }
-          delete next[key]
-          return next
-        })
-      }
-    }
-  }
-
   // Plan start date — defaults to Monday of current week on first load.
   // Weeks before this are shown as "Pre-plan" in history (no phase/adherence).
   const [planStartDate, setPlanStartDate] = useState<Date | null>(null)
@@ -841,6 +819,15 @@ function PlanPage() {
   // Current week adherence (from summary helper)
   const { adherencePct, sessionsLogged, scoredCount } = currentWeek
   const onPlanCount = Math.round((adherencePct / 100) * scoredCount)
+
+  // Rolling weekly TSS estimate: actual where days are done, planned for the rest.
+  // Updates as activities land instead of staying frozen at the template estimate.
+  const rollingEstTSS = Math.round(
+    currentWeek.days.reduce((s, d) => {
+      if (d.actual) return s + d.actual.activities.reduce((x, a) => x + calculateTSS(a, ftp), 0)
+      return s + plannedSessionTSS(d.session)
+    }, 0),
+  )
 
   const atlDelta = baseline && fitnessNow ? fitnessNow.atl - baseline.atl : null
   const tsbDelta = baseline && fitnessNow ? fitnessNow.tsb - baseline.tsb : null
@@ -1117,9 +1104,9 @@ function PlanPage() {
                   accentPositive={false}
                 />
                 <StatTile
-                  label="Est. TSS"
-                  big={stats.totalTSS.toString()}
-                  hint="weekly load"
+                  label="TSS"
+                  big={`${Math.round(currentWeek.actualTSS)} / ${rollingEstTSS}`}
+                  hint="actual / est."
                   accentPositive
                 />
               </div>
@@ -1230,14 +1217,16 @@ function PlanPage() {
                     <span className="text-[0.65rem] text-text-muted data-value">
                       {format(date, 'd. MMM', { locale: da })}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => setEditingDayIdx(editing ? null : dayIdx)}
-                      title="Change session type"
-                      className="text-[0.7rem] text-text-muted hover:text-text-secondary transition-colors px-1 leading-none"
-                    >
-                      ⋯
-                    </button>
+                    {!isPastOrToday && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingDayIdx(editing ? null : dayIdx)}
+                        title="Change session type"
+                        className="text-[0.7rem] text-text-muted hover:text-text-secondary transition-colors px-1 leading-none"
+                      >
+                        ⋯
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -1249,7 +1238,7 @@ function PlanPage() {
                   )}
                 </div>
 
-                {editing && (
+                {editing && !isPastOrToday && (
                   <div className="absolute z-20 top-9 right-2 bg-bg-elevated border border-border rounded-[var(--radius-md)] shadow-xl p-1.5 flex flex-col gap-0.5 min-w-[140px]">
                     {(Object.keys(SESSION_CATALOG) as SessionType[]).map((t) => {
                       const cat = SESSION_CATALOG[t]
@@ -1289,28 +1278,38 @@ function PlanPage() {
                 )}
 
                 {/* ACTUAL — shown when an activity exists */}
-                {actual && (
-                  <div className="mt-1 pt-2 border-t border-border-subtle flex flex-col gap-1">
-                    <div className="text-[0.65rem] text-text-muted uppercase tracking-wider font-semibold">
-                      Actual
+                {actual && (() => {
+                  const dayTSS = Math.round(actual.activities.reduce((s, a) => s + calculateTSS(a, ftp), 0))
+                  const plannedDayTSS = plannedSessionTSS(session)
+                  return (
+                    <div className="mt-1 pt-2 border-t border-border-subtle flex flex-col gap-1">
+                      <div className="text-[0.65rem] text-text-muted uppercase tracking-wider font-semibold">
+                        Actual
+                      </div>
+                      <div className="text-xs text-text-primary data-value">
+                        {formatDuration(actual.movingTimeMin)}
+                        {actual.avgPower !== null && (
+                          <>
+                            <span className="text-text-muted mx-1">·</span>
+                            {Math.round(actual.avgPower)}W
+                          </>
+                        )}
+                        {actual.avgHr !== null && (
+                          <>
+                            <span className="text-text-muted mx-1">·</span>
+                            {Math.round(actual.avgHr)} bpm
+                          </>
+                        )}
+                      </div>
+                      <div className="text-[0.7rem] text-text-muted data-value">
+                        TSS {dayTSS}
+                        {plannedDayTSS > 0 && (
+                          <span className="text-text-muted/70"> / {plannedDayTSS}</span>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-xs text-text-primary data-value">
-                      {formatDuration(actual.movingTimeMin)}
-                      {actual.avgPower !== null && (
-                        <>
-                          <span className="text-text-muted mx-1">·</span>
-                          {Math.round(actual.avgPower)}W
-                        </>
-                      )}
-                      {actual.avgHr !== null && (
-                        <>
-                          <span className="text-text-muted mx-1">·</span>
-                          {Math.round(actual.avgHr)} bpm
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
+                  )
+                })()}
 
                 {/* REST kept — past rest day with no activity */}
                 {!actual && isPastOrToday && session.type === 'rest' && (
@@ -1320,29 +1319,37 @@ function PlanPage() {
                 )}
 
                 {/* TARGET — future days, today-pending, past-missed non-rest */}
-                {!actual && !(isPastOrToday && session.type === 'rest') && (
-                  <div className="mt-1 pt-2 border-t border-border-subtle flex flex-col gap-1">
-                    <div className="text-[0.65rem] text-text-muted uppercase tracking-wider font-semibold">
-                      Target
-                    </div>
-                    <div className="text-xs text-text-primary data-value">
-                      {session.duration}
-                    </div>
-                    {targetPowerLabel(session, ftp, z2HrCeiling, maxHR) && (
-                      <div className="text-[0.7rem] text-text-muted data-value">
-                        {targetPowerLabel(session, ftp, z2HrCeiling, maxHR)}
+                {!actual && !(isPastOrToday && session.type === 'rest') && (() => {
+                  const plannedDayTSS = plannedSessionTSS(session)
+                  return (
+                    <div className="mt-1 pt-2 border-t border-border-subtle flex flex-col gap-1">
+                      <div className="text-[0.65rem] text-text-muted uppercase tracking-wider font-semibold">
+                        Target
                       </div>
-                    )}
-                    <div className="text-[0.7rem] text-text-muted leading-relaxed">
-                      {session.detail}
-                    </div>
-                    {thisDayIsToday && !actual && session.type !== 'rest' && (
-                      <div className="text-[0.7rem] text-accent italic">
-                        Awaiting today's ride
+                      <div className="text-xs text-text-primary data-value">
+                        {session.duration}
                       </div>
-                    )}
-                  </div>
-                )}
+                      {targetPowerLabel(session, ftp, z2HrCeiling, maxHR) && (
+                        <div className="text-[0.7rem] text-text-muted data-value">
+                          {targetPowerLabel(session, ftp, z2HrCeiling, maxHR)}
+                        </div>
+                      )}
+                      {plannedDayTSS > 0 && (
+                        <div className="text-[0.7rem] text-text-muted data-value">
+                          TSS {plannedDayTSS}
+                        </div>
+                      )}
+                      <div className="text-[0.7rem] text-text-muted leading-relaxed">
+                        {session.detail}
+                      </div>
+                      {thisDayIsToday && !actual && session.type !== 'rest' && (
+                        <div className="text-[0.7rem] text-accent italic">
+                          Awaiting today's ride
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 <div className="mt-auto flex items-center justify-between gap-2 pt-1">
                   <span className="text-[0.7rem] text-text-muted data-value">{session.duration}</span>
@@ -1415,9 +1422,6 @@ function PlanPage() {
                   summary={w}
                   isPrePlan={isPrePlan}
                   isOverridden={isOverridden}
-                  onPhaseChange={
-                    isPrePlan ? undefined : (next) => overrideWeekPhase(w.weekStart, next)
-                  }
                 />
               )
             })}
@@ -1601,18 +1605,18 @@ function WeekHistoryRow({
   summary,
   isPrePlan,
   isOverridden,
-  onPhaseChange,
 }: {
   summary: WeekSummary
   isPrePlan: boolean
   isOverridden?: boolean
-  onPhaseChange?: (next: PlanPhase) => void
 }) {
-  const { weekStart, weekEnd, phase, adherencePct, sessionsLogged, scoredCount, startSnap, endSnap, totalTimeMin, totalActivities } = summary
+  const { weekStart, weekEnd, phase, adherencePct, sessionsLogged, scoredCount, startSnap, endSnap, totalTimeMin, totalActivities, days, actualTSS } = summary
 
   const ctlDelta = startSnap && endSnap ? endSnap.ctl - startSnap.ctl : null
   const atlDelta = startSnap && endSnap ? endSnap.atl - startSnap.atl : null
   const tsbDelta = startSnap && endSnap ? endSnap.tsb - startSnap.tsb : null
+  const plannedTSS = isPrePlan ? null : computeWeekStats(days.map((d) => d.session)).totalTSS
+  const actualTSSRounded = Math.round(actualTSS)
 
   const phaseTone = isPrePlan
     ? 'text-text-muted bg-bg-tertiary border-border-subtle'
@@ -1639,25 +1643,10 @@ function WeekHistoryRow({
             {formatDuration(totalTimeMin)} · {totalActivities} rides
           </div>
         </div>
-        {onPhaseChange ? (
-          <button
-            type="button"
-            onClick={() => onPhaseChange(phase === 'recovery' ? 'build' : 'recovery')}
-            title={
-              isPrePlan
-                ? 'Pre-plan week. Click to mark as Recovery or Build and include in your plan.'
-                : `Currently ${phase}${isOverridden ? ' (manual)' : ' (auto)'}. Click to switch.`
-            }
-            className={`text-[0.6rem] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded border cursor-pointer transition-opacity hover:opacity-80 ${phaseTone}`}
-          >
-            {isPrePlan ? 'Pre-plan' : phase === 'recovery' ? 'Recovery' : 'Build'}
-            {isOverridden && <span className="ml-1 opacity-70">·</span>}
-          </button>
-        ) : (
-          <span className={`text-[0.6rem] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded border ${phaseTone}`}>
-            {isPrePlan ? 'Pre-plan' : phase === 'recovery' ? 'Recovery' : 'Build'}
-          </span>
-        )}
+        <span className={`text-[0.6rem] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded border ${phaseTone}`}>
+          {isPrePlan ? 'Pre-plan' : phase === 'recovery' ? 'Recovery' : 'Build'}
+          {isOverridden && !isPrePlan && <span className="ml-1 opacity-70">·</span>}
+        </span>
       </div>
 
       {/* Middle: adherence bar OR training-load summary for pre-plan */}
@@ -1684,10 +1673,25 @@ function WeekHistoryRow({
 
       {/* Deltas — always shown */}
       <div className="flex gap-5 shrink-0 max-md:justify-between max-md:w-full">
+        <TSSCell actual={actualTSSRounded} planned={plannedTSS} />
         <DeltaStat label="CTL" delta={ctlDelta} positiveUp />
         <DeltaStat label="ATL" delta={atlDelta} positiveUp={false} />
         <DeltaStat label="TSB" delta={tsbDelta} positiveUp />
       </div>
+    </div>
+  )
+}
+
+function TSSCell({ actual, planned }: { actual: number; planned: number | null }) {
+  return (
+    <div className="flex flex-col gap-0.5 items-start">
+      <span className="text-[0.6rem] text-text-muted uppercase tracking-wider font-semibold">TSS</span>
+      <span className="text-xs font-semibold data-value text-text-primary">
+        {actual}
+        {planned !== null && (
+          <span className="text-text-muted/70 font-normal"> / {planned}</span>
+        )}
+      </span>
     </div>
   )
 }
