@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.17.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.16.0...v1.17.0) (2026-05-02)
+
+
+### Features
+
+* **plan:** calibrate TSS per-minute factors and flex tempo-run ([bfe96de](https://github.com/captain-fatbeard/strava-performance-tracker/commit/bfe96de7721b33449a8904826377920e59213396))
+* **plan:** sport-aware TSS for runs and powerless rides ([80b0211](https://github.com/captain-fatbeard/strava-performance-tracker/commit/80b02115b420c04d7fcd9354f0b3de0d91b7acdc))
+
 ## [1.16.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.15.0...v1.16.0) (2026-04-29)
 
 
