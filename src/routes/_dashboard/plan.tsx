@@ -67,7 +67,7 @@ const SESSION_CATALOG: Record<SessionType, PlanSession> = {
   vo2: { type: 'vo2', label: 'VO2max', detail: '5×4 min at 110–115% FTP', duration: '~60 min', durationMinMin: 40, durationMaxMin: 85, powerFloor: 0.65, powerCeiling: 1.1, allowBelow: false },
   long: { type: 'long', label: 'Long Z2', detail: 'Aerobic volume, flat or rolling', duration: '90–120 min', durationMinMin: 75, durationMaxMin: 150, powerFloor: 0.55, powerCeiling: 0.8, allowBelow: true },
   run: { type: 'run', label: 'Easy run', detail: 'Truly easy, conversational pace', duration: '30 min', durationMinMin: 20, durationMaxMin: 40, powerFloor: null, powerCeiling: null, allowBelow: true },
-  'tempo-run': { type: 'tempo-run', label: 'Tempo run', detail: 'Steady, comfortably hard', duration: '30–40 min', durationMinMin: 25, durationMaxMin: 45, powerFloor: null, powerCeiling: null, allowBelow: false },
+  'tempo-run': { type: 'tempo-run', label: 'Tempo run', detail: 'Comfortably hard to hard — 80–85% max HR / Z3–Z4', duration: '30–40 min', durationMinMin: 25, durationMaxMin: 45, powerFloor: null, powerCeiling: null, allowBelow: false },
 }
 
 // Type categories used for the "weekly shape" check after day overrides.
@@ -133,16 +133,19 @@ function classifyDerivedPhase(template: PlanSession[]): DerivedPhase {
 // Estimated training stress per minute by session type. Coarse — uses
 // single-IF approximations rather than per-interval modeling. Good enough
 // to get a weekly TSS ballpark in the Stats panel.
+// Calibrated 2026-05-02 against the user's actual upper-Z2 / IF~0.88 threshold
+// pattern — see TSS analysis in conversation history. Old values were keyed
+// to band-floor IFs and consistently undershot real accumulation by 30–55%.
 const TSS_PER_MIN: Record<SessionType, number> = {
   rest: 0,
-  z2: 0.5,
-  long: 0.55,
-  opener: 0.6,
-  run: 1.0, // bumped from 0.75 — easy runs typically come back at higher HR
-  test: 0.85,
-  threshold: 0.95,
-  vo2: 1.1,
-  'tempo-run': 1.3,
+  z2: 0.75,
+  long: 0.7,
+  opener: 0.7,
+  run: 0.7,
+  test: 1.0,
+  threshold: 1.2,
+  vo2: 1.3,
+  'tempo-run': 1.4,
 }
 
 function plannedSessionTSS(s: PlanSession): number {
