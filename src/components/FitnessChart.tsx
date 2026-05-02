@@ -12,6 +12,7 @@ import {
 } from 'recharts'
 import { type StravaActivity } from '~/lib/strava'
 import { calculateFitnessOverTime, estimateFTPHistory } from '~/lib/performance'
+import { useDashboard } from '~/lib/dashboard-context'
 import { chartTheme, tooltipStyle, formatDateShort, formatDateFull } from '~/lib/chart-theme'
 import { RangeSelector } from './RangeSelector'
 
@@ -36,6 +37,7 @@ function getATLLevel(atl: number): { label: string; color: string } {
 
 export function FitnessChart({ activities }: FitnessChartProps) {
   const [days, setDays] = useState(30)
+  const { tssThresholds } = useDashboard()
 
   // Auto-estimate FTP history from activity data
   const ftpHistory = useMemo(() => estimateFTPHistory(activities), [activities])
@@ -46,8 +48,8 @@ export function FitnessChart({ activities }: FitnessChartProps) {
   // Calculate full history once — CTL/ATL build up from the earliest activity
   const allFitnessData = useMemo(() => {
     if (ftpHistory.length === 0) return []
-    return calculateFitnessOverTime(activities, ftpHistory)
-  }, [activities, ftpHistory])
+    return calculateFitnessOverTime(activities, ftpHistory, tssThresholds)
+  }, [activities, ftpHistory, tssThresholds])
 
   // Slice to the selected time range for display only
   const fitnessData = useMemo(() => {

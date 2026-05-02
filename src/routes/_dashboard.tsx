@@ -9,6 +9,7 @@ import {
 import { refreshStravaToken, fetchAllStravaActivities, fetchStravaActivity, fetchStravaStreams } from '~/lib/server-functions'
 import { type StravaActivity, type StravaAthlete, type StravaDetailedActivity, type ActivityDetailsJson, metersToKm, computePowerPerKm } from '~/lib/strava'
 import { estimateFTP, calculateMaxHR, calculateRestingHR, calculateAge } from '~/lib/performance'
+import { deriveThresholds } from '~/lib/tss'
 import {
   DashboardContext,
   type DashboardContextType,
@@ -555,6 +556,11 @@ function DashboardLayout() {
     }
   }, [mergedActivities, weight])
 
+  const tssThresholdResult = useMemo(
+    () => deriveThresholds(mergedActivities, { ftp: stats.ftp, maxHR, restingHR }),
+    [mergedActivities, stats.ftp, maxHR, restingHR]
+  )
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-6 p-8 text-center hero-gradient">
@@ -605,6 +611,8 @@ function DashboardLayout() {
     weightEntries,
     addWeightEntry: handleAddWeightEntry,
     deleteWeightEntry: handleDeleteWeightEntry,
+    tssThresholds: tssThresholdResult.thresholds,
+    tssThresholdSources: tssThresholdResult.sources,
   }
 
   const initials = `${athlete.firstname?.[0] || ''}${athlete.lastname?.[0] || ''}`

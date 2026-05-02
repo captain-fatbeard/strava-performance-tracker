@@ -1,6 +1,7 @@
 import { startOfWeek, addWeeks } from 'date-fns'
 import { type StravaActivity } from './strava'
 import { zoneColors, formatDateShort } from './chart-theme'
+import { calculateTSS as calculateTSSWithThresholds, classifySport, type TssThresholds } from './tss'
 
 // FTP entry with effective date — FTP applies from this date until the next entry
 export interface FtpHistoryEntry {
@@ -145,16 +146,9 @@ export function calculateZoneDistribution(
   })).filter((z) => z.time > 0)
 }
 
-// Training Stress Score (simplified)
-export function calculateTSS(activity: StravaActivity, ftp: number): number {
-  if (!activity.average_watts || !ftp) return 0
-
-  const normalizedPower = activity.weighted_average_watts || activity.average_watts
-  const intensityFactor = normalizedPower / ftp
-  const durationHours = activity.moving_time / 3600
-
-  return Math.round(durationHours * intensityFactor * intensityFactor * 100)
-}
+// Re-exported from ./tss for convenience — see that module for the full
+// sport-aware TSS pipeline (power, hrTSS, rTSS).
+export { calculateTSS } from './tss'
 
 // Calculate fitness (CTL), fatigue (ATL), and form (TSB)
 export interface FitnessData {
@@ -168,23 +162,27 @@ export interface FitnessData {
 
 export function calculateFitnessOverTime(
   activities: StravaActivity[],
-  ftpHistory: FtpHistoryEntry[]
+  ftpHistory: FtpHistoryEntry[],
+  thresholds?: TssThresholds
 ): FitnessData[] {
-  const ridesWithPower = activities
-    .filter((a) => (a.type === 'Ride' || a.type === 'VirtualRide') && a.average_watts)
+  const trackedActivities = activities.filter((a) => {
+    const sport = classifySport(a)
+    if (sport === 'cycling') return Boolean(a.average_watts || a.average_heartrate)
+    if (sport === 'running') return a.average_speed > 0 || Boolean(a.average_heartrate)
+    return false
+  })
 
-  if (ridesWithPower.length === 0 || ftpHistory.length === 0) return []
+  if (trackedActivities.length === 0 || ftpHistory.length === 0) return []
 
-  // Group activities by date, calculating TSS with the FTP active on that date
   const dailyActivities: Record<string, StravaActivity[]> = {}
-  ridesWithPower.forEach((activity) => {
+  trackedActivities.forEach((activity) => {
     const date = activity.start_date_local.split('T')[0]
     if (!dailyActivities[date]) dailyActivities[date] = []
     dailyActivities[date].push(activity)
   })
 
   // Start from earliest activity to build up CTL/ATL accurately
-  const earliest = ridesWithPower
+  const earliest = trackedActivities
     .map((a) => new Date(a.start_date_local))
     .reduce((min, d) => (d < min ? d : min))
   earliest.setHours(0, 0, 0, 0)
@@ -203,11 +201,13 @@ export function calculateFitnessOverTime(
     const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     const ftp = getFTPForDate(dateStr, sortedFtp)
 
-    // Calculate daily TSS using the FTP active on this date
     let tss = 0
-    if (dailyActivities[dateStr] && ftp > 0) {
+    if (dailyActivities[dateStr]) {
+      const dayThresholds: TssThresholds = thresholds
+        ? { ...thresholds, ftp }
+        : { ftp, cyclingLTHR: null, runningLTHR: null, runningThresholdPace: null, maxHR: 0, restingHR: 0 }
       for (const activity of dailyActivities[dateStr]) {
-        tss += calculateTSS(activity, ftp)
+        tss += calculateTSSWithThresholds(activity, dayThresholds)
       }
     }
 
@@ -686,7 +686,7 @@ export interface WeeklySummary {
 
 export function calculateWeeklySummaries(
   activities: StravaActivity[],
-  ftp: number,
+  thresholds: TssThresholds,
   weeks: number = 12
 ): WeeklySummary[] {
   const summaries: WeeklySummary[] = []
@@ -718,7 +718,7 @@ export function calculateWeeklySummaries(
       totalDistance: Math.round(weekActivities.reduce((sum, a) => sum + a.distance, 0) / 1000),
       totalTime: weekActivities.reduce((sum, a) => sum + a.moving_time, 0),
       totalElevation: Math.round(weekActivities.reduce((sum, a) => sum + a.total_elevation_gain, 0)),
-      totalTSS: rides.reduce((sum, a) => sum + calculateTSS(a, ftp), 0),
+      totalTSS: weekActivities.reduce((sum, a) => sum + calculateTSSWithThresholds(a, thresholds), 0),
       avgPower: Math.round(avgPower),
     })
   }

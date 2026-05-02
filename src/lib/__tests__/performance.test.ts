@@ -195,19 +195,28 @@ describe('calculateZoneDistribution', () => {
 // calculateTSS
 // ===================================================================
 
-describe('calculateTSS', () => {
-  it('returns 0 when no power data', () => {
-    expect(calculateTSS(makeRide(), 200)).toBe(0)
+describe('calculateTSS (re-export from tss module)', () => {
+  // Power-only thresholds — exercises the legacy power TSS path through the new API.
+  const t = (ftp: number) => ({
+    ftp,
+    cyclingLTHR: null,
+    runningLTHR: null,
+    runningThresholdPace: null,
+    maxHR: 0,
+    restingHR: 0,
   })
 
-  it('returns 0 when ftp is 0', () => {
-    expect(calculateTSS(makeRide({ average_watts: 200 }), 0)).toBe(0)
+  it('returns 0 when no power data and no LTHR', () => {
+    expect(calculateTSS(makeRide(), t(200))).toBe(0)
+  })
+
+  it('returns 0 when ftp is 0 and no LTHR', () => {
+    expect(calculateTSS(makeRide({ average_watts: 200 }), t(0))).toBe(0)
   })
 
   it('calculates correctly for 1 hour at FTP', () => {
     const activity = makeRide({ average_watts: 200, moving_time: 3600 })
-    // IF = 200/200 = 1.0, TSS = 1 * 1 * 1 * 100 = 100
-    expect(calculateTSS(activity, 200)).toBe(100)
+    expect(calculateTSS(activity, t(200))).toBe(100)
   })
 
   it('uses weighted_average_watts when available', () => {
@@ -216,14 +225,13 @@ describe('calculateTSS', () => {
       weighted_average_watts: 200,
       moving_time: 3600,
     })
-    // IF = 200/200 = 1.0, TSS = 100
-    expect(calculateTSS(activity, 200)).toBe(100)
+    expect(calculateTSS(activity, t(200))).toBe(100)
   })
 
   it('scales with duration', () => {
     const short = makeRide({ average_watts: 200, moving_time: 1800 })
     const long = makeRide({ average_watts: 200, moving_time: 3600 })
-    expect(calculateTSS(long, 200)).toBe(2 * calculateTSS(short, 200))
+    expect(calculateTSS(long, t(200))).toBe(2 * calculateTSS(short, t(200)))
   })
 })
 
@@ -234,8 +242,9 @@ describe('calculateTSS', () => {
 describe('calculateFitnessOverTime', () => {
   const ftp200 = [{ date: '2020-01-01', ftp: 200 }]
 
-  it('returns empty for no rides with power', () => {
+  it('returns empty for no trackable activities', () => {
     expect(calculateFitnessOverTime([], ftp200)).toEqual([])
+    // A ride with no power and no HR is not trackable
     expect(calculateFitnessOverTime([makeRide()], ftp200)).toEqual([])
   })
 
@@ -844,13 +853,22 @@ describe('calculatePersonalRecords', () => {
 // ===================================================================
 
 describe('calculateWeeklySummaries', () => {
+  const thresholds = {
+    ftp: 200,
+    cyclingLTHR: null,
+    runningLTHR: null,
+    runningThresholdPace: null,
+    maxHR: 0,
+    restingHR: 0,
+  }
+
   it('returns requested number of weeks', () => {
-    const result = calculateWeeklySummaries([], 200, 4)
+    const result = calculateWeeklySummaries([], thresholds, 4)
     expect(result).toHaveLength(4)
   })
 
   it('weeks have zero values when no activities match', () => {
-    const result = calculateWeeklySummaries([], 200, 1)
+    const result = calculateWeeklySummaries([], thresholds, 1)
     expect(result[0].rides).toBe(0)
     expect(result[0].runs).toBe(0)
     expect(result[0].totalDistance).toBe(0)
@@ -866,14 +884,14 @@ describe('calculateWeeklySummaries', () => {
       total_elevation_gain: 300,
       start_date: now.toISOString(),
     })
-    const result = calculateWeeklySummaries([activity], 200, 1)
+    const result = calculateWeeklySummaries([activity], thresholds, 1)
     expect(result[0].rides).toBe(1)
     expect(result[0].totalDistance).toBe(40)
     expect(result[0].totalTSS).toBeGreaterThan(0)
   })
 
   it('returns weeks in chronological order', () => {
-    const result = calculateWeeklySummaries([], 200, 4)
+    const result = calculateWeeklySummaries([], thresholds, 4)
     // First element is the oldest week
     expect(result).toHaveLength(4)
   })

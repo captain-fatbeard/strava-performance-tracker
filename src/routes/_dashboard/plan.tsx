@@ -23,7 +23,8 @@ import {
   Legend,
 } from 'recharts'
 import { useDashboard } from '~/lib/dashboard-context'
-import { calculateFitnessOverTime, calculateTSS, estimateFTPHistory } from '~/lib/performance'
+import { calculateFitnessOverTime, estimateFTPHistory } from '~/lib/performance'
+import { calculateTSS, type TssThresholds } from '~/lib/tss'
 import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
 import { type StravaActivity } from '~/lib/strava'
 import {
@@ -520,10 +521,11 @@ function summarizeWeek(
   today: Date,
   activities: StravaActivity[],
   fitnessSeries: Array<{ date: string; ctl: number; atl: number; tsb: number }>,
-  ftp: number,
+  thresholds: TssThresholds,
   phase: PlanPhase,
   dayOverrides?: Record<number, SessionType>,
 ): WeekSummary {
+  const ftp = thresholds.ftp
   const baseTemplate = phase === 'recovery' ? RECOVERY_PLAN : BUILD_PLAN
   const template = dayOverrides
     ? baseTemplate.map((s, i) =>
@@ -566,7 +568,7 @@ function summarizeWeek(
     return ad >= weekStart && ad < addDays(weekStart, 7)
   })
   const totalTimeMin = weekActivities.reduce((s, a) => s + a.moving_time, 0) / 60
-  const actualTSS = weekActivities.reduce((s, a) => s + calculateTSS(a, ftp), 0)
+  const actualTSS = weekActivities.reduce((s, a) => s + calculateTSS(a, thresholds), 0)
 
   return {
     weekStart,
@@ -585,9 +587,13 @@ function summarizeWeek(
 }
 
 function PlanPage() {
-  const { athlete, activities, stats, maxHR, restingHR } = useDashboard()
+  const { athlete, activities, stats, maxHR, restingHR, tssThresholds } = useDashboard()
 
   const ftp = stats.ftp || 236
+  const thresholds = useMemo<TssThresholds>(
+    () => ({ ...tssThresholds, ftp }),
+    [tssThresholds, ftp]
+  )
 
   // Derived targets (from user's live FTP and HR)
   const z2HrCeiling = Math.round(restingHR + 0.7 * (maxHR - restingHR))
@@ -604,8 +610,8 @@ function PlanPage() {
   const fitnessSeries = useMemo(() => {
     const history = estimateFTPHistory(activities)
     if (history.length === 0) return []
-    return calculateFitnessOverTime(activities, history)
-  }, [activities])
+    return calculateFitnessOverTime(activities, history, tssThresholds)
+  }, [activities, tssThresholds])
 
   // Plan week — Monday of this week through Sunday
   const today = useMemo(() => {
@@ -764,11 +770,11 @@ function PlanPage() {
         today,
         activities,
         fitnessSeries,
-        ftp,
+        thresholds,
         activePhase,
         dayOverridesForWeek(weekStart),
       ),
-    [weekStart, today, activities, fitnessSeries, ftp, activePhase, dayOverrides],
+    [weekStart, today, activities, fitnessSeries, thresholds, activePhase, dayOverrides],
   )
   const planDays = currentWeek.days
   const baseline = currentWeek.startSnap
@@ -791,14 +797,14 @@ function PlanPage() {
         today,
         activities,
         fitnessSeries,
-        ftp,
+        thresholds,
         phase,
         dayOverridesForWeek(ws),
       )
       if (summary.totalActivities > 0) out.push(summary)
     }
     return out
-  }, [weekStart, today, activities, fitnessSeries, ftp, weekPhaseOverrides, dayOverrides])
+  }, [weekStart, today, activities, fitnessSeries, thresholds, weekPhaseOverrides, dayOverrides])
 
   // Trajectory: 14 days ending today
   const trajectoryData = useMemo(() => {
@@ -824,7 +830,7 @@ function PlanPage() {
   // Updates as activities land instead of staying frozen at the template estimate.
   const rollingEstTSS = Math.round(
     currentWeek.days.reduce((s, d) => {
-      if (d.actual) return s + d.actual.activities.reduce((x, a) => x + calculateTSS(a, ftp), 0)
+      if (d.actual) return s + d.actual.activities.reduce((x, a) => x + calculateTSS(a, thresholds), 0)
       return s + plannedSessionTSS(d.session)
     }, 0),
   )
@@ -1279,7 +1285,7 @@ function PlanPage() {
 
                 {/* ACTUAL — shown when an activity exists */}
                 {actual && (() => {
-                  const dayTSS = Math.round(actual.activities.reduce((s, a) => s + calculateTSS(a, ftp), 0))
+                  const dayTSS = Math.round(actual.activities.reduce((s, a) => s + calculateTSS(a, thresholds), 0))
                   const plannedDayTSS = plannedSessionTSS(session)
                   return (
                     <div className="mt-1 pt-2 border-t border-border-subtle flex flex-col gap-1">
@@ -1301,10 +1307,10 @@ function PlanPage() {
                           </>
                         )}
                       </div>
-                      <div className="text-[0.7rem] text-text-muted data-value">
+                      <div className="text-[0.7rem] text-text-secondary data-value">
                         TSS {dayTSS}
                         {plannedDayTSS > 0 && (
-                          <span className="text-text-muted/70"> / {plannedDayTSS}</span>
+                          <span className="text-text-muted"> / {plannedDayTSS}</span>
                         )}
                       </div>
                     </div>
@@ -1335,7 +1341,7 @@ function PlanPage() {
                         </div>
                       )}
                       {plannedDayTSS > 0 && (
-                        <div className="text-[0.7rem] text-text-muted data-value">
+                        <div className="text-[0.7rem] text-text-secondary data-value">
                           TSS {plannedDayTSS}
                         </div>
                       )}

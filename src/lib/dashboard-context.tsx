@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react'
 import { type StravaActivity, type StravaAthlete } from './strava'
 import { type TimeRange, type ActivityType, type Gender } from './storage/supabase-client'
 import type { WeightEntry, ActivityGroup } from './storage/supabase-client'
+import type { TssThresholds, ThresholdSources } from './tss'
 
 export type { TimeRange, ActivityType, Gender }
 export type { WeightEntry, ActivityGroup }
@@ -57,6 +58,8 @@ export interface DashboardContextType {
   weightEntries: WeightEntry[]
   addWeightEntry: (weight: number, recordedAt: Date) => Promise<boolean>
   deleteWeightEntry: (id: string) => Promise<boolean>
+  tssThresholds: TssThresholds
+  tssThresholdSources: ThresholdSources
 }
 
 export const DashboardContext = createContext<DashboardContextType | null>(null)

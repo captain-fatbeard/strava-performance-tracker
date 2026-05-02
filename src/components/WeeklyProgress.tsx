@@ -12,7 +12,8 @@ import {
 } from 'recharts'
 import { startOfWeek, addWeeks, addDays, startOfDay } from 'date-fns'
 import { type StravaActivity } from '~/lib/strava'
-import { calculateWeeklySummaries, estimateFTP } from '~/lib/performance'
+import { calculateWeeklySummaries } from '~/lib/performance'
+import { useDashboard } from '~/lib/dashboard-context'
 import { chartTheme, tooltipStyle } from '~/lib/chart-theme'
 import { statCard, statCardAccent, statValue, statValueAccent } from '~/lib/styles'
 
@@ -23,14 +24,14 @@ interface WeeklyProgressProps {
 const STREAK_THRESHOLD_HOURS = 2
 
 export function WeeklyProgress({ activities }: WeeklyProgressProps) {
-  const ftp = useMemo(() => estimateFTP(activities) || 200, [activities])
+  const { tssThresholds } = useDashboard()
 
   const weeklyData = useMemo(
-    () => calculateWeeklySummaries(activities, ftp, 12).map(week => ({
+    () => calculateWeeklySummaries(activities, tssThresholds, 12).map(week => ({
       ...week,
       totalHours: Math.round(week.totalTime / 360) / 10,
     })),
-    [activities, ftp]
+    [activities, tssThresholds]
   )
 
   const { currentWeekStreak, longestStreak, avgActivitiesPerWeek, avgTimePerWeek, avgDistPerWeek, currentWeekHours, currentDayStreak, hasActivityToday } = useMemo(() => {
