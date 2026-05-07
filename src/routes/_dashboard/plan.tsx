@@ -1226,16 +1226,14 @@ function PlanPage() {
                     <span className="text-[0.65rem] text-text-muted data-value">
                       {format(date, 'd. MMM', { locale: da })}
                     </span>
-                    {!isPastOrToday && (
-                      <button
-                        type="button"
-                        onClick={() => setEditingDayIdx(editing ? null : dayIdx)}
-                        title="Change session type"
-                        className="text-[0.7rem] text-text-muted hover:text-text-secondary transition-colors px-1 leading-none"
-                      >
-                        ⋯
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setEditingDayIdx(editing ? null : dayIdx)}
+                      title="Change session type"
+                      className="text-[0.7rem] text-text-muted hover:text-text-secondary transition-colors px-1 leading-none"
+                    >
+                      ⋯
+                    </button>
                   </div>
                 </div>
 
@@ -1247,7 +1245,7 @@ function PlanPage() {
                   )}
                 </div>
 
-                {editing && !isPastOrToday && (
+                {editing && (
                   <div className="absolute z-20 top-9 right-2 bg-bg-elevated border border-border rounded-[var(--radius-md)] shadow-xl p-1.5 flex flex-col gap-0.5 min-w-[140px]">
                     {(Object.keys(SESSION_CATALOG) as SessionType[]).map((t) => {
                       const cat = SESSION_CATALOG[t]
