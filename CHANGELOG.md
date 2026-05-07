@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.18.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.17.0...v1.18.0) (2026-05-07)
+
+
+### Features
+
+* **plan:** allow editing session type on past days ([9ded1b5](https://github.com/captain-fatbeard/strava-performance-tracker/commit/9ded1b523c0a5f3a18b01c0fa9a4c1fd56562e48))
+
 ## [1.17.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.16.0...v1.17.0) (2026-05-02)
 
 
