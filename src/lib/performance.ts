@@ -327,8 +327,11 @@ export function calculatePersonalRecords(activities: StravaActivity[]): Personal
     })
   }
 
-  // Best run pace (5km+)
-  const longRuns = runs.filter((a) => a.distance >= 5000)
+  // Best run pace (5km+). Cap average_speed to filter out bad GPS data:
+  // 7 m/s ≈ 2:23/km (faster than world record), 1.5 m/s ≈ 11:07/km (slower is walking).
+  const longRuns = runs.filter(
+    (a) => a.distance >= 5000 && a.average_speed >= 1.5 && a.average_speed <= 7
+  )
   if (longRuns.length > 0) {
     const fastestRun = longRuns.reduce((max, a) =>
       a.average_speed > max.average_speed ? a : max

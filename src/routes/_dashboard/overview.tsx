@@ -8,12 +8,12 @@ export const Route = createFileRoute('/_dashboard/overview')({
 })
 
 function OverviewPage() {
-  const { filteredActivities, stats } = useDashboard()
+  const { lifetimeStats, lifetimeMergedActivities } = useDashboard()
 
   return (
     <>
-      <StatsCards stats={stats} />
-      <PersonalRecords activities={filteredActivities} />
+      <StatsCards stats={lifetimeStats} />
+      <PersonalRecords activities={lifetimeMergedActivities} />
     </>
   )
 }

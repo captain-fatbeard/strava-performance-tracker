@@ -41,6 +41,125 @@ export const Route = createFileRoute('/_dashboard')({
   component: DashboardLayout,
 })
 
+function mergeWithGroups(
+  source: StravaActivity[],
+  activityGroups: ActivityGroup[]
+): StravaActivity[] {
+  const groupedIds = new Set<number>()
+  for (const group of activityGroups) {
+    for (const id of group.activityIds) groupedIds.add(id)
+  }
+
+  const result: StravaActivity[] = source.filter((a) => !groupedIds.has(a.id))
+
+  for (const group of activityGroups) {
+    const members = group.activityIds
+      .map((id) => source.find((a) => a.id === id))
+      .filter((a): a is StravaActivity => a != null)
+
+    if (members.length === 0) continue
+
+    const wattsMembers = members.filter((a) => a.average_watts)
+    const hrMembers = members.filter((a) => a.average_heartrate)
+
+    const sorted = [...members].sort(
+      (a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
+    )
+    const typeCounts = new Map<string, number>()
+    for (const m of members) typeCounts.set(m.type, (typeCounts.get(m.type) || 0) + 1)
+    const predominantType = [...typeCounts.entries()].sort((a, b) => b[1] - a[1])[0][0]
+
+    const synthetic: StravaActivity = {
+      id: -group.activityIds[0],
+      name: group.name,
+      type: predominantType,
+      sport_type: sorted[0].sport_type,
+      start_date: sorted[0].start_date,
+      start_date_local: sorted[0].start_date_local,
+      distance: members.reduce((s, a) => s + a.distance, 0),
+      moving_time: members.reduce((s, a) => s + a.moving_time, 0),
+      elapsed_time: members.reduce((s, a) => s + a.elapsed_time, 0),
+      total_elevation_gain: members.reduce((s, a) => s + a.total_elevation_gain, 0),
+      average_speed:
+        members.reduce((s, a) => s + a.distance, 0) /
+        members.reduce((s, a) => s + a.moving_time, 0),
+      max_speed: Math.max(...members.map((a) => a.max_speed)),
+      average_watts:
+        wattsMembers.length > 0
+          ? wattsMembers.reduce((s, a) => s + a.average_watts!, 0) / wattsMembers.length
+          : undefined,
+      max_watts: members.some((a) => a.max_watts)
+        ? Math.max(...members.filter((a) => a.max_watts).map((a) => a.max_watts!))
+        : undefined,
+      weighted_average_watts:
+        wattsMembers.length > 0 && wattsMembers.some((a) => a.weighted_average_watts)
+          ? wattsMembers.filter((a) => a.weighted_average_watts).reduce((s, a) => s + a.weighted_average_watts!, 0) /
+            wattsMembers.filter((a) => a.weighted_average_watts).length
+          : undefined,
+      average_heartrate:
+        hrMembers.length > 0
+          ? hrMembers.reduce((s, a) => s + a.average_heartrate!, 0) / hrMembers.length
+          : undefined,
+      max_heartrate: members.some((a) => a.max_heartrate)
+        ? Math.max(...members.filter((a) => a.max_heartrate).map((a) => a.max_heartrate!))
+        : undefined,
+      average_cadence: members.some((a) => a.average_cadence)
+        ? members.filter((a) => a.average_cadence).reduce((s, a) => s + a.average_cadence!, 0) /
+          members.filter((a) => a.average_cadence).length
+        : undefined,
+      suffer_score: members.some((a) => a.suffer_score)
+        ? members.reduce((s, a) => s + (a.suffer_score || 0), 0)
+        : undefined,
+      kilojoules: members.some((a) => a.kilojoules)
+        ? members.reduce((s, a) => s + (a.kilojoules || 0), 0)
+        : undefined,
+    }
+
+    result.push(synthetic)
+  }
+
+  return result.sort(
+    (a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime()
+  )
+}
+
+function computeStats(merged: StravaActivity[], weight: number) {
+  const rides = merged.filter((a) => a.type === 'Ride' || a.type === 'VirtualRide')
+  const runs = merged.filter((a) => a.type === 'Run')
+
+  const totalDistance = merged.reduce((sum, a) => sum + a.distance, 0)
+  const totalElevation = merged.reduce((sum, a) => sum + a.total_elevation_gain, 0)
+  const totalTime = merged.reduce((sum, a) => sum + a.moving_time, 0)
+
+  const ridesWithWatts = rides.filter((a) => a.average_watts)
+  const avgPower =
+    ridesWithWatts.length > 0
+      ? rides.reduce((sum, a) => sum + (a.average_watts || 0), 0) / ridesWithWatts.length
+      : 0
+
+  const withHR = merged.filter((a) => a.average_heartrate)
+  const avgHR =
+    withHR.length > 0
+      ? merged.reduce((sum, a) => sum + (a.average_heartrate || 0), 0) / withHR.length
+      : 0
+
+  const ftp = estimateFTP(rides) || 0
+  const wattsPerKilo = ftp > 0 && weight > 0 ? ftp / weight : 0
+
+  return {
+    totalActivities: merged.length,
+    totalDistance: metersToKm(totalDistance),
+    totalElevation,
+    totalTime,
+    avgPower: Math.round(avgPower),
+    avgHR: Math.round(avgHR),
+    rides: rides.length,
+    runs: runs.length,
+    ftp,
+    wattsPerKilo,
+  }
+}
+
 function DashboardLayout() {
   const navigate = useNavigate()
   const [isLoading, setIsLoading] = useState(true)
@@ -125,7 +244,20 @@ function DashboardLayout() {
         },
       })
 
-      setActivities(fetchedActivities)
+      // On a partial sync, merge fresh activities with existing state so older
+      // cached activities outside the sync window are preserved.
+      if (fetchAll) {
+        setActivities(fetchedActivities)
+      } else {
+        setActivities((prev) => {
+          const byId = new Map<number, StravaActivity>()
+          for (const a of prev) byId.set(a.id, a)
+          for (const a of fetchedActivities) byId.set(a.id, a)
+          return Array.from(byId.values()).sort(
+            (a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime()
+          )
+        })
+      }
 
       if (isSupabaseConfigured()) {
         upsertActivities(storedAthlete.id, fetchedActivities)
@@ -450,111 +582,31 @@ function DashboardLayout() {
     )
   }, [activities, timeRange, activityType])
 
-  // Merge grouped activities into single synthetic activities for stats
-  const mergedActivities = useMemo(() => {
-    const groupedIds = new Set<number>()
-    for (const group of activityGroups) {
-      for (const id of group.activityIds) groupedIds.add(id)
-    }
+  const mergedActivities = useMemo(
+    () => mergeWithGroups(filteredActivities, activityGroups),
+    [filteredActivities, activityGroups]
+  )
 
-    // Start with ungrouped activities
-    const result: StravaActivity[] = filteredActivities.filter((a) => !groupedIds.has(a.id))
-
-    // Add one synthetic activity per group
-    for (const group of activityGroups) {
-      const members = group.activityIds
-        .map((id) => filteredActivities.find((a) => a.id === id))
-        .filter((a): a is StravaActivity => a != null)
-
-      if (members.length === 0) continue
-
-      const wattsMembers = members.filter((a) => a.average_watts)
-      const hrMembers = members.filter((a) => a.average_heartrate)
-
-      // Use the earliest activity's date and type (predominant type)
-      const sorted = [...members].sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
-      const typeCounts = new Map<string, number>()
-      for (const m of members) typeCounts.set(m.type, (typeCounts.get(m.type) || 0) + 1)
-      const predominantType = [...typeCounts.entries()].sort((a, b) => b[1] - a[1])[0][0]
-
-      const synthetic: StravaActivity = {
-        id: -group.activityIds[0], // negative to avoid collision
-        name: group.name,
-        type: predominantType,
-        sport_type: sorted[0].sport_type,
-        start_date: sorted[0].start_date,
-        start_date_local: sorted[0].start_date_local,
-        distance: members.reduce((s, a) => s + a.distance, 0),
-        moving_time: members.reduce((s, a) => s + a.moving_time, 0),
-        elapsed_time: members.reduce((s, a) => s + a.elapsed_time, 0),
-        total_elevation_gain: members.reduce((s, a) => s + a.total_elevation_gain, 0),
-        average_speed: members.reduce((s, a) => s + a.distance, 0) / members.reduce((s, a) => s + a.moving_time, 0),
-        max_speed: Math.max(...members.map((a) => a.max_speed)),
-        average_watts: wattsMembers.length > 0 ? wattsMembers.reduce((s, a) => s + a.average_watts!, 0) / wattsMembers.length : undefined,
-        max_watts: members.some((a) => a.max_watts) ? Math.max(...members.filter((a) => a.max_watts).map((a) => a.max_watts!)) : undefined,
-        weighted_average_watts: wattsMembers.length > 0 && wattsMembers.some((a) => a.weighted_average_watts)
-          ? wattsMembers.filter((a) => a.weighted_average_watts).reduce((s, a) => s + a.weighted_average_watts!, 0) / wattsMembers.filter((a) => a.weighted_average_watts).length
-          : undefined,
-        average_heartrate: hrMembers.length > 0 ? hrMembers.reduce((s, a) => s + a.average_heartrate!, 0) / hrMembers.length : undefined,
-        max_heartrate: members.some((a) => a.max_heartrate) ? Math.max(...members.filter((a) => a.max_heartrate).map((a) => a.max_heartrate!)) : undefined,
-        average_cadence: members.some((a) => a.average_cadence)
-          ? members.filter((a) => a.average_cadence).reduce((s, a) => s + a.average_cadence!, 0) / members.filter((a) => a.average_cadence).length
-          : undefined,
-        suffer_score: members.some((a) => a.suffer_score) ? members.reduce((s, a) => s + (a.suffer_score || 0), 0) : undefined,
-        kilojoules: members.some((a) => a.kilojoules) ? members.reduce((s, a) => s + (a.kilojoules || 0), 0) : undefined,
-      }
-
-      result.push(synthetic)
-    }
-
-    return result.sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
-  }, [filteredActivities, activityGroups])
+  // Lifetime view: ignore time-range and activity-type filters so the overview
+  // page can show all-time totals regardless of the global filter.
+  const lifetimeMergedActivities = useMemo(
+    () => mergeWithGroups(activities, activityGroups),
+    [activities, activityGroups]
+  )
 
   const statsActivities = useMemo(() => {
     return mergedActivities.filter((a) => !trainingActivityIds.includes(a.id))
   }, [mergedActivities, trainingActivityIds])
 
-  const stats = useMemo(() => {
-    const rides = mergedActivities.filter(
-      (a) => a.type === 'Ride' || a.type === 'VirtualRide'
-    )
-    const runs = mergedActivities.filter((a) => a.type === 'Run')
+  const stats = useMemo(
+    () => computeStats(mergedActivities, weight),
+    [mergedActivities, weight]
+  )
 
-    const totalDistance = mergedActivities.reduce((sum, a) => sum + a.distance, 0)
-    const totalElevation = mergedActivities.reduce(
-      (sum, a) => sum + a.total_elevation_gain,
-      0
-    )
-    const totalTime = mergedActivities.reduce((sum, a) => sum + a.moving_time, 0)
-
-    const avgPower =
-      rides.length > 0
-        ? rides.reduce((sum, a) => sum + (a.average_watts || 0), 0) /
-          rides.filter((a) => a.average_watts).length
-        : 0
-
-    const avgHR =
-      mergedActivities.length > 0
-        ? mergedActivities.reduce((sum, a) => sum + (a.average_heartrate || 0), 0) /
-          mergedActivities.filter((a) => a.average_heartrate).length
-        : 0
-
-    const ftp = estimateFTP(rides) || 0
-    const wattsPerKilo = ftp > 0 && weight > 0 ? ftp / weight : 0
-
-    return {
-      totalActivities: mergedActivities.length,
-      totalDistance: metersToKm(totalDistance),
-      totalElevation,
-      totalTime,
-      avgPower: Math.round(avgPower),
-      avgHR: Math.round(avgHR),
-      rides: rides.length,
-      runs: runs.length,
-      ftp,
-      wattsPerKilo,
-    }
-  }, [mergedActivities, weight])
+  const lifetimeStats = useMemo(
+    () => computeStats(lifetimeMergedActivities, weight),
+    [lifetimeMergedActivities, weight]
+  )
 
   const tssThresholdResult = useMemo(
     () => deriveThresholds(mergedActivities, { ftp: stats.ftp, maxHR, restingHR }),
@@ -585,6 +637,8 @@ function DashboardLayout() {
     filteredActivities,
     statsActivities,
     stats,
+    lifetimeStats,
+    lifetimeMergedActivities,
     timeRange,
     setTimeRange,
     activityType,

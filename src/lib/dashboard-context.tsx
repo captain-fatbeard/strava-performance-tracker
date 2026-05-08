@@ -15,23 +15,27 @@ export const timeRangeToDays: Record<TimeRange, number> = {
   'all': 365 * 3,
 }
 
+export interface DashboardStats {
+  totalActivities: number
+  totalDistance: number
+  totalElevation: number
+  totalTime: number
+  avgPower: number
+  avgHR: number
+  rides: number
+  runs: number
+  ftp: number
+  wattsPerKilo: number
+}
+
 export interface DashboardContextType {
   athlete: StravaAthlete
   activities: StravaActivity[]
   filteredActivities: StravaActivity[]
   statsActivities: StravaActivity[]
-  stats: {
-    totalActivities: number
-    totalDistance: number
-    totalElevation: number
-    totalTime: number
-    avgPower: number
-    avgHR: number
-    rides: number
-    runs: number
-    ftp: number
-    wattsPerKilo: number
-  }
+  stats: DashboardStats
+  lifetimeStats: DashboardStats
+  lifetimeMergedActivities: StravaActivity[]
   timeRange: TimeRange
   setTimeRange: (range: TimeRange) => void
   activityType: ActivityType
