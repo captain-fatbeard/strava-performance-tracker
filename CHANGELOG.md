@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.19.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.18.0...v1.19.0) (2026-05-08)
+
+
+### Features
+
+* **lists:** paginate activity list and popular segments ([8a1cf82](https://github.com/captain-fatbeard/strava-performance-tracker/commit/8a1cf825a3ff6938e814f2dd13e443f187a5d17b))
+* **overview:** show lifetime stats and fix pace/format issues ([1105c19](https://github.com/captain-fatbeard/strava-performance-tracker/commit/1105c1900c286fb2af3195416ff51edbe49b802d))
+
 ## [1.18.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.17.0...v1.18.0) (2026-05-07)
 
 
