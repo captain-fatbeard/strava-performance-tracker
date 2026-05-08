@@ -18,6 +18,9 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts'
+import { Pagination } from '~/components/Pagination'
+
+const SEGMENTS_PAGE_SIZE = 10
 
 export const Route = createFileRoute('/_dashboard/records')({
   component: RecordsPage,
@@ -243,6 +246,7 @@ function RecordsPage() {
   const [expandedEffort, setExpandedEffort] = useState<string | null>(null)
   const [segmentSort, setSegmentSort] = useState<'count' | 'time' | 'grade'>('count')
   const [segmentFilter, setSegmentFilter] = useState<'all' | 'irl' | 'zwift'>('all')
+  const [segmentPage, setSegmentPage] = useState(1)
 
   // Personal records from all activities (not filtered by time range)
   const personalRecords = useMemo(() => calculatePersonalRecords(activities), [activities])
@@ -315,6 +319,20 @@ function RecordsPage() {
     else if (segmentSort === 'grade') sorted.sort((a, b) => b.averageGrade - a.averageGrade)
     return sorted
   }, [segmentEfforts, segmentSort, segmentFilter])
+
+  // Reset to first page when filter/sort changes.
+  useEffect(() => {
+    setSegmentPage(1)
+  }, [segmentSort, segmentFilter])
+
+  const pagedSegments = useMemo(
+    () =>
+      segmentSummaries.slice(
+        (segmentPage - 1) * SEGMENTS_PAGE_SIZE,
+        segmentPage * SEGMENTS_PAGE_SIZE
+      ),
+    [segmentSummaries, segmentPage]
+  )
 
   // Group best efforts
   const bestEffortSummaries = useMemo(() => groupBestEfforts(bestEfforts), [bestEfforts])
@@ -534,7 +552,7 @@ function RecordsPage() {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            {segmentSummaries.map((seg) => (
+            {pagedSegments.map((seg) => (
               <div
                 key={seg.segmentId}
                 className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] overflow-hidden transition-all duration-200 hover:border-border"
@@ -678,6 +696,12 @@ function RecordsPage() {
                 )}
               </div>
             ))}
+            <Pagination
+              page={segmentPage}
+              pageSize={SEGMENTS_PAGE_SIZE}
+              total={segmentSummaries.length}
+              onPageChange={setSegmentPage}
+            />
           </div>
         )}
       </section>

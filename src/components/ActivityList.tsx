@@ -1,10 +1,13 @@
-import { useMemo, useState, useCallback } from 'react'
+import { useMemo, useState, useCallback, useEffect } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { type StravaActivity, metersToKm, secondsToHMS } from '~/lib/strava'
 import { useDashboard, type ActivityGroup } from '~/lib/dashboard-context'
 import { formatDateFull } from '~/lib/chart-theme'
 import { calculateActivityScores, estimateFTP } from '~/lib/performance'
 import { isRide, getScoreLabel, scoreLabelClasses, activityTypeClasses } from '~/lib/activities'
+import { Pagination } from '~/components/Pagination'
+
+const ACTIVITIES_PAGE_SIZE = 25
 
 interface ActivityListProps {
   activities: StravaActivity[]
@@ -84,6 +87,7 @@ export function ActivityList({ activities }: ActivityListProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortColumn, setSortColumn] = useState<SortColumn>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [page, setPage] = useState(1)
 
   const scoreMap = useMemo(() => {
     const rides = activities.filter(isRide)
@@ -175,6 +179,16 @@ export function ActivityList({ activities }: ActivityListProps) {
 
     return items
   }, [activities, activityGroups, groupedActivityIds, searchQuery, sortColumn, sortDirection, scoreMap, trainingActivityIds])
+
+  // Reset to first page when filters/sort change.
+  useEffect(() => {
+    setPage(1)
+  }, [searchQuery, sortColumn, sortDirection])
+
+  const pagedItems = useMemo(
+    () => listItems.slice((page - 1) * ACTIVITIES_PAGE_SIZE, page * ACTIVITIES_PAGE_SIZE),
+    [listItems, page]
+  )
 
   const toggleSelect = useCallback((id: number, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -383,7 +397,7 @@ export function ActivityList({ activities }: ActivityListProps) {
             </tr>
           </thead>
           <tbody>
-            {listItems.map((item) => {
+            {pagedItems.map((item) => {
               if (item.type === 'group') {
                 const isExpanded = expandedGroups.has(item.group.id)
                 return (
@@ -429,6 +443,13 @@ export function ActivityList({ activities }: ActivityListProps) {
           </tbody>
         </table>
       </div>
+
+      <Pagination
+        page={page}
+        pageSize={ACTIVITIES_PAGE_SIZE}
+        total={listItems.length}
+        onPageChange={setPage}
+      />
 
       {/* Sticky confirm group button */}
       {groupMode && (

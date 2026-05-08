@@ -7,7 +7,7 @@ export const Route = createFileRoute('/_dashboard/activities/')({
 })
 
 function ActivitiesPage() {
-  const { filteredActivities } = useDashboard()
+  const { activities } = useDashboard()
 
-  return <ActivityList activities={filteredActivities} />
+  return <ActivityList activities={activities} />
 }
