@@ -543,17 +543,18 @@ function DashboardLayout() {
     return success
   }, [])
 
-  const filteredActivities = useMemo(() => {
-    let filtered = activities
+  const activityTypeFiltered = useMemo(() => {
+    if (activityType === 'all') return activities
+    return activities.filter((a) => {
+      if (activityType === 'Ride') {
+        return a.type === 'Ride' || a.type === 'VirtualRide'
+      }
+      return a.type === activityType || a.sport_type === activityType
+    })
+  }, [activities, activityType])
 
-    if (activityType !== 'all') {
-      filtered = filtered.filter((a) => {
-        if (activityType === 'Ride') {
-          return a.type === 'Ride' || a.type === 'VirtualRide'
-        }
-        return a.type === activityType || a.sport_type === activityType
-      })
-    }
+  const filteredActivities = useMemo(() => {
+    let filtered = activityTypeFiltered
 
     const now = new Date()
     let cutoff: Date
@@ -580,7 +581,7 @@ function DashboardLayout() {
     return filtered.sort(
       (a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime()
     )
-  }, [activities, timeRange, activityType])
+  }, [activityTypeFiltered, timeRange])
 
   const mergedActivities = useMemo(
     () => mergeWithGroups(filteredActivities, activityGroups),
@@ -597,6 +598,15 @@ function DashboardLayout() {
   const statsActivities = useMemo(() => {
     return mergedActivities.filter((a) => !trainingActivityIds.includes(a.id))
   }, [mergedActivities, trainingActivityIds])
+
+  // Activity-type-respecting set with no time-range cap — for charts that own their own
+  // time selector so they can extend beyond the global range (e.g. Power Trend 1y / All).
+  const lifetimeStatsActivities = useMemo(() => {
+    const merged = mergeWithGroups(activityTypeFiltered, activityGroups)
+    return merged
+      .filter((a) => !trainingActivityIds.includes(a.id))
+      .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
+  }, [activityTypeFiltered, activityGroups, trainingActivityIds])
 
   const stats = useMemo(
     () => computeStats(mergedActivities, weight),
@@ -636,6 +646,7 @@ function DashboardLayout() {
     activities,
     filteredActivities,
     statsActivities,
+    lifetimeStatsActivities,
     stats,
     lifetimeStats,
     lifetimeMergedActivities,

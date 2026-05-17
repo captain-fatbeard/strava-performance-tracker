@@ -33,6 +33,7 @@ export interface DashboardContextType {
   activities: StravaActivity[]
   filteredActivities: StravaActivity[]
   statsActivities: StravaActivity[]
+  lifetimeStatsActivities: StravaActivity[]
   stats: DashboardStats
   lifetimeStats: DashboardStats
   lifetimeMergedActivities: StravaActivity[]
