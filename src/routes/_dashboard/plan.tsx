@@ -40,7 +40,7 @@ export const Route = createFileRoute('/_dashboard/plan')({
   component: PlanPage,
 })
 
-type SessionType = 'z2' | 'rest' | 'opener' | 'test' | 'threshold' | 'vo2' | 'long' | 'run' | 'tempo-run'
+type SessionType = 'z2' | 'rest' | 'opener' | 'test' | 'threshold' | 'vo2' | 'long' | 'tempo' | 'run' | 'tempo-run'
 
 interface PlanSession {
   type: SessionType
@@ -66,12 +66,13 @@ const SESSION_CATALOG: Record<SessionType, PlanSession> = {
   threshold: { type: 'threshold', label: 'Threshold', detail: '2×20 min at FTP', duration: '~60 min', durationMinMin: 40, durationMaxMin: 85, powerFloor: 0.7, powerCeiling: 1.05, allowBelow: false },
   vo2: { type: 'vo2', label: 'VO2max', detail: '5×4 min at 110–115% FTP', duration: '~60 min', durationMinMin: 40, durationMaxMin: 85, powerFloor: 0.65, powerCeiling: 1.1, allowBelow: false },
   long: { type: 'long', label: 'Long Z2', detail: 'Aerobic volume, flat or rolling', duration: '90–120 min', durationMinMin: 75, durationMaxMin: 150, powerFloor: 0.55, powerCeiling: 0.8, allowBelow: true },
+  tempo: { type: 'tempo', label: 'Tempo ride', detail: 'Steady upper-Z2 / Z3 — hilly Zwift routes, sustained climbs', duration: '90–180 min', durationMinMin: 60, durationMaxMin: 200, powerFloor: 0.7, powerCeiling: 0.92, allowBelow: false },
   run: { type: 'run', label: 'Easy run', detail: 'Truly easy, conversational pace', duration: '30 min', durationMinMin: 20, durationMaxMin: 40, powerFloor: null, powerCeiling: null, allowBelow: true },
   'tempo-run': { type: 'tempo-run', label: 'Tempo run', detail: 'Comfortably hard to hard — 80–85% max HR / Z3–Z4', duration: '30–40 min', durationMinMin: 25, durationMaxMin: 45, powerFloor: null, powerCeiling: null, allowBelow: false },
 }
 
 // Type categories used for the "weekly shape" check after day overrides.
-const INTENSITY_TYPES: SessionType[] = ['threshold', 'vo2', 'tempo-run']
+const INTENSITY_TYPES: SessionType[] = ['threshold', 'vo2', 'tempo', 'tempo-run']
 const EASY_TYPES: SessionType[] = ['z2', 'long', 'run']
 
 // Expected weekly counts per phase, derived from the default RECOVERY_PLAN
@@ -143,6 +144,7 @@ const TSS_PER_MIN: Record<SessionType, number> = {
   opener: 0.7,
   run: 0.7,
   test: 1.0,
+  tempo: 1.05,
   threshold: 1.2,
   vo2: 1.3,
   'tempo-run': 1.4,
@@ -368,6 +370,7 @@ const SESSION_COLORS: Record<SessionType, { bg: string; text: string; border: st
   threshold: { bg: 'bg-orange-500/10', text: 'text-orange-300', border: 'border-orange-500/30', dot: 'bg-orange-400' },
   vo2: { bg: 'bg-rose-500/10', text: 'text-rose-300', border: 'border-rose-500/30', dot: 'bg-rose-400' },
   long: { bg: 'bg-sky-500/10', text: 'text-sky-300', border: 'border-sky-500/30', dot: 'bg-sky-400' },
+  tempo: { bg: 'bg-yellow-500/10', text: 'text-yellow-300', border: 'border-yellow-500/30', dot: 'bg-yellow-400' },
   run: { bg: 'bg-emerald-500/10', text: 'text-emerald-300', border: 'border-emerald-500/30', dot: 'bg-emerald-400' },
   'tempo-run': { bg: 'bg-lime-500/10', text: 'text-lime-300', border: 'border-lime-500/30', dot: 'bg-lime-400' },
 }
@@ -478,6 +481,8 @@ function targetPowerLabel(
     case 'z2':
     case 'long':
       return `${Math.round(ftp * 0.64)}–${Math.round(ftp * 0.75)}W · HR <${z2HrCeiling}`
+    case 'tempo':
+      return `${Math.round(ftp * 0.76)}–${Math.round(ftp * 0.9)}W · steady, sustained Z3`
     case 'threshold':
       return `intervals at ${Math.round(ftp * 0.95)}–${ftp}W`
     case 'vo2':
