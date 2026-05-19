@@ -311,10 +311,10 @@ function computeWeekStats(template: PlanSession[]): WeekStats {
 }
 
 const RECOVERY_PLAN: PlanSession[] = [
-  { type: 'z2', label: 'Recovery Z2', detail: 'Spin, no surges', duration: '60–75 min', durationMinMin: 45, durationMaxMin: 85, powerFloor: 0.5, powerCeiling: 0.8, allowBelow: true },
-  { type: 'z2', label: 'Recovery Z2', detail: 'Spin, no surges', duration: '60–75 min', durationMinMin: 45, durationMaxMin: 85, powerFloor: 0.5, powerCeiling: 0.8, allowBelow: true },
-  { type: 'z2', label: 'Recovery Z2', detail: 'Spin, no surges', duration: '60–75 min', durationMinMin: 45, durationMaxMin: 85, powerFloor: 0.5, powerCeiling: 0.8, allowBelow: true },
-  { type: 'z2', label: 'Recovery Z2', detail: 'Spin, no surges', duration: '60–75 min', durationMinMin: 45, durationMaxMin: 85, powerFloor: 0.5, powerCeiling: 0.8, allowBelow: true },
+  { type: 'z2', label: 'Z2 Endurance', detail: 'Easy aerobic base, no surges', duration: '60–75 min', durationMinMin: 45, durationMaxMin: 85, powerFloor: 0.5, powerCeiling: 0.8, allowBelow: true },
+  { type: 'z2', label: 'Z2 Endurance', detail: 'Easy aerobic base, no surges', duration: '60–75 min', durationMinMin: 45, durationMaxMin: 85, powerFloor: 0.5, powerCeiling: 0.8, allowBelow: true },
+  { type: 'z2', label: 'Z2 Endurance', detail: 'Easy aerobic base, no surges', duration: '60–75 min', durationMinMin: 45, durationMaxMin: 85, powerFloor: 0.5, powerCeiling: 0.8, allowBelow: true },
+  { type: 'z2', label: 'Z2 Endurance', detail: 'Easy aerobic base, no surges', duration: '60–75 min', durationMinMin: 45, durationMaxMin: 85, powerFloor: 0.5, powerCeiling: 0.8, allowBelow: true },
   { type: 'rest', label: 'Rest', detail: 'Full off day', duration: '—', durationMinMin: 0, durationMaxMin: 30, powerFloor: null, powerCeiling: null, allowBelow: true },
   { type: 'opener', label: 'Opener', detail: 'Z2 with 3×1 min short openers', duration: '45 min', durationMinMin: 30, durationMaxMin: 60, powerFloor: 0.55, powerCeiling: 1.05, allowBelow: true },
   { type: 'test', label: 'Test ride', detail: 'Climb portal or structured effort if legs feel snappy', duration: '60–90 min', durationMinMin: 45, durationMaxMin: 120, powerFloor: null, powerCeiling: null, allowBelow: true },
