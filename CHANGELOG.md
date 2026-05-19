@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.21.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.20.0...v1.21.0) (2026-05-19)
+
+
+### Features
+
+* **plan:** add tempo cycling session type ([b58a4ca](https://github.com/captain-fatbeard/strava-performance-tracker/commit/b58a4ca29cd8742d2fb23dd28f06a00ae4f8d430))
+
+
+### Refactoring
+
+* **plan:** unify Z2 label across recovery and build templates ([1afc0e1](https://github.com/captain-fatbeard/strava-performance-tracker/commit/1afc0e16910c2a47f2d28068b1fcc4ef30658a06))
+
 ## [1.20.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.19.0...v1.20.0) (2026-05-17)
 
 
