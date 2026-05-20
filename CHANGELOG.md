@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.22.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.21.0...v1.22.0) (2026-05-20)
+
+
+### Features
+
+* **records:** compute true power-duration peaks from streams ([053da79](https://github.com/captain-fatbeard/strava-performance-tracker/commit/053da793149cc926ed05320a4f75f331a10459ba))
+
+
+### Bug Fixes
+
+* **performance:** grade VO2max by age, refine FTP, cap corrupt ride speed ([3b5e58d](https://github.com/captain-fatbeard/strava-performance-tracker/commit/3b5e58de19537300f28e455c2e359167e2c03580))
+
 ## [1.21.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.20.0...v1.21.0) (2026-05-19)
 
 
