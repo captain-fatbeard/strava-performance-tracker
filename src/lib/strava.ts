@@ -144,6 +144,9 @@ export interface ActivityDetailsJson {
   summary_polyline: string | null
   photo_url: string | null
   power_per_km?: number[]
+  // Best average power (watts) for each window in POWER_CURVE_DURATIONS, keyed by
+  // duration in seconds. Computed from the watts + time streams at sync time.
+  power_curve?: Record<number, number>
 }
 
 export function getStravaAuthUrl(clientId: string, redirectUri: string): string {
@@ -284,6 +287,52 @@ export async function getActivityStreams(
   const streams: StravaStream[] = Array.isArray(json) ? json : []
   for (const stream of streams) {
     result[stream.type] = stream.data
+  }
+  return result
+}
+
+// Window durations (seconds) for the power-duration curve / records.
+export const POWER_CURVE_DURATIONS = [120, 300, 480, 1200, 1800, 2700] as const
+
+// Best average power (watts) over a rolling window of each target duration,
+// computed from the watts + time streams. The time stream is resampled onto a
+// 1-second grid (carry-forward) so windows are measured in real elapsed seconds
+// regardless of the stream's native resolution. Returns watts keyed by duration.
+export function computePowerCurve(
+  timeStream: number[],
+  wattsStream: number[],
+  durations: readonly number[] = POWER_CURVE_DURATIONS
+): Record<number, number> {
+  const result: Record<number, number> = {}
+  if (!timeStream?.length || !wattsStream?.length) return result
+
+  const n = Math.min(timeStream.length, wattsStream.length)
+  const t0 = timeStream[0]
+  const endSec = timeStream[n - 1] - t0
+  if (endSec <= 0) return result
+
+  // Resample watts onto a 1Hz grid, carrying the last sample forward across gaps.
+  const grid = new Array<number>(endSec + 1)
+  let idx = 0
+  for (let s = 0; s <= endSec; s++) {
+    while (idx + 1 < n && timeStream[idx + 1] - t0 <= s) idx++
+    const w = wattsStream[idx]
+    grid[s] = w != null && w > 0 ? w : 0
+  }
+
+  // Prefix sums for O(1) window averages.
+  const prefix = new Array<number>(grid.length + 1)
+  prefix[0] = 0
+  for (let i = 0; i < grid.length; i++) prefix[i + 1] = prefix[i] + grid[i]
+
+  for (const d of durations) {
+    if (grid.length < d) continue // ride shorter than this window
+    let best = 0
+    for (let start = 0; start + d <= grid.length; start++) {
+      const avg = (prefix[start + d] - prefix[start]) / d
+      if (avg > best) best = avg
+    }
+    result[d] = Math.round(best)
   }
   return result
 }

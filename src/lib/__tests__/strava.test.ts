@@ -7,6 +7,7 @@ import {
   calculatePace,
   formatPace,
   computePowerPerKm,
+  computePowerCurve,
 } from '~/lib/strava'
 
 // ===================================================================
@@ -112,6 +113,42 @@ describe('computePowerPerKm', () => {
     const watts = [200, 200, 200]
     // Never reaches 1000m boundary, so only final partial
     expect(computePowerPerKm(distance, watts)).toEqual([200])
+  })
+})
+
+// ===================================================================
+// computePowerCurve
+// ===================================================================
+
+describe('computePowerCurve', () => {
+  it('returns empty for empty streams', () => {
+    expect(computePowerCurve([], [])).toEqual({})
+    expect(computePowerCurve([0, 1], [])).toEqual({})
+  })
+
+  it('finds the best rolling-average power for each window', () => {
+    // 60s total: first 30s @ 100W, last 30s @ 300W (1Hz time stream)
+    const time = Array.from({ length: 61 }, (_, i) => i)
+    const watts = Array.from({ length: 61 }, (_, i) => (i < 30 ? 100 : 300))
+    const curve = computePowerCurve(time, watts, [10, 30])
+    expect(curve[10]).toBe(300) // best 10s window sits entirely in the 300W block
+    expect(curve[30]).toBe(300) // best 30s window is the final 300W block
+  })
+
+  it('skips windows longer than the ride', () => {
+    const time = Array.from({ length: 31 }, (_, i) => i) // 30s ride
+    const watts = new Array(31).fill(200)
+    const curve = computePowerCurve(time, watts, [10, 120])
+    expect(curve[10]).toBe(200)
+    expect(curve[120]).toBeUndefined()
+  })
+
+  it('resamples a sparse (non-1Hz) time stream onto real seconds', () => {
+    // Samples every 5s for 30s, constant 250W
+    const time = [0, 5, 10, 15, 20, 25, 30]
+    const watts = [250, 250, 250, 250, 250, 250, 250]
+    const curve = computePowerCurve(time, watts, [20])
+    expect(curve[20]).toBe(250)
   })
 })
 

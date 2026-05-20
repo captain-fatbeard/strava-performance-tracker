@@ -12,6 +12,7 @@ import {
   calculatePace,
   formatPace,
   computePowerPerKm,
+  computePowerCurve,
 } from '~/lib/strava'
 import {
   fetchCachedActivityDetails,
@@ -85,13 +86,17 @@ function ActivityDetailPage() {
 
     // Fetch power streams if activity has watts (check both detailed and summary)
     let powerPerKm: number[] | undefined
+    let powerCurve: Record<number, number> | undefined
     if (detailed.average_watts || detailed.device_watts || hasPower) {
       try {
         const streams = await fetchStravaStreams({
-          data: { accessToken: currentTokens.access_token, activityId: id, keys: ['watts', 'distance'] },
+          data: { accessToken: currentTokens.access_token, activityId: id, keys: ['watts', 'distance', 'time'] },
         })
         if (streams.watts?.length && streams.distance?.length) {
           powerPerKm = computePowerPerKm(streams.distance, streams.watts)
+        }
+        if (streams.watts?.length && streams.time?.length) {
+          powerCurve = computePowerCurve(streams.time, streams.watts)
         }
       } catch (err) {
         console.warn('Failed to fetch power streams:', err)
@@ -116,6 +121,7 @@ function ActivityDetailPage() {
       summary_polyline: detailed.map?.summary_polyline || null,
       photo_url: photoUrl,
       power_per_km: powerPerKm,
+      power_curve: powerCurve,
     }
 
     setDetails(detailsJson)

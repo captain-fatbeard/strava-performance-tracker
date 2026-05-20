@@ -900,6 +900,111 @@ export async function fetchCachedBestEfforts(
   }
 }
 
+// Power-duration curve for a ride, with activity context
+export interface PowerCurveWithActivity {
+  activityId: number
+  activityName: string
+  activityDate: string
+  distance: number
+  movingTime: number
+  curve: Record<number, number>
+}
+
+// Fetch cached power-duration curves for all rides that have one
+export async function fetchCachedPowerCurves(
+  athleteId: number
+): Promise<PowerCurveWithActivity[]> {
+  if (!supabase) return []
+
+  try {
+    // Select only the power_curve JSON sub-path — not the whole details_json blob
+    // (which holds large segment/lap/split arrays and would time out the query).
+    const { data, error } = await supabase
+      .from('activities')
+      .select('id, start_date_local, name, distance, moving_time, power_curve:details_json->power_curve')
+      .eq('athlete_id', athleteId)
+      .in('type', ['Ride', 'VirtualRide'])
+      .not('details_json->power_curve', 'is', null)
+
+    if (error) {
+      console.warn('Supabase fetch power curves error:', error.message)
+      return []
+    }
+
+    const curves: PowerCurveWithActivity[] = []
+    for (const row of data as {
+      id: number
+      start_date_local: string
+      name: string
+      distance: number
+      moving_time: number
+      power_curve: Record<number, number> | null
+    }[]) {
+      const curve = row.power_curve
+      if (!curve || Object.keys(curve).length === 0) continue
+      curves.push({
+        activityId: row.id,
+        activityName: row.name,
+        activityDate: row.start_date_local,
+        distance: row.distance,
+        movingTime: row.moving_time,
+        curve,
+      })
+    }
+
+    return curves
+  } catch (err) {
+    console.warn('Supabase fetch power curves error:', err)
+    return []
+  }
+}
+
+// Fetch IDs of rides that have details + power data but no cached power_curve yet
+// (i.e. detailed before the power-curve feature existed). Used to backfill.
+export async function fetchRideIdsWithoutPowerCurve(athleteId: number): Promise<number[]> {
+  if (!supabase) return []
+
+  try {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('id')
+      .eq('athlete_id', athleteId)
+      .in('type', ['Ride', 'VirtualRide'])
+      .not('details_json', 'is', null)
+      .not('average_watts', 'is', null)
+      .is('details_json->power_curve', null)
+      .order('start_date', { ascending: false })
+
+    if (error) {
+      console.warn('Supabase fetch rides without power curve error:', error.message)
+      return []
+    }
+
+    return (data as { id: number }[]).map((r) => r.id)
+  } catch (err) {
+    console.warn('Supabase fetch rides without power curve error:', err)
+    return []
+  }
+}
+
+// Patch only the power_curve of an already-cached activity's details_json,
+// leaving the rest of the cached details intact. Used by the backfill pass.
+export async function patchActivityPowerCurve(
+  activityId: number,
+  curve: Record<number, number>
+): Promise<boolean> {
+  if (!supabase) return false
+
+  try {
+    const existing = await fetchCachedActivityDetails(activityId)
+    if (!existing) return false
+    return await cacheActivityDetails(activityId, { ...existing.details, power_curve: curve })
+  } catch (err) {
+    console.warn('Supabase patch power curve error:', err)
+    return false
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Plan week phase overrides. Persists the chosen phase per past week so the
 // Plan History view doesn't drift when TSB/ATL recalculate from late syncs.

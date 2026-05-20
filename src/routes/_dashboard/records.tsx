@@ -6,8 +6,10 @@ import { formatDateFull, chartTheme, tooltipStyle } from '~/lib/chart-theme'
 import {
   fetchAllCachedSegmentData,
   fetchCachedBestEfforts,
+  fetchCachedPowerCurves,
   type SegmentEffortWithActivity,
   type BestEffortWithActivity,
+  type PowerCurveWithActivity,
 } from '~/lib/storage/supabase-client'
 import {
   LineChart,
@@ -240,6 +242,7 @@ function RecordsPage() {
   const { activities, filteredActivities, athlete } = useDashboard()
   const [segmentEfforts, setSegmentEfforts] = useState<SegmentEffortWithActivity[]>([])
   const [bestEfforts, setBestEfforts] = useState<BestEffortWithActivity[]>([])
+  const [powerCurves, setPowerCurves] = useState<PowerCurveWithActivity[]>([])
   const [isLoadingSegments, setIsLoadingSegments] = useState(true)
   const [isLoadingEfforts, setIsLoadingEfforts] = useState(true)
   const [expandedSegment, setExpandedSegment] = useState<number | null>(null)
@@ -267,23 +270,45 @@ function RecordsPage() {
     )
 
     return powerDurations.map(({ label, seconds }) => {
-      // Find rides where moving_time is within [duration, duration * 2.5] for best representation
-      // Falls back to any ride >= duration if not enough in the tight window
+      // Preferred: true rolling-window peaks computed from cached power streams.
+      const curveTop3 = powerCurves
+        .filter((c) => c.curve[seconds] != null)
+        .map((c) => ({
+          id: c.activityId,
+          name: c.activityName,
+          start_date_local: c.activityDate,
+          moving_time: c.movingTime,
+          distance: c.distance,
+          watts: c.curve[seconds],
+        }))
+        .sort((a, b) => b.watts - a.watts)
+        .slice(0, 3)
+
+      if (curveTop3.length > 0) {
+        return { label, seconds, top3: curveTop3, estimated: false }
+      }
+
+      // Fallback (no curves cached yet): approximate with whole-ride average power.
+      // Prefer rides whose duration is close to the window, else any ride >= duration.
       const inWindow = rides
         .filter((a) => a.moving_time >= seconds && a.moving_time <= seconds * 2.5)
         .sort((a, b) => (b.average_watts || 0) - (a.average_watts || 0))
-
       const allEligible = rides
         .filter((a) => a.moving_time >= seconds)
         .sort((a, b) => (b.average_watts || 0) - (a.average_watts || 0))
-
-      // Use the tight window if we have at least 3, otherwise use all eligible
       const pool = inWindow.length >= 3 ? inWindow : allEligible
-      const top3 = pool.slice(0, 3)
+      const top3 = pool.slice(0, 3).map((a) => ({
+        id: a.id,
+        name: a.name,
+        start_date_local: a.start_date_local,
+        moving_time: a.moving_time,
+        distance: a.distance,
+        watts: a.average_watts || 0,
+      }))
 
-      return { label, seconds, top3 }
+      return { label, seconds, top3, estimated: top3.length > 0 }
     })
-  }, [activities])
+  }, [activities, powerCurves])
 
   // Fetch segment data
   useEffect(() => {
@@ -303,6 +328,12 @@ function RecordsPage() {
       setBestEfforts(data)
       setIsLoadingEfforts(false)
     })
+  }, [athlete])
+
+  // Fetch power-duration curves (true N-min peaks from cached streams)
+  useEffect(() => {
+    if (!athlete) return
+    fetchCachedPowerCurves(athlete.id).then(setPowerCurves)
   }, [athlete])
 
   // Filter and group segments
@@ -387,12 +418,20 @@ function RecordsPage() {
           </h2>
 
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(280px,100%),1fr))] gap-4 max-md:grid-cols-1">
-            {powerRecords.map(({ label, top3 }) => {
+            {powerRecords.map(({ label, top3, estimated }) => {
               if (top3.length === 0) return null
               return (
                 <div key={label} className="bg-bg-secondary border border-border-subtle rounded-[var(--radius-lg)] p-5 max-[480px]:p-4">
-                  <div className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold mb-4">
+                  <div className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold mb-4 flex items-center gap-2">
                     Best {label} Power
+                    {estimated && (
+                      <span
+                        className="text-[0.6rem] normal-case tracking-normal font-medium text-text-muted bg-bg-tertiary rounded-full px-2 py-0.5"
+                        title="Estimated from whole-ride average power. Sync All Activities to compute true peaks from power streams."
+                      >
+                        est.
+                      </span>
+                    )}
                   </div>
                   <div className="flex flex-col gap-3">
                     {top3.map((activity, i) => (
@@ -424,7 +463,7 @@ function RecordsPage() {
                             ? 'bg-linear-to-br from-info to-accent-secondary bg-clip-text text-transparent'
                             : 'text-text-secondary'
                         }`}>
-                          {activity.average_watts}<span className="text-xs font-medium ml-0.5">W</span>
+                          {activity.watts}<span className="text-xs font-medium ml-0.5">W</span>
                         </div>
                       </Link>
                     ))}

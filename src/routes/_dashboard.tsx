@@ -7,7 +7,7 @@ import {
   type ActivityType,
 } from '~/lib/storage/supabase-client'
 import { refreshStravaToken, fetchAllStravaActivities, fetchStravaActivity, fetchStravaStreams } from '~/lib/server-functions'
-import { type StravaActivity, type StravaAthlete, type StravaDetailedActivity, type ActivityDetailsJson, metersToKm, computePowerPerKm } from '~/lib/strava'
+import { type StravaActivity, type StravaAthlete, type StravaDetailedActivity, type ActivityDetailsJson, metersToKm, computePowerPerKm, computePowerCurve } from '~/lib/strava'
 import { estimateFTP, calculateMaxHR, calculateRestingHR, calculateAge } from '~/lib/performance'
 import { deriveThresholds } from '~/lib/tss'
 import {
@@ -28,6 +28,8 @@ import {
   upsertActivities,
   cacheActivityDetails,
   fetchActivityIdsWithoutDetails,
+  fetchRideIdsWithoutPowerCurve,
+  patchActivityPowerCurve,
   isSupabaseConfigured,
   type WeightEntry,
   type ActivityGroup,
@@ -319,13 +321,17 @@ function DashboardLayout() {
 
           // Fetch power streams if available
           let powerPerKm: number[] | undefined
+          let powerCurve: Record<number, number> | undefined
           if (detailed.average_watts || detailed.device_watts) {
             try {
               const streams = await fetchStravaStreams({
-                data: { accessToken: currentTokens.access_token, activityId: uncachedIds[i], keys: ['watts', 'distance'] },
+                data: { accessToken: currentTokens.access_token, activityId: uncachedIds[i], keys: ['watts', 'distance', 'time'] },
               })
               if (streams.watts?.length && streams.distance?.length) {
                 powerPerKm = computePowerPerKm(streams.distance, streams.watts)
+              }
+              if (streams.watts?.length && streams.time?.length) {
+                powerCurve = computePowerCurve(streams.time, streams.watts)
               }
             } catch {
               // Non-critical, skip streams
@@ -350,6 +356,7 @@ function DashboardLayout() {
             summary_polyline: detailed.map?.summary_polyline || null,
             photo_url: photoUrl,
             power_per_km: powerPerKm,
+            power_curve: powerCurve,
           }
 
           cacheActivityDetails(uncachedIds[i], detailsJson)
@@ -362,6 +369,42 @@ function DashboardLayout() {
         // Delay between requests to respect Strava rate limits (100 req / 15 min)
         if (i < uncachedIds.length - 1) {
           await new Promise((r) => setTimeout(r, 10000))
+        }
+      }
+
+      // Phase 3: Backfill power curves for rides detailed before the feature
+      // existed. Only needs the streams call (details already cached).
+      const curveBackfillIds = await fetchRideIdsWithoutPowerCurve(storedAthlete.id)
+      if (curveBackfillIds.length > 0) {
+        setSyncProgress({ current: 0, total: curveBackfillIds.length })
+
+        for (let i = 0; i < curveBackfillIds.length; i++) {
+          setSyncProgress({ current: i + 1, total: curveBackfillIds.length })
+
+          try {
+            if (i > 0 && i % 50 === 0 && (await storage.auth.isTokenExpired())) {
+              const refreshed = await refreshStravaToken({ data: { refreshToken: currentTokens.refresh_token } })
+              currentTokens = refreshed
+              await storage.auth.setTokens(refreshed)
+            }
+
+            const streams = await fetchStravaStreams({
+              data: { accessToken: currentTokens.access_token, activityId: curveBackfillIds[i], keys: ['watts', 'time'] },
+            })
+            if (streams.watts?.length && streams.time?.length) {
+              const curve = computePowerCurve(streams.time, streams.watts)
+              if (Object.keys(curve).length > 0) {
+                await patchActivityPowerCurve(curveBackfillIds[i], curve)
+              }
+            }
+          } catch (err) {
+            console.warn(`Failed to backfill power curve for activity ${curveBackfillIds[i]}:`, err)
+            await new Promise((r) => setTimeout(r, 30000))
+          }
+
+          if (i < curveBackfillIds.length - 1) {
+            await new Promise((r) => setTimeout(r, 10000))
+          }
         }
       }
     } catch (err) {
@@ -997,7 +1040,7 @@ function DashboardLayout() {
                 </svg>
                 {isSyncingAll
                   ? syncProgress
-                    ? `Fetching details ${syncProgress.current}/${syncProgress.total}...`
+                    ? `Processing ${syncProgress.current}/${syncProgress.total}...`
                     : 'Syncing activities...'
                   : 'Sync All Activities'}
               </button>
