@@ -3,21 +3,24 @@ import { type StravaActivity } from '~/lib/strava'
 import { calculateAdvancedMetrics, estimateFTP, estimateVO2max, getVO2maxCategory } from '~/lib/performance'
 import { isRide } from '~/lib/activities'
 import { badgeClasses } from '~/lib/styles'
+import type { Gender } from '~/lib/dashboard-context'
 
 interface AdvancedMetricsProps {
   activities: StravaActivity[]
   weight: number
+  age: number
+  gender: Gender
 }
 
-export function AdvancedMetrics({ activities, weight }: AdvancedMetricsProps) {
+export function AdvancedMetrics({ activities, weight, age, gender }: AdvancedMetricsProps) {
   const rides = activities.filter(isRide)
   const ftp = estimateFTP(rides) || 0
   const [sliderWeight, setSliderWeight] = useState(weight)
 
-  const metrics = useMemo(() => calculateAdvancedMetrics(activities, ftp, weight), [activities, ftp, weight])
+  const metrics = useMemo(() => calculateAdvancedMetrics(activities, ftp, weight, age, gender), [activities, ftp, weight, age, gender])
 
   const sliderVo2max = useMemo(() => estimateVO2max(ftp, sliderWeight), [ftp, sliderWeight])
-  const sliderVo2maxCategory = useMemo(() => getVO2maxCategory(sliderVo2max), [sliderVo2max])
+  const sliderVo2maxCategory = useMemo(() => getVO2maxCategory(sliderVo2max, age, gender), [sliderVo2max, age, gender])
 
   if (ftp === 0) return null
 

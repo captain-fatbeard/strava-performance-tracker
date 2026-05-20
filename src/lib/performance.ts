@@ -9,46 +9,83 @@ export interface FtpHistoryEntry {
   ftp: number
 }
 
-// Estimate FTP from activities (95% of best 20-min power)
+// Multiplier that converts a sustained effort of a given duration (minutes) into
+// an FTP estimate, following the standard power-duration curve. Efforts shorter
+// than ~60 min can be held above FTP (multiplier < 1); longer efforts fall below
+// it (multiplier > 1). Anchored so a 20-min effort gives the classic
+// FTP = 0.95 × power. Clamped to [20, 240] min where the model is reliable.
+function ftpMultiplierForDuration(minutes: number): number {
+  // [duration (min), power × multiplier = FTP]
+  const curve: [number, number][] = [
+    [20, 0.95],
+    [30, 0.98],
+    [40, 0.99],
+    [60, 1.0],
+    [90, 1.05],
+    [120, 1.1],
+    [180, 1.18],
+    [240, 1.25],
+  ]
+  const m = Math.max(curve[0][0], Math.min(curve[curve.length - 1][0], minutes))
+  for (let i = 0; i < curve.length - 1; i++) {
+    const [d0, f0] = curve[i]
+    const [d1, f1] = curve[i + 1]
+    if (m <= d1) {
+      const t = (m - d0) / (d1 - d0)
+      return f0 + t * (f1 - f0)
+    }
+  }
+  return curve[curve.length - 1][1]
+}
+
+// FTP estimate from a single ride's sustained power. Prefers Normalized Power
+// (weighted_average_watts) over raw average, since it better reflects the
+// metabolic cost of variable-intensity rides, then adjusts for duration.
+function ftpFromRide(a: StravaActivity): number {
+  const power = a.weighted_average_watts || a.average_watts || 0
+  return power * ftpMultiplierForDuration(a.moving_time / 60)
+}
+
+// Estimate FTP from activities using a duration-adjusted power-duration model.
+// Takes the best estimate across all qualifying rides — non-maximal rides simply
+// produce lower estimates and don't dominate.
 export function estimateFTP(activities: StravaActivity[]): number | null {
   const ridesWithPower = activities.filter(
-    (a) => (a.type === 'Ride' || a.type === 'VirtualRide') && a.average_watts
+    (a) => (a.type === 'Ride' || a.type === 'VirtualRide') && (a.average_watts || a.weighted_average_watts)
   )
 
   if (ridesWithPower.length === 0) return null
 
-  // Find best average power from rides >= 20 minutes
+  // Rides >= 20 minutes are where the duration model is reliable
   const longRides = ridesWithPower.filter((a) => a.moving_time >= 1200)
-  if (longRides.length === 0) {
-    // Fall back to weighted average watts if available
-    const withNP = ridesWithPower.filter((a) => a.weighted_average_watts)
-    if (withNP.length > 0) {
-      const bestNP = Math.max(...withNP.map((a) => a.weighted_average_watts || 0))
-      return Math.round(bestNP * 0.95)
-    }
-    return null
+  if (longRides.length > 0) {
+    return Math.round(Math.max(...longRides.map(ftpFromRide)))
   }
 
-  const bestAvgPower = Math.max(...longRides.map((a) => a.average_watts || 0))
-  return Math.round(bestAvgPower * 0.95)
+  // Fall back to Normalized Power at the 20-min anchor for shorter rides only
+  const withNP = ridesWithPower.filter((a) => a.weighted_average_watts)
+  if (withNP.length > 0) {
+    const bestNP = Math.max(...withNP.map((a) => a.weighted_average_watts || 0))
+    return Math.round(bestNP * 0.95)
+  }
+  return null
 }
 
-// Estimate FTP at different points in time using a rolling 90-day window
-// Uses average_watts only (not Normalized Power) for a conservative estimate
+// Estimate FTP at different points in time using a rolling 90-day window.
+// Uses the same duration-adjusted power-duration model as estimateFTP.
 // Returns entries sorted by date ascending
 export function estimateFTPHistory(activities: StravaActivity[]): FtpHistoryEntry[] {
   const ridesWithPower = activities
-    .filter((a) => (a.type === 'Ride' || a.type === 'VirtualRide') && a.average_watts && a.moving_time >= 1200)
+    .filter((a) => (a.type === 'Ride' || a.type === 'VirtualRide') && (a.average_watts || a.weighted_average_watts) && a.moving_time >= 1200)
     .sort((a, b) => a.start_date_local.localeCompare(b.start_date_local))
 
   if (ridesWithPower.length === 0) return []
 
-  // Group rides by month — use average_watts (not NP) for conservative FTP estimate
+  // Best duration-adjusted FTP estimate per month
   const monthlyBest: Record<string, number> = {}
   ridesWithPower.forEach((a) => {
     const month = a.start_date_local.substring(0, 7) // 'YYYY-MM'
-    const power = a.average_watts || 0
-    monthlyBest[month] = Math.max(monthlyBest[month] || 0, power)
+    monthlyBest[month] = Math.max(monthlyBest[month] || 0, ftpFromRide(a))
   })
 
   // Create an FTP entry per month based on rolling 90-day best average power
@@ -68,7 +105,7 @@ export function estimateFTPHistory(activities: StravaActivity[]): FtpHistoryEntr
       }
     }
 
-    const ftp = Math.round(best * 0.95)
+    const ftp = Math.round(best)
     // Only add if different from last entry
     if (result.length === 0 || result[result.length - 1].ftp !== ftp) {
       result.push({ date: month + '-01', ftp })
@@ -300,8 +337,12 @@ export function calculatePersonalRecords(activities: StravaActivity[]): Personal
     })
   }
 
-  // Fastest avg speed (ride)
-  const fastRides = rides.filter((a) => a.distance >= 20000) // At least 20km
+  // Fastest avg speed (ride). Cap average_speed to filter out corrupt data
+  // (e.g. an imported ride logging 45km in 5s → ~9000 m/s). 25 m/s ≈ 90 km/h,
+  // beyond any plausible 20km+ ride average.
+  const fastRides = rides.filter(
+    (a) => a.distance >= 20000 && a.average_speed > 0 && a.average_speed <= 25
+  )
   if (fastRides.length > 0) {
     const fastest = fastRides.reduce((max, a) =>
       a.average_speed > max.average_speed ? a : max
@@ -363,21 +404,23 @@ export function estimateVO2max(ftp: number, weight: number): number {
   return Math.round((10.8 * wattsPerKg + 7) * 10) / 10
 }
 
-// Get VO2max category
-export function getVO2maxCategory(vo2max: number, gender: 'male' | 'female' = 'male'): string {
-  if (gender === 'male') {
-    if (vo2max >= 60) return 'Elite'
-    if (vo2max >= 52) return 'Excellent'
-    if (vo2max >= 45) return 'Good'
-    if (vo2max >= 38) return 'Average'
-    return 'Below Average'
-  } else {
-    if (vo2max >= 54) return 'Elite'
-    if (vo2max >= 47) return 'Excellent'
-    if (vo2max >= 40) return 'Good'
-    if (vo2max >= 33) return 'Average'
-    return 'Below Average'
-  }
+// Get VO2max category, graded against recreational (motionist) peers of the
+// same age and gender rather than a fixed athletic scale. Anchored on the
+// average/good values from vo2maxBenchmarks so the bands shift with age.
+export function getVO2maxCategory(
+  vo2max: number,
+  age: number = 35,
+  gender: 'male' | 'female' = 'male'
+): string {
+  const row = vo2maxBenchmarks[gender].find(([maxAge]) => age <= maxAge) || vo2maxBenchmarks[gender].at(-1)!
+  const [, average, good] = row
+  const spread = good - average // gap between the "average" and "good" peer
+
+  if (vo2max >= good + spread) return 'Elite'
+  if (vo2max >= good) return 'Excellent'
+  if (vo2max >= average) return 'Good'
+  if (vo2max >= average - spread) return 'Average'
+  return 'Below Average'
 }
 
 // ==========================================
@@ -585,7 +628,9 @@ export interface AdvancedMetrics {
 export function calculateAdvancedMetrics(
   activities: StravaActivity[],
   ftp: number,
-  weight: number
+  weight: number,
+  age: number = 35,
+  gender: 'male' | 'female' = 'male'
 ): AdvancedMetrics {
   const rides = activities.filter(
     (a) => (a.type === 'Ride' || a.type === 'VirtualRide') && a.average_watts
@@ -669,7 +714,7 @@ export function calculateAdvancedMetrics(
     avgEF: countEF > 0 ? Math.round((totalEF / countEF) * 100) / 100 : 0,
     avgPowerHR: countPowerHR > 0 ? Math.round((totalPowerHR / countPowerHR) * 100) / 100 : 0,
     vo2max,
-    vo2maxCategory: getVO2maxCategory(vo2max),
+    vo2maxCategory: getVO2maxCategory(vo2max, age, gender),
     bestVAM,
     bestEF: Math.round(bestEF * 100) / 100,
   }
@@ -1102,7 +1147,11 @@ export function formatPace(secsPerKm: number): string {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
-export function calculateRunningMetrics(activities: StravaActivity[]): RunningMetrics {
+export function calculateRunningMetrics(
+  activities: StravaActivity[],
+  age: number = 35,
+  gender: 'male' | 'female' = 'male'
+): RunningMetrics {
   const runs = activities.filter((a) => a.type === 'Run')
 
   const empty: RunningMetrics = {
@@ -1157,7 +1206,7 @@ export function calculateRunningMetrics(activities: StravaActivity[]): RunningMe
     avgPace,
     bestPace,
     vo2max,
-    vo2maxCategory: vo2max > 0 ? getVO2maxCategory(vo2max) : '',
+    vo2maxCategory: vo2max > 0 ? getVO2maxCategory(vo2max, age, gender) : '',
     avgCadence,
     avgHR,
     totalDistance,

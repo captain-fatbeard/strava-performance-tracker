@@ -40,7 +40,7 @@ function PerformancePage() {
         }
       />
 
-      <AdvancedMetrics activities={statsActivities} weight={weight} />
+      <AdvancedMetrics activities={statsActivities} weight={weight} age={age} gender={gender} />
       <PerformanceCharts lifetimeActivities={lifetimeStatsActivities} />
       <EfficiencyChart lifetimeActivities={lifetimeStatsActivities} />
 

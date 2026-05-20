@@ -91,12 +91,31 @@ describe('estimateFTP', () => {
     expect(estimateFTP([makeRide()])).toBeNull()
   })
 
-  it('uses 95% of best average watts from long rides (>= 20 min)', () => {
+  it('applies the 20-min anchor (FTP = 0.95 x power) for a 20-min ride', () => {
+    const activities = [makeRide({ average_watts: 252, moving_time: 1200 })]
+    // 20 min → multiplier 0.95: 252 * 0.95 = 239.4 → 239
+    expect(estimateFTP(activities)).toBe(239)
+  })
+
+  it('takes the best duration-adjusted estimate across rides', () => {
     const activities = [
-      makeRide({ average_watts: 200, moving_time: 1200 }),
-      makeRide({ average_watts: 250, moving_time: 1500 }),
+      makeRide({ average_watts: 200, moving_time: 1200 }), // 20 min → 200 * 0.95 = 190
+      makeRide({ average_watts: 250, moving_time: 1500 }), // 25 min → 250 * 0.965 = 241.25
     ]
-    // 95% of 250 = 237.5 → 238
+    expect(estimateFTP(activities)).toBe(241)
+  })
+
+  it('scales up long sub-threshold rides via the power-duration curve', () => {
+    // A strong 2-hour ride at 218W → 218 * 1.1 = 239.8 → 240
+    const activities = [makeRide({ average_watts: 218, moving_time: 7200 })]
+    expect(estimateFTP(activities)).toBe(240)
+  })
+
+  it('prefers Normalized Power over raw average watts', () => {
+    const activities = [
+      makeRide({ average_watts: 220, weighted_average_watts: 250, moving_time: 1200 }),
+    ]
+    // Uses NP 250 at the 20-min anchor: 250 * 0.95 = 237.5 → 238
     expect(estimateFTP(activities)).toBe(238)
   })
 
@@ -117,7 +136,8 @@ describe('estimateFTP', () => {
     const activities = [
       makeActivity({ type: 'VirtualRide', average_watts: 300, moving_time: 1500 }),
     ]
-    expect(estimateFTP(activities)).toBe(285) // 300 * 0.95
+    // 25 min → 300 * 0.965 = 289.5 → 290
+    expect(estimateFTP(activities)).toBe(290)
   })
 
   it('ignores runs', () => {
@@ -314,20 +334,30 @@ describe('estimateVO2max', () => {
 // ===================================================================
 
 describe('getVO2maxCategory', () => {
-  it('classifies male VO2max', () => {
-    expect(getVO2maxCategory(65)).toBe('Elite')
-    expect(getVO2maxCategory(55)).toBe('Excellent')
-    expect(getVO2maxCategory(47)).toBe('Good')
-    expect(getVO2maxCategory(40)).toBe('Average')
-    expect(getVO2maxCategory(30)).toBe('Below Average')
+  // Graded against recreational peers; bands derived from the age 35 male row
+  // [average 41, good 47] -> spread 6.
+  it('classifies male VO2max relative to recreational peers', () => {
+    expect(getVO2maxCategory(60, 35)).toBe('Elite')
+    expect(getVO2maxCategory(50, 35)).toBe('Excellent')
+    expect(getVO2maxCategory(44, 35)).toBe('Good')
+    expect(getVO2maxCategory(38, 35)).toBe('Average')
+    expect(getVO2maxCategory(30, 35)).toBe('Below Average')
   })
 
-  it('classifies female VO2max', () => {
-    expect(getVO2maxCategory(58, 'female')).toBe('Elite')
-    expect(getVO2maxCategory(50, 'female')).toBe('Excellent')
-    expect(getVO2maxCategory(42, 'female')).toBe('Good')
-    expect(getVO2maxCategory(35, 'female')).toBe('Average')
-    expect(getVO2maxCategory(25, 'female')).toBe('Below Average')
+  // Age 35 female row [average 35, good 41] -> spread 6.
+  it('classifies female VO2max relative to recreational peers', () => {
+    expect(getVO2maxCategory(50, 35, 'female')).toBe('Elite')
+    expect(getVO2maxCategory(44, 35, 'female')).toBe('Excellent')
+    expect(getVO2maxCategory(38, 35, 'female')).toBe('Good')
+    expect(getVO2maxCategory(31, 35, 'female')).toBe('Average')
+    expect(getVO2maxCategory(25, 35, 'female')).toBe('Below Average')
+  })
+
+  // The same VO2max grades higher as the peer group ages.
+  it('shifts bands with age for the same VO2max', () => {
+    expect(getVO2maxCategory(34, 25)).toBe('Below Average') // peers avg 43
+    expect(getVO2maxCategory(34, 45)).toBe('Average')       // peers avg 38
+    expect(getVO2maxCategory(34, 65)).toBe('Good')          // peers avg 31
   })
 })
 
@@ -822,6 +852,17 @@ describe('calculatePersonalRecords', () => {
     const fastest = records.find((r) => r.type === 'Fastest Ride (20km+)')
     expect(fastest).toBeDefined()
     expect(fastest!.value).toBeGreaterThan(30)
+  })
+
+  it('ignores corrupt rides with implausible average_speed', () => {
+    const activities = [
+      makeRide({ distance: 30000, average_speed: 9.72 }),  // 35 km/h, legit
+      makeRide({ distance: 45100, average_speed: 9020 }),  // 45km in ~5s, corrupt
+    ]
+    const records = calculatePersonalRecords(activities)
+    const fastest = records.find((r) => r.type === 'Fastest Ride (20km+)')
+    expect(fastest).toBeDefined()
+    expect(fastest!.value).toBe(35) // 9.72 * 3.6, not the corrupt 32472
   })
 
   it('finds longest run', () => {

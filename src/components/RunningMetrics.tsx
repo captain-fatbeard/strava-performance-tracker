@@ -12,7 +12,7 @@ interface RunningMetricsProps {
 }
 
 export function RunningMetrics({ activities, age, gender }: RunningMetricsProps) {
-  const metrics = useMemo(() => calculateRunningMetrics(activities), [activities])
+  const metrics = useMemo(() => calculateRunningMetrics(activities, age, gender), [activities, age, gender])
   const benchmarks = useMemo(() => getMotionistBenchmarks(age, gender), [age, gender])
 
   if (metrics.totalRuns === 0) {
