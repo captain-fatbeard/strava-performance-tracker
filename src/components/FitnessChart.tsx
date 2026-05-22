@@ -94,18 +94,18 @@ export function FitnessChart({ activities }: FitnessChartProps) {
         <div className="flex gap-8 flex-wrap max-md:gap-4">
           <span className="flex flex-col items-center">
             <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wider">CTL</span>
-            <span className="data-value text-2xl font-medium" style={{ color: chartTheme.colors.primary.main }}>{latestData.ctl}</span>
+            <span className="data-value text-2xl font-medium" style={{ color: chartTheme.colors.primary.main }}>{latestData.ctl.toFixed(1)}</span>
             <span className="text-[0.625rem] font-medium mt-0.5 rounded-full px-2 py-0.5" style={{ color: ctlLevel.color, backgroundColor: `${ctlLevel.color}15` }}>{ctlLevel.label}</span>
           </span>
           <span className="flex flex-col items-center">
             <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wider">ATL</span>
-            <span className="data-value text-2xl font-medium" style={{ color: chartTheme.colors.secondary.main }}>{latestData.atl}</span>
+            <span className="data-value text-2xl font-medium" style={{ color: chartTheme.colors.secondary.main }}>{latestData.atl.toFixed(1)}</span>
             <span className="text-[0.625rem] font-medium mt-0.5 rounded-full px-2 py-0.5" style={{ color: atlLevel.color, backgroundColor: `${atlLevel.color}15` }}>{atlLevel.label}</span>
           </span>
           <span className="flex flex-col items-center">
             <span className="text-[0.65rem] text-text-muted uppercase font-semibold tracking-wider">Form</span>
             <span className="data-value text-2xl font-medium" style={{ color: formStatus.color }}>
-              {latestData.tsb}
+              {latestData.tsb.toFixed(1)}
             </span>
             <span className="text-[0.625rem] font-medium mt-0.5 rounded-full px-2 py-0.5" style={{ color: formStatus.color, backgroundColor: `${formStatus.color}15` }}>{formStatus.label}</span>
           </span>
@@ -139,7 +139,7 @@ export function FitnessChart({ activities }: FitnessChartProps) {
                   <p style={{ margin: '0 0 4px', color: tooltipStyle.labelStyle?.color }}>{formatDateFull(label as string)}</p>
                   {payload.map((entry) => (
                     <p key={entry.dataKey as string} style={{ margin: '2px 0', color: entry.color }}>
-                      {entry.name}: {entry.value}
+                      {entry.name}: {typeof entry.value === 'number' ? entry.value.toFixed(1) : entry.value}
                     </p>
                   ))}
                   {data?.ftp && (

@@ -566,10 +566,15 @@ function summarizeWeek(
   const startKey = format(subDays(weekStart, 1), 'yyyy-MM-dd')
   const endDate = weekEnd > today ? today : weekEnd
   const endKey = format(endDate, 'yyyy-MM-dd')
-  const startSnap = fitnessSeries.find((p) => p.date === startKey) ?? null
-  const endSnap =
+  // fitnessSeries carries one-decimal CTL/ATL/TSB; the plan UI shows these as
+  // whole numbers, so round the snapshots here.
+  const roundSnap = (p: { ctl: number; atl: number; tsb: number } | null | undefined) =>
+    p ? { ctl: Math.round(p.ctl), atl: Math.round(p.atl), tsb: Math.round(p.tsb) } : null
+  const startSnap = roundSnap(fitnessSeries.find((p) => p.date === startKey))
+  const endSnap = roundSnap(
     fitnessSeries.find((p) => p.date === endKey) ??
-    (fitnessSeries.length > 0 ? fitnessSeries[fitnessSeries.length - 1] : null)
+      (fitnessSeries.length > 0 ? fitnessSeries[fitnessSeries.length - 1] : null),
+  )
 
   const weekActivities = activities.filter((a) => {
     const ad = new Date(a.start_date_local || a.start_date)
@@ -823,9 +828,9 @@ function PlanPage() {
       .map((p) => ({
         date: p.date,
         label: format(new Date(p.date), 'd. MMM', { locale: da }),
-        ctl: p.ctl,
-        atl: p.atl,
-        tsb: p.tsb,
+        ctl: Math.round(p.ctl),
+        atl: Math.round(p.atl),
+        tsb: Math.round(p.tsb),
         isWeek: p.date >= format(weekStart, 'yyyy-MM-dd'),
       }))
   }, [fitnessSeries, today, weekStart])
@@ -1146,7 +1151,7 @@ function PlanPage() {
               {/* Plan Recommendations */}
               {(() => {
                 const currentCtl =
-                  fitnessSeries.length > 0 ? fitnessSeries[fitnessSeries.length - 1].ctl : null
+                  fitnessSeries.length > 0 ? Math.round(fitnessSeries[fitnessSeries.length - 1].ctl) : null
                 const recs = buildPlanRecommendations(stats, derived, currentCtl)
                 const inLine = recs.length === 1 && recs[0].startsWith('Numbers line up')
                 return (

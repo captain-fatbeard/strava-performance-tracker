@@ -255,9 +255,11 @@ export function calculateFitnessOverTime(
 
     result.push({
       date: dateStr,
-      ctl: Math.round(ctl),
-      atl: Math.round(atl),
-      tsb: Math.round(tsb),
+      // Keep one decimal: CTL moves by at most ctl/42 (~1.3) per day, so integer
+      // rounding makes a smooth ~1.3 decay look like a 2-point overnight jump.
+      ctl: Math.round(ctl * 10) / 10,
+      atl: Math.round(atl * 10) / 10,
+      tsb: Math.round(tsb * 10) / 10,
       tss,
       ftp,
     })
