@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.22.1](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.22.0...v1.22.1) (2026-05-22)
+
+
+### Bug Fixes
+
+* **fitness:** show CTL/ATL/form to one decimal so daily decay isn't a rounding jump ([e3062e5](https://github.com/captain-fatbeard/strava-performance-tracker/commit/e3062e50581a8b5fda63ab628f6fbf980498ca21))
+
 ## [1.22.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.21.0...v1.22.0) (2026-05-20)
 
 
