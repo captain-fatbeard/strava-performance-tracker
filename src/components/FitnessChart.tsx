@@ -218,6 +218,95 @@ export function FitnessChart({ activities }: FitnessChartProps) {
           </div>
         </div>
       </div>
+
+      <CTLTargets currentCtl={latestData.ctl} />
+    </div>
+  )
+}
+
+const CTL_TARGETS: { ctl: number; tier?: string }[] = [
+  { ctl: 40, tier: 'Trained' },
+  { ctl: 50 },
+  { ctl: 60 },
+  { ctl: 70, tier: 'Well-Trained' },
+  { ctl: 85 },
+  { ctl: 100, tier: 'Elite' },
+]
+
+function CTLTargets({ currentCtl }: { currentCtl: number }) {
+  // CTL asymptotes to your daily-average TSS, so target CTL ≈ required TSS/day.
+  const nextTarget = CTL_TARGETS.find((t) => t.ctl > currentCtl)?.ctl
+
+  return (
+    <div className="mt-5 p-5 bg-bg-tertiary rounded-[var(--radius-md)]">
+      <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
+        <p className="text-[0.8rem] text-text-secondary">
+          <strong className="text-accent">CTL Targets</strong> — TSS load needed to reach each fitness level
+        </p>
+        <span className="text-[0.72rem] text-text-muted">
+          You're at <span className="data-value text-text-primary">{currentCtl.toFixed(1)}</span>
+          {nextTarget != null && (
+            <>
+              {' '}· next: <span className="data-value text-text-primary">{nextTarget}</span>{' '}
+              (+{(nextTarget - currentCtl).toFixed(1)} TSS/day)
+            </>
+          )}
+        </span>
+      </div>
+      <table className="w-full text-sm">
+        <thead>
+          <tr>
+            <th className="text-left p-3 text-text-muted font-semibold text-[0.7rem] uppercase tracking-wide border-b border-border">Target CTL</th>
+            <th className="text-left p-3 text-text-muted font-semibold text-[0.7rem] uppercase tracking-wide border-b border-border">Tier</th>
+            <th className="text-right p-3 text-text-muted font-semibold text-[0.7rem] uppercase tracking-wide border-b border-border">TSS / day</th>
+            <th className="text-right p-3 text-text-muted font-semibold text-[0.7rem] uppercase tracking-wide border-b border-border">TSS / week</th>
+            <th className="text-right p-3 text-text-muted font-semibold text-[0.7rem] uppercase tracking-wide border-b border-border">vs you</th>
+          </tr>
+        </thead>
+        <tbody>
+          {CTL_TARGETS.map((t) => {
+            const delta = t.ctl - currentCtl
+            const isCurrent = t.ctl === nextTarget
+            return (
+              <tr
+                key={t.ctl}
+                className={isCurrent ? 'bg-bg-secondary' : ''}
+              >
+                <td className="p-3 border-b border-border-subtle data-value text-text-primary">
+                  {t.ctl}
+                  {isCurrent && (
+                    <span
+                      className="ml-2 text-[0.625rem] font-medium rounded-full px-2 py-0.5"
+                      style={{ color: chartTheme.colors.primary.main, backgroundColor: `${chartTheme.colors.primary.main}15` }}
+                    >
+                      next
+                    </span>
+                  )}
+                </td>
+                <td className="p-3 border-b border-border-subtle text-text-secondary">{t.tier ?? '—'}</td>
+                <td className="p-3 border-b border-border-subtle text-right data-value text-text-primary">{t.ctl}</td>
+                <td className="p-3 border-b border-border-subtle text-right data-value text-text-primary">{t.ctl * 7}</td>
+                <td
+                  className="p-3 border-b border-border-subtle text-right data-value"
+                  style={{
+                    color:
+                      delta <= 0
+                        ? chartTheme.colors.semantic.positive
+                        : delta <= 10
+                          ? chartTheme.colors.amber.main
+                          : chartTheme.colors.neutral[400],
+                  }}
+                >
+                  {delta <= 0 ? 'reached' : `+${delta.toFixed(1)}/day`}
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+      <p className="mt-3 text-[0.72rem] text-text-muted leading-relaxed">
+        CTL converges toward your daily-average TSS. To move up, you need to sustain the required load for ~6 weeks.
+      </p>
     </div>
   )
 }
