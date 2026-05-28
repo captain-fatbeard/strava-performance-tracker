@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.23.0](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.22.1...v1.23.0) (2026-05-28)
+
+
+### Features
+
+* **fitness:** add CTL targets table showing TSS load needed per tier ([6958025](https://github.com/captain-fatbeard/strava-performance-tracker/commit/695802564bc1a47eee20c1fef50dc53ab0506015))
+
 ### [1.22.1](https://github.com/captain-fatbeard/strava-performance-tracker/compare/v1.22.0...v1.22.1) (2026-05-22)
 
 
