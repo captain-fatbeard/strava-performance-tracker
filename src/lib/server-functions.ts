@@ -77,7 +77,7 @@ export const fetchIntervalsActivities = createServerFn({ method: 'POST' })
   })
 
 export const fetchIntervalsActivityDetails = createServerFn({ method: 'POST' })
-  .inputValidator((data: { passphrase: string; activityId: number }) => data)
+  .inputValidator((data: { passphrase: string; activityId: number; riderWeight?: number }) => data)
   .handler(async ({ data }): Promise<ActivityDetailsJson | null> => {
     const env = requireAuth(data.passphrase)
 
@@ -87,7 +87,7 @@ export const fetchIntervalsActivityDetails = createServerFn({ method: 'POST' })
 
     const apiId = toIntervalsApiId(data.activityId)
     const activity = await getIntervalsActivity(env.INTERVALS_API_KEY, apiId)
-    const wanted = ['time', 'watts', 'distance', 'heartrate', 'altitude', 'latlng']
+    const wanted = ['time', 'watts', 'distance', 'heartrate', 'altitude', 'velocity_smooth', 'latlng']
     const available = activity.stream_types
       ? wanted.filter((t) => activity.stream_types!.includes(t))
       : wanted
@@ -95,5 +95,5 @@ export const fetchIntervalsActivityDetails = createServerFn({ method: 'POST' })
       ? await getIntervalsStreams(env.INTERVALS_API_KEY, apiId, available)
       : { numeric: {} }
 
-    return buildDetailsFromIntervals(activity, streams)
+    return buildDetailsFromIntervals(activity, streams, data.riderWeight)
   })

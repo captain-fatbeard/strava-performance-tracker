@@ -143,6 +143,10 @@ export interface ActivityDetailsJson {
   best_efforts: StravaBestEffort[]
   summary_polyline: string | null
   photo_url: string | null
+  // True when power values were estimated from speed/gradient physics
+  // (no power meter on the ride), like Strava's estimated power.
+  power_estimated?: boolean
+  estimated_avg_watts?: number
   power_per_km?: number[]
   // Best average power (watts) for each window in POWER_CURVE_DURATIONS, keyed by
   // duration in seconds. Computed from the watts + time streams at sync time.

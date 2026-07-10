@@ -8,6 +8,8 @@ import {
   dedupeAgainstExisting,
   encodePolyline,
   computeSplitsFromStreams,
+  estimatePowerStream,
+  averageMovingPower,
   type IntervalsActivity,
 } from '~/lib/intervals'
 import type { StravaActivity } from '~/lib/strava'
@@ -34,6 +36,7 @@ function makeIntervalsActivity(overrides: Partial<IntervalsActivity> = {}): Inte
     max_heartrate: 169,
     average_cadence: 79.77,
     icu_training_load: 102,
+    icu_weight: null,
     calories: 1127,
     device_name: 'Garmin Edge 830',
     description: null,
@@ -165,6 +168,65 @@ describe('encodePolyline', () => {
 
   it('returns an empty string for no points', () => {
     expect(encodePolyline([])).toBe('')
+  })
+})
+
+describe('estimatePowerStream', () => {
+  // Constant 30 km/h (8.33 m/s) on a dead-flat road, 75 kg rider.
+  // Physics says roughly 150 W (aero-dominated) — sanity-check the model.
+  function flatRide(n: number, speedMs: number) {
+    const time = Array.from({ length: n }, (_, i) => i)
+    const velocity = Array.from({ length: n }, () => speedMs)
+    const distance = Array.from({ length: n }, (_, i) => i * speedMs)
+    const altitude = Array.from({ length: n }, () => 10)
+    return { time, velocity, distance, altitude }
+  }
+
+  it('estimates ~150W for 30 km/h on the flat at 75 kg', () => {
+    const { time, velocity, distance, altitude } = flatRide(600, 8.33)
+    const watts = estimatePowerStream(time, velocity, distance, altitude, 75)
+    const avg = averageMovingPower(watts, velocity)
+    expect(avg).toBeGreaterThan(120)
+    expect(avg).toBeLessThan(180)
+  })
+
+  it('estimates more power uphill than on the flat at the same speed', () => {
+    const { time, velocity, distance } = flatRide(600, 5)
+    const flat = Array.from({ length: 600 }, () => 10)
+    const climb = Array.from({ length: 600 }, (_, i) => 10 + i * 5 * 0.05) // 5% grade
+    const flatAvg = averageMovingPower(
+      estimatePowerStream(time, velocity, distance, flat, 75),
+      velocity
+    )
+    const climbAvg = averageMovingPower(
+      estimatePowerStream(time, velocity, distance, climb, 75),
+      velocity
+    )
+    expect(climbAvg).toBeGreaterThan(flatAvg * 2)
+  })
+
+  it('estimates zero power when stationary', () => {
+    const n = 60
+    const time = Array.from({ length: n }, (_, i) => i)
+    const velocity = Array.from({ length: n }, () => 0)
+    const distance = Array.from({ length: n }, () => 0)
+    const altitude = Array.from({ length: n }, () => 10)
+    const watts = estimatePowerStream(time, velocity, distance, altitude, 75)
+    expect(Math.max(...watts)).toBe(0)
+  })
+
+  it('a heavier rider needs more power on a climb', () => {
+    const { time, velocity, distance } = flatRide(600, 5)
+    const climb = Array.from({ length: 600 }, (_, i) => 10 + i * 5 * 0.05)
+    const light = averageMovingPower(
+      estimatePowerStream(time, velocity, distance, climb, 60),
+      velocity
+    )
+    const heavy = averageMovingPower(
+      estimatePowerStream(time, velocity, distance, climb, 95),
+      velocity
+    )
+    expect(heavy).toBeGreaterThan(light)
   })
 })
 

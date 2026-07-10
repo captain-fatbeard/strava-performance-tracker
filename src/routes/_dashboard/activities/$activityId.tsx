@@ -15,6 +15,7 @@ import {
   fetchCachedActivityDetails,
   cacheActivityDetails,
   clearCachedActivityDetails,
+  upsertActivities,
   isSupabaseConfigured,
 } from '~/lib/storage/supabase-client'
 import { formatDateFull, chartTheme, tooltipStyle } from '~/lib/chart-theme'
@@ -54,7 +55,7 @@ function workoutTypeLabel(activityType: string, workoutType: number): string {
 
 function ActivityDetailPage() {
   const { activityId } = Route.useParams()
-  const { activities } = useDashboard()
+  const { activities, athlete, weight } = useDashboard()
   const [details, setDetails] = useState<ActivityDetailsJson | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -71,7 +72,7 @@ function ActivityDetailPage() {
     if (!passphrase) return null
 
     const detailsJson = await fetchIntervalsActivityDetails({
-      data: { passphrase, activityId: id },
+      data: { passphrase, activityId: id, riderWeight: weight },
     })
     if (!detailsJson) return null
 
@@ -79,6 +80,17 @@ function ActivityDetailPage() {
 
     if (isSupabaseConfigured()) {
       cacheActivityDetails(id, detailsJson)
+
+      // Patch estimated watts onto the summary row so scores/TSS pick it up
+      // even when details were first fetched here rather than via Sync All.
+      if (detailsJson.power_estimated && detailsJson.estimated_avg_watts) {
+        const current = activities.find((a) => a.id === id)
+        if (current && !current.average_watts) {
+          upsertActivities(athlete.id, [
+            { ...current, average_watts: detailsJson.estimated_avg_watts },
+          ])
+        }
+      }
     }
 
     return detailsJson
@@ -243,7 +255,13 @@ function ActivityDetailPage() {
           <StatCard label="Max HR" value={`${Math.round(summary.max_heartrate)} bpm`} />
         )}
         {summary.average_watts && (
-          <StatCard label="Avg Power" value={`${Math.round(summary.average_watts)} W`} />
+          <StatCard
+            label={details?.power_estimated ? 'Est. Avg Power' : 'Avg Power'}
+            value={`${Math.round(summary.average_watts)} W`}
+          />
+        )}
+        {!summary.average_watts && details?.estimated_avg_watts && (
+          <StatCard label="Est. Avg Power" value={`${Math.round(details.estimated_avg_watts)} W`} />
         )}
         {summary.max_watts && (
           <StatCard label="Max Power" value={`${Math.round(summary.max_watts)} W`} />

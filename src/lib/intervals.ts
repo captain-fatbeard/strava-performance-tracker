@@ -46,6 +46,7 @@ export interface IntervalsActivity {
   max_heartrate: number | null
   average_cadence: number | null
   icu_training_load: number | null
+  icu_weight: number | null
   calories: number | null
   device_name: string | null
   description: string | null
@@ -263,6 +264,101 @@ export function computeSplitsFromStreams(
   return splits
 }
 
+// --- Physics-based power estimation (for rides without a power meter) ---
+//
+// Same approach as Strava's estimated power: at each sample, the power needed
+// to overcome rolling resistance, air drag and gravity on the gradient. No
+// wind data exists, so assume still air — accurate on average, off in strong
+// head/tailwinds. Acceleration is deliberately ignored: GPS speed derivatives
+// are noise-dominated and Strava's estimates (the baseline this replaces,
+// ~150W on the user's regular commute) exclude it too.
+const GRAVITY = 9.81 // m/s²
+const AIR_DENSITY = 1.226 // kg/m³ at sea level
+const CDA = 0.32 // m² — road bike, hands on hoods
+const CRR = 0.005 // rolling resistance, asphalt
+const BIKE_WEIGHT_KG = 9 // bike + bottles + kit
+const DRIVETRAIN_EFFICIENCY = 0.975
+const GRADE_WINDOW_M = 30 // smooth barometric altitude over this distance
+const MOVING_SPEED_MS = 0.5
+
+export function estimatePowerStream(
+  timeStream: number[],
+  velocityStream: number[],
+  distanceStream: number[],
+  altitudeStream: number[],
+  riderWeightKg: number
+): number[] {
+  const n = Math.min(
+    timeStream.length,
+    velocityStream.length,
+    distanceStream.length,
+    altitudeStream.length
+  )
+  if (n < 2) return []
+
+  const mass = riderWeightKg + BIKE_WEIGHT_KG
+  const watts = new Array<number>(n).fill(0)
+
+  // Grade from altitude over a trailing distance window to denoise barometric
+  // jitter (per-sample altitude deltas are mostly noise).
+  let gradeStartIdx = 0
+
+  for (let i = 1; i < n; i++) {
+    const dt = timeStream[i] - timeStream[i - 1]
+    if (dt <= 0 || dt > 10) continue // recording pause
+
+    const v = velocityStream[i]
+    if (!v || v < MOVING_SPEED_MS) continue
+
+    while (
+      gradeStartIdx < i - 1 &&
+      distanceStream[i] - distanceStream[gradeStartIdx + 1] >= GRADE_WINDOW_M
+    ) {
+      gradeStartIdx++
+    }
+    const dDist = distanceStream[i] - distanceStream[gradeStartIdx]
+    const dAlt = altitudeStream[i] - altitudeStream[gradeStartIdx]
+    const grade = dDist > 1 ? Math.max(-0.25, Math.min(0.25, dAlt / dDist)) : 0
+
+    const rolling = CRR * mass * GRAVITY * v
+    const gravity = mass * GRAVITY * grade * v
+    const aero = 0.5 * AIR_DENSITY * CDA * v * v * v
+
+    const p = (rolling + gravity + aero) / DRIVETRAIN_EFFICIENCY
+    watts[i] = Math.max(0, Math.min(1500, p))
+  }
+
+  // Light smoothing (5-sample moving average) to tame accel/grade noise.
+  const smoothed = new Array<number>(n)
+  for (let i = 0; i < n; i++) {
+    let sum = 0
+    let count = 0
+    for (let j = Math.max(0, i - 2); j <= Math.min(n - 1, i + 2); j++) {
+      sum += watts[j]
+      count++
+    }
+    smoothed[i] = Math.round(sum / count)
+  }
+  return smoothed
+}
+
+// Average power over moving samples (coasting counts as 0W, stops excluded).
+export function averageMovingPower(
+  wattsStream: number[],
+  velocityStream: number[]
+): number {
+  let sum = 0
+  let count = 0
+  const n = Math.min(wattsStream.length, velocityStream.length)
+  for (let i = 0; i < n; i++) {
+    if (velocityStream[i] >= MOVING_SPEED_MS) {
+      sum += wattsStream[i]
+      count++
+    }
+  }
+  return count > 0 ? Math.round(sum / count) : 0
+}
+
 // Keep at most `max` points, always including the last one, so encoded
 // polylines stay summary-sized like Strava's were.
 function downsample<T>(points: T[], max: number): T[] {
@@ -277,18 +373,45 @@ function downsample<T>(points: T[], max: number): T[] {
 
 export function buildDetailsFromIntervals(
   activity: IntervalsActivity,
-  streams: { numeric: Record<string, number[]>; latlng?: Array<[number, number]> }
+  streams: { numeric: Record<string, number[]>; latlng?: Array<[number, number]> },
+  riderWeightKg?: number
 ): ActivityDetailsJson {
   const { numeric, latlng } = streams
 
   let powerPerKm: number[] | undefined
   let powerCurve: Record<number, number> | undefined
+  let powerEstimated: boolean | undefined
+  let estimatedAvgWatts: number | undefined
+
   if (numeric.watts?.length) {
     if (numeric.distance?.length) {
       powerPerKm = computePowerPerKm(numeric.distance, numeric.watts)
     }
     if (numeric.time?.length) {
       powerCurve = computePowerCurve(numeric.time, numeric.watts)
+    }
+  } else if (
+    activity.type === 'Ride' && // outdoor rides only; virtual rides always have watts
+    numeric.time?.length &&
+    numeric.velocity_smooth?.length &&
+    numeric.distance?.length &&
+    numeric.altitude?.length
+  ) {
+    const weight = activity.icu_weight ?? riderWeightKg ?? 75
+    const estimated = estimatePowerStream(
+      numeric.time,
+      numeric.velocity_smooth,
+      numeric.distance,
+      numeric.altitude,
+      weight
+    )
+    if (estimated.length) {
+      powerEstimated = true
+      estimatedAvgWatts = averageMovingPower(estimated, numeric.velocity_smooth)
+      powerPerKm = computePowerPerKm(numeric.distance, estimated)
+      // Deliberately no power_curve and no normalized power: records,
+      // power-duration peaks and NP stay real-meter only, matching how
+      // Strava treated estimated rides.
     }
   }
 
@@ -314,6 +437,8 @@ export function buildDetailsFromIntervals(
     best_efforts: [],
     summary_polyline: latlng?.length ? encodePolyline(downsample(latlng, 500)) : null,
     photo_url: null,
+    power_estimated: powerEstimated,
+    estimated_avg_watts: estimatedAvgWatts,
     power_per_km: powerPerKm,
     power_curve: powerCurve,
   }

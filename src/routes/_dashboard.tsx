@@ -196,6 +196,12 @@ function DashboardLayout() {
   // Derive age from birthday
   const age = useMemo(() => calculateAge(birthday), [birthday])
 
+  // Weight readable from async callbacks without stale closures
+  const weightRef = useRef(weight)
+  useEffect(() => {
+    weightRef.current = weight
+  }, [weight])
+
   // Auto-calculate Max HR and Resting HR from activity data
   const maxHRData = useMemo(() => calculateMaxHR(activities, age), [activities, age])
   const restingHRData = useMemo(() => calculateRestingHR(activities, age, gender), [activities, age, gender])
@@ -239,10 +245,19 @@ function DashboardLayout() {
       })
 
       const existing = activitiesRef.current
-      const fresh = dedupeAgainstExisting(fetchedActivities, existing)
-
       const byId = new Map<number, StravaActivity>()
       for (const a of existing) byId.set(a.id, a)
+
+      // Preserve locally-enriched fields (estimated power patched onto rides
+      // without a power meter) that a re-fetched copy from intervals.icu
+      // wouldn't carry — otherwise every sync wipes the estimates.
+      const fresh = dedupeAgainstExisting(fetchedActivities, existing).map((a) => {
+        const prev = byId.get(a.id)
+        return prev?.average_watts && !a.average_watts
+          ? { ...a, average_watts: prev.average_watts }
+          : a
+      })
+
       for (const a of fresh) byId.set(a.id, a)
       applyActivities(
         Array.from(byId.values()).sort(
@@ -257,44 +272,52 @@ function DashboardLayout() {
     [applyActivities]
   )
 
-  const handleSyncAll = useCallback(async () => {
-    setIsSyncingAll(true)
-    setSyncProgress(null)
-    try {
-      // Phase 1: Sync activity list
-      await syncActivities(true)
-
-      // Phase 2: Fetch details for rides without cached details
+  // Fetch and cache details for intervals.icu activities that don't have them
+  // yet. Legacy Strava-era activities keep whatever details were cached before
+  // the API access ended. Rides without a power meter get physics-estimated
+  // watts patched onto their summary so scores, TSS and FTP inputs keep
+  // working like they did with Strava's estimates.
+  const backfillDetails = useCallback(
+    async (athleteId: number, withProgress: boolean) => {
       if (!isSupabaseConfigured()) return
-
-      const storedAthlete = await storage.auth.getAthlete()
-      if (!storedAthlete) return
-
-      // Wait for upsert to complete before querying for uncached
-      await new Promise((r) => setTimeout(r, 1000))
-
-      // Details can only be fetched for intervals.icu activities. Legacy
-      // Strava-era activities keep whatever details were cached before the
-      // API access ended.
-      const uncachedIds = (await fetchActivityIdsWithoutDetails(storedAthlete.id)).filter(
-        isIntervalsActivityId
-      )
-      if (uncachedIds.length === 0) return
-
-      setSyncProgress({ current: 0, total: uncachedIds.length })
 
       const passphrase = await storage.auth.getPassphrase()
       if (!passphrase) return
 
+      const uncachedIds = (await fetchActivityIdsWithoutDetails(athleteId)).filter(
+        isIntervalsActivityId
+      )
+      if (uncachedIds.length === 0) return
+
+      if (withProgress) setSyncProgress({ current: 0, total: uncachedIds.length })
+
       for (let i = 0; i < uncachedIds.length; i++) {
-        setSyncProgress({ current: i + 1, total: uncachedIds.length })
+        if (withProgress) setSyncProgress({ current: i + 1, total: uncachedIds.length })
 
         try {
           const detailsJson = await fetchIntervalsActivityDetails({
-            data: { passphrase, activityId: uncachedIds[i] },
+            data: {
+              passphrase,
+              activityId: uncachedIds[i],
+              riderWeight: weightRef.current,
+            },
           })
-          if (detailsJson) {
-            cacheActivityDetails(uncachedIds[i], detailsJson)
+          if (!detailsJson) continue
+
+          cacheActivityDetails(uncachedIds[i], detailsJson)
+
+          if (detailsJson.power_estimated && detailsJson.estimated_avg_watts) {
+            const existing = activitiesRef.current.find((a) => a.id === uncachedIds[i])
+            if (existing && !existing.average_watts) {
+              const patched: StravaActivity = {
+                ...existing,
+                average_watts: detailsJson.estimated_avg_watts,
+              }
+              upsertActivities(athleteId, [patched])
+              applyActivities(
+                activitiesRef.current.map((a) => (a.id === patched.id ? patched : a))
+              )
+            }
           }
         } catch (err) {
           console.warn(`Failed to fetch details for activity ${uncachedIds[i]}:`, err)
@@ -305,13 +328,32 @@ function DashboardLayout() {
           await new Promise((r) => setTimeout(r, 300))
         }
       }
+    },
+    [applyActivities]
+  )
+
+  const handleSyncAll = useCallback(async () => {
+    setIsSyncingAll(true)
+    setSyncProgress(null)
+    try {
+      // Phase 1: Sync activity list
+      await syncActivities(true)
+
+      const storedAthlete = await storage.auth.getAthlete()
+      if (!storedAthlete) return
+
+      // Wait for upsert to complete before querying for uncached
+      await new Promise((r) => setTimeout(r, 1000))
+
+      // Phase 2: Fetch details for activities without cached details
+      await backfillDetails(storedAthlete.id, true)
     } catch (err) {
       console.error('Sync all failed:', err)
     } finally {
       setIsSyncingAll(false)
       setSyncProgress(null)
     }
-  }, [syncActivities])
+  }, [syncActivities, backfillDetails])
 
   // Persist settings changes to database (only after initial load)
   useEffect(() => {
@@ -382,6 +424,11 @@ function DashboardLayout() {
       // Background sync with intervals.icu — never clear auth on sync failure
       try {
         await syncActivities(false)
+        // Backfill details (and estimated power) for any new activities in
+        // the background; the 1.5s delay lets the activity upsert land first.
+        new Promise((r) => setTimeout(r, 1500))
+          .then(() => backfillDetails(storedAthlete.id, false))
+          .catch((err) => console.warn('Details backfill failed:', err))
       } catch (err) {
         console.warn('intervals.icu sync failed, using cached data:', err)
         if (!hasCachedData) {
