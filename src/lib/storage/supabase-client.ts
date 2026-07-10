@@ -1034,7 +1034,7 @@ export async function patchActivityPowerCurve(
 // Plan week phase overrides. Persists the chosen phase per past week so the
 // Plan History view doesn't drift when TSB/ATL recalculate from late syncs.
 
-export type PlanPhaseValue = 'recovery' | 'build'
+export type PlanPhaseValue = 'recovery' | 'build' | 'paused'
 
 export interface PlanWeekPhase {
   weekStart: string // YYYY-MM-DD (Monday)

@@ -81,6 +81,7 @@ const EASY_TYPES: SessionType[] = ['z2', 'long', 'run']
 const PHASE_WEEK_TARGETS: Record<PlanPhase, { intensity: number; easy: number; rest: number }> = {
   recovery: { intensity: 0, easy: 4, rest: 1 },
   build: { intensity: 2, easy: 3, rest: 2 },
+  paused: { intensity: 0, easy: 0, rest: 7 },
 }
 
 function countWeekShape(template: PlanSession[]): { intensity: number; easy: number; rest: number } {
@@ -116,6 +117,12 @@ const DERIVED_PHASE_META: Record<DerivedPhase, { title: string; tone: string; de
     tone: 'text-rose-300 bg-rose-500/10 border-rose-500/30',
     description: '3+ intensity days — sharpening fitness, form drops short-term',
   },
+}
+
+const PAUSED_WEEK_META = {
+  title: 'Paused',
+  tone: 'text-neutral-300 bg-neutral-500/10 border-neutral-500/30',
+  description: 'Plan on hold — no sessions scheduled, nothing counts as missed. Rides still record TSS and fitness.',
 }
 
 // Hard-intensity types (threshold/VO2) drive Peak classification. Tempo-run is
@@ -330,7 +337,21 @@ const BUILD_PLAN: PlanSession[] = [
   { type: 'rest', label: 'Rest', detail: 'Full off day', duration: '—', durationMinMin: 0, durationMaxMin: 30, powerFloor: null, powerCeiling: null, allowBelow: true },
 ]
 
-type PlanPhase = 'recovery' | 'build'
+// A paused week schedules nothing — every day is an unscored off day. Any
+// riding still records TSS/fitness; it just isn't judged against a plan.
+const PAUSED_PLAN: PlanSession[] = Array.from({ length: 7 }, () => ({
+  type: 'rest' as SessionType,
+  label: 'Paused',
+  detail: 'Plan on hold — ride if you feel like it',
+  duration: '—',
+  durationMinMin: 0,
+  durationMaxMin: 0,
+  powerFloor: null,
+  powerCeiling: null,
+  allowBelow: true,
+}))
+
+type PlanPhase = 'recovery' | 'build' | 'paused'
 type PlanPhaseSetting = 'auto' | PlanPhase
 
 const PHASE_STORAGE_KEY = 'formlab:plan-phase'
@@ -360,6 +381,11 @@ const PHASE_META: Record<PlanPhase, { title: string; goalLabel: string; goalDeta
     goalLabel: 'Goal',
     goalDetail: 'Fitness climbs while form stays neutral',
   },
+  paused: {
+    title: 'Plan Paused',
+    goalLabel: 'Status',
+    goalDetail: 'No sessions scheduled this week',
+  },
 }
 
 const SESSION_COLORS: Record<SessionType, { bg: string; text: string; border: string; dot: string }> = {
@@ -375,9 +401,10 @@ const SESSION_COLORS: Record<SessionType, { bg: string; text: string; border: st
   'tempo-run': { bg: 'bg-lime-500/10', text: 'text-lime-300', border: 'border-lime-500/30', dot: 'bg-lime-400' },
 }
 
-type FitVerdict = 'on-target' | 'below' | 'above' | 'over-duration' | 'under-duration' | 'rest-skipped' | 'pending' | 'none' | 'future'
+type FitVerdict = 'on-target' | 'below' | 'above' | 'over-duration' | 'under-duration' | 'rest-skipped' | 'pending' | 'none' | 'future' | 'paused'
 
 const FIT_META: Record<FitVerdict, { label: string; tone: string; positive: boolean }> = {
+  'paused': { label: 'Paused', tone: 'text-text-muted bg-bg-tertiary border-border-subtle', positive: true },
   'on-target': { label: 'On target', tone: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/30', positive: true },
   'below': { label: 'Easier than planned', tone: 'text-sky-300 bg-sky-500/10 border-sky-500/30', positive: true },
   'above': { label: 'Harder than planned', tone: 'text-amber-300 bg-amber-500/10 border-amber-500/30', positive: false },
@@ -534,12 +561,15 @@ function summarizeWeek(
   dayOverrides?: Record<number, SessionType>,
 ): WeekSummary {
   const ftp = thresholds.ftp
-  const baseTemplate = phase === 'recovery' ? RECOVERY_PLAN : BUILD_PLAN
-  const template = dayOverrides
-    ? baseTemplate.map((s, i) =>
-        i in dayOverrides ? SESSION_CATALOG[dayOverrides[i]] : s,
-      )
-    : baseTemplate
+  const paused = phase === 'paused'
+  const baseTemplate = paused ? PAUSED_PLAN : phase === 'recovery' ? RECOVERY_PLAN : BUILD_PLAN
+  // Day overrides don't apply to paused weeks — nothing is scheduled.
+  const template =
+    dayOverrides && !paused
+      ? baseTemplate.map((s, i) =>
+          i in dayOverrides ? SESSION_CATALOG[dayOverrides[i]] : s,
+        )
+      : baseTemplate
 
   const days: PlanDay[] = template.map((session, i) => {
     const date = addDays(weekStart, i)
@@ -547,13 +577,15 @@ function summarizeWeek(
     const thisDayIsToday = isToday(date)
     const actual = isPastOrToday ? aggregateDay(activities, date) : null
     let verdict: FitVerdict
-    if (!isPastOrToday) verdict = 'future'
+    if (paused) verdict = 'paused'
+    else if (!isPastOrToday) verdict = 'future'
     else if (thisDayIsToday && !actual && session.type !== 'rest') verdict = 'pending'
     else verdict = computeFit(session, actual, ftp)
     return { session, date, actual, verdict, isToday: thisDayIsToday, isPastOrToday }
   })
 
-  const scored = days.filter((d) => d.isPastOrToday && d.verdict !== 'pending')
+  // Paused weeks score nothing — riding isn't "rest skipped", skipping isn't "missed".
+  const scored = paused ? [] : days.filter((d) => d.isPastOrToday && d.verdict !== 'pending')
   const onPlan = scored.filter((d) => {
     if (d.verdict === 'on-target' || d.verdict === 'under-duration') return true
     if (d.verdict === 'below') return d.session.allowBelow
@@ -775,6 +807,21 @@ function PlanPage() {
     setPhaseSetting(autoPhase)
   }, [overridesLoaded, athlete, weekStart, weekPhaseOverrides, autoPhase, fitnessSeries.length])
 
+  const isPaused = activePhase === 'paused'
+
+  // Pause/resume the plan for the current week. Persisted through the same
+  // per-week phase row the auto-detect uses; resuming re-locks the week to
+  // the phase the fitness numbers currently suggest.
+  const setWeekPaused = async (paused: boolean) => {
+    const wsKey = format(weekStart, 'yyyy-MM-dd')
+    const next: PlanPhase = paused ? 'paused' : autoPhase
+    setPhaseSetting(next)
+    setWeekPhaseOverrides((prev) => ({ ...prev, [wsKey]: next }))
+    if (athlete && isSupabaseConfigured()) {
+      await upsertPlanWeekPhase(athlete.id, wsKey, next)
+    }
+  }
+
   // Current week (uses user-selected phase)
   const currentWeek = useMemo(
     () =>
@@ -913,9 +960,11 @@ function PlanPage() {
             big={scoredCount === 0 ? '—' : `${sessionsLogged}/${scoredCount}`}
             label="Sessions logged"
             hint={
-              scoredCount === 0
-                ? 'Week just started'
-                : `${scoredCount - sessionsLogged} missed · today pending`
+              isPaused
+                ? 'Plan paused'
+                : scoredCount === 0
+                  ? 'Week just started'
+                  : `${scoredCount - sessionsLogged} missed · today pending`
             }
             accentPositive={scoredCount > 0 && sessionsLogged === scoredCount}
           />
@@ -923,9 +972,11 @@ function PlanPage() {
             big={scoredCount === 0 ? '—' : `${adherencePct}%`}
             label="On-plan adherence"
             hint={
-              scoredCount === 0
-                ? 'No completed days yet'
-                : `${onPlanCount} of ${scoredCount} within target`
+              isPaused
+                ? 'Plan paused'
+                : scoredCount === 0
+                  ? 'No completed days yet'
+                  : `${onPlanCount} of ${scoredCount} within target`
             }
             accentPositive={adherencePct >= 75}
           />
@@ -1074,7 +1125,7 @@ function PlanPage() {
         {(() => {
           const template = planDays.map((d) => d.session)
           const derived = classifyDerivedPhase(template)
-          const meta = DERIVED_PHASE_META[derived]
+          const meta = isPaused ? PAUSED_WEEK_META : DERIVED_PHASE_META[derived]
           const stats = computeWeekStats(template)
           const totalNonRest = stats.easyMinutes + stats.intensityMinutes
           const easyPct = totalNonRest > 0 ? (stats.easyMinutes / totalNonRest) * 100 : 0
@@ -1088,10 +1139,43 @@ function PlanPage() {
                     {meta.title}
                   </span>
                 </div>
-                <span className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold">
-                  Planned vs actual
-                </span>
+                <div className="flex items-center gap-3">
+                  {!isPaused && (
+                    <span className="text-[0.7rem] text-text-muted uppercase tracking-wider font-semibold max-[480px]:hidden">
+                      Planned vs actual
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setWeekPaused(!isPaused)}
+                    className={`text-[0.7rem] font-semibold px-2.5 py-1 rounded border transition-colors ${
+                      isPaused
+                        ? 'text-accent border-accent/40 bg-accent/10 hover:bg-accent/20'
+                        : 'text-text-muted border-border-subtle hover:text-text-secondary hover:bg-bg-tertiary'
+                    }`}
+                    title={isPaused ? 'Resume the plan for this week' : 'Pause the plan for this week — no sessions, nothing counts as missed'}
+                  >
+                    {isPaused ? '▶ Resume plan' : '⏸ Pause week'}
+                  </button>
+                </div>
               </div>
+              {isPaused ? (
+                <div className="bg-bg-tertiary border border-border-subtle rounded-[var(--radius-md)] p-4 mb-2">
+                  <p className="text-sm text-text-secondary leading-relaxed">
+                    {PAUSED_WEEK_META.description}
+                  </p>
+                  <p className="text-[0.7rem] text-text-muted leading-relaxed mt-2">
+                    This week won't count against adherence in Plan History. Resuming re-locks the
+                    week to the phase your current fitness numbers suggest
+                    {phaseTsb !== null && (
+                      <> · TSB <span className="data-value">{phaseTsb >= 0 ? '+' : ''}{phaseTsb}</span></>
+                    )}
+                    {phaseAtl !== null && (
+                      <> · ATL <span className="data-value">{phaseAtl}</span></>
+                    )}
+                  </p>
+                </div>
+              ) : (
               <p className="text-[0.7rem] text-text-muted leading-relaxed mb-4">
                 {meta.description} · auto-classified from your selected sessions
                 {phaseTsb !== null && (
@@ -1101,7 +1185,10 @@ function PlanPage() {
                   <> · ATL <span className="data-value text-text-secondary">{phaseAtl}</span></>
                 )}
               </p>
+              )}
 
+              {isPaused ? null : (
+              <>
               {/* Stats panel */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
                 <StatTile
@@ -1187,11 +1274,14 @@ function PlanPage() {
                   </div>
                 )
               })()}
+              </>
+              )}
             </>
           )
         })()}
 
         {(() => {
+          if (isPaused) return null
           const shape = countWeekShape(planDays.map((d) => d.session))
           const target = PHASE_WEEK_TARGETS[activePhase]
           const issues: string[] = []
@@ -1211,6 +1301,7 @@ function PlanPage() {
           )
         })()}
 
+        {!isPaused && (
         <div className="grid grid-cols-7 gap-3 max-lg:grid-cols-4 max-md:grid-cols-2 max-[480px]:grid-cols-1">
           {planDays.map(({ session, date, actual, verdict, isToday: thisDayIsToday, isPastOrToday }, dayIdx) => {
             const colors = SESSION_COLORS[session.type]
@@ -1380,7 +1471,9 @@ function PlanPage() {
             )
           })}
         </div>
+        )}
 
+        {!isPaused && (
         <div className="mt-6 pt-6 border-t border-border-subtle grid grid-cols-3 gap-4 max-md:grid-cols-1">
           <div>
             <div className="text-[0.65rem] text-text-muted uppercase tracking-wider font-semibold mb-1">
@@ -1414,6 +1507,7 @@ function PlanPage() {
             </div>
           </div>
         </div>
+        )}
       </div>
 
       {/* Plan History */}
@@ -1629,13 +1723,15 @@ function WeekHistoryRow({
 }) {
   const { weekStart, weekEnd, phase, adherencePct, sessionsLogged, scoredCount, startSnap, endSnap, totalTimeMin, totalActivities, days, actualTSS } = summary
 
+  const isPausedWeek = phase === 'paused'
   const ctlDelta = startSnap && endSnap ? endSnap.ctl - startSnap.ctl : null
   const atlDelta = startSnap && endSnap ? endSnap.atl - startSnap.atl : null
   const tsbDelta = startSnap && endSnap ? endSnap.tsb - startSnap.tsb : null
-  const plannedTSS = isPrePlan ? null : computeWeekStats(days.map((d) => d.session)).totalTSS
+  const plannedTSS =
+    isPrePlan || isPausedWeek ? null : computeWeekStats(days.map((d) => d.session)).totalTSS
   const actualTSSRounded = Math.round(actualTSS)
 
-  const phaseTone = isPrePlan
+  const phaseTone = isPrePlan || isPausedWeek
     ? 'text-text-muted bg-bg-tertiary border-border-subtle'
     : phase === 'recovery'
       ? 'text-teal-300 bg-teal-500/10 border-teal-500/30'
@@ -1661,15 +1757,19 @@ function WeekHistoryRow({
           </div>
         </div>
         <span className={`text-[0.6rem] uppercase tracking-wider font-semibold px-1.5 py-0.5 rounded border ${phaseTone}`}>
-          {isPrePlan ? 'Pre-plan' : phase === 'recovery' ? 'Recovery' : 'Build'}
+          {isPrePlan ? 'Pre-plan' : phase === 'recovery' ? 'Recovery' : phase === 'paused' ? 'Paused' : 'Build'}
           {isOverridden && !isPrePlan && <span className="ml-1 opacity-70">·</span>}
         </span>
       </div>
 
-      {/* Middle: adherence bar OR training-load summary for pre-plan */}
+      {/* Middle: adherence bar OR training-load summary for pre-plan/paused */}
       {isPrePlan ? (
         <div className="flex-1 min-w-48 max-md:w-full text-xs text-text-muted leading-relaxed">
           Raw training load — no plan was in effect this week.
+        </div>
+      ) : isPausedWeek ? (
+        <div className="flex-1 min-w-48 max-md:w-full text-xs text-text-muted leading-relaxed">
+          Plan paused — no sessions were scheduled, nothing counted as missed.
         </div>
       ) : (
         <div className="flex-1 min-w-48 max-md:w-full">
