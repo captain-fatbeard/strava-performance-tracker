@@ -1,14 +1,14 @@
-import type { StorageAdapter, AuthRepository, StravaTokens, StravaAthlete } from '../types'
+import type { StorageAdapter, AuthRepository, StravaAthlete } from '../types'
 import { STORAGE_KEYS } from '../keys'
 
 export function createAuthRepository(adapter: StorageAdapter): AuthRepository {
   return {
-    async getTokens(): Promise<StravaTokens | null> {
-      return adapter.get<StravaTokens>(STORAGE_KEYS.AUTH_TOKENS)
+    async getPassphrase(): Promise<string | null> {
+      return adapter.get<string>(STORAGE_KEYS.AUTH_PASSPHRASE)
     },
 
-    async setTokens(tokens: StravaTokens): Promise<void> {
-      await adapter.set(STORAGE_KEYS.AUTH_TOKENS, tokens)
+    async setPassphrase(passphrase: string): Promise<void> {
+      await adapter.set(STORAGE_KEYS.AUTH_PASSPHRASE, passphrase)
     },
 
     async getAthlete(): Promise<StravaAthlete | null> {
@@ -21,16 +21,10 @@ export function createAuthRepository(adapter: StorageAdapter): AuthRepository {
 
     async clear(): Promise<void> {
       await Promise.all([
-        adapter.remove(STORAGE_KEYS.AUTH_TOKENS),
+        adapter.remove(STORAGE_KEYS.AUTH_PASSPHRASE),
         adapter.remove(STORAGE_KEYS.AUTH_ATHLETE),
+        adapter.remove(STORAGE_KEYS.LEGACY_AUTH_TOKENS),
       ])
-    },
-
-    async isTokenExpired(): Promise<boolean> {
-      const tokens = await this.getTokens()
-      if (!tokens) return true
-      // Add 60 second buffer
-      return Date.now() / 1000 > tokens.expires_at - 60
     },
   }
 }

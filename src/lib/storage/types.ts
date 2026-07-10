@@ -1,7 +1,7 @@
-import type { StravaTokens, StravaAthlete } from '../strava'
+import type { StravaAthlete } from '../strava'
 
 // Re-export for convenience
-export type { StravaTokens, StravaAthlete }
+export type { StravaAthlete }
 
 // Storage Adapter interface - the core abstraction
 export interface StorageAdapter {
@@ -13,10 +13,9 @@ export interface StorageAdapter {
 
 // Repository interfaces
 export interface AuthRepository {
-  getTokens(): Promise<StravaTokens | null>
-  setTokens(tokens: StravaTokens): Promise<void>
+  getPassphrase(): Promise<string | null>
+  setPassphrase(passphrase: string): Promise<void>
   getAthlete(): Promise<StravaAthlete | null>
   setAthlete(athlete: StravaAthlete): Promise<void>
   clear(): Promise<void>
-  isTokenExpired(): Promise<boolean>
 }

@@ -6,8 +6,9 @@ import {
   type TimeRange,
   type ActivityType,
 } from '~/lib/storage/supabase-client'
-import { refreshStravaToken, fetchAllStravaActivities, fetchStravaActivity, fetchStravaStreams } from '~/lib/server-functions'
-import { type StravaActivity, type StravaAthlete, type StravaDetailedActivity, type ActivityDetailsJson, metersToKm, computePowerPerKm, computePowerCurve } from '~/lib/strava'
+import { fetchIntervalsActivities, fetchIntervalsActivityDetails } from '~/lib/server-functions'
+import { dedupeAgainstExisting, isIntervalsActivityId } from '~/lib/intervals'
+import { type StravaActivity, type StravaAthlete, metersToKm } from '~/lib/strava'
 import { estimateFTP, calculateMaxHR, calculateRestingHR, calculateAge } from '~/lib/performance'
 import { deriveThresholds } from '~/lib/tss'
 import {
@@ -28,8 +29,6 @@ import {
   upsertActivities,
   cacheActivityDetails,
   fetchActivityIdsWithoutDetails,
-  fetchRideIdsWithoutPowerCurve,
-  patchActivityPowerCurve,
   isSupabaseConfigured,
   type WeightEntry,
   type ActivityGroup,
@@ -209,63 +208,53 @@ function DashboardLayout() {
   // Track if settings have been loaded to avoid overwriting on mount
   const settingsLoaded = useRef(false)
 
-  // Reusable sync callback
+  // Mirror of `activities` that sync callbacks can read without stale closures.
+  // Kept in sync manually wherever activities are set from async flows.
+  const activitiesRef = useRef<StravaActivity[]>([])
+
+  const applyActivities = useCallback((merged: StravaActivity[]) => {
+    activitiesRef.current = merged
+    setActivities(merged)
+  }, [])
+
+  // Reusable sync callback. Cached activities (including the pre-intervals.icu
+  // Strava history) are always preserved; fetched activities that duplicate an
+  // existing one from the other source are dropped before merge and upsert.
   const syncActivities = useCallback(
     async (fetchAll: boolean) => {
-      const tokens = await storage.auth.getTokens()
+      const passphrase = await storage.auth.getPassphrase()
       const storedAthlete = await storage.auth.getAthlete()
-      if (!tokens || !storedAthlete) return
-
-      let currentTokens = tokens
-      if (await storage.auth.isTokenExpired()) {
-        try {
-          const newTokens = await refreshStravaToken({ data: { refreshToken: tokens.refresh_token } })
-          currentTokens = newTokens
-          await storage.auth.setTokens(newTokens)
-        } catch (err) {
-          console.error('Token refresh failed:', err)
-          // Clear auth only on token refresh failure — the refresh token is invalid
-          await storage.auth.clear()
-          navigate({ to: '/' })
-          return
-        }
-      }
+      if (!passphrase || !storedAthlete) return
 
       const afterDate = fetchAll
         ? undefined
         : (() => {
-            const oneYearAgo = new Date()
-            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
-            return oneYearAgo.toISOString()
+            const cutoff = new Date()
+            cutoff.setDate(cutoff.getDate() - 90)
+            return cutoff.toISOString()
           })()
 
-      const fetchedActivities = await fetchAllStravaActivities({
-        data: {
-          accessToken: currentTokens.access_token,
-          afterDate,
-        },
+      const fetchedActivities = await fetchIntervalsActivities({
+        data: { passphrase, afterDate },
       })
 
-      // On a partial sync, merge fresh activities with existing state so older
-      // cached activities outside the sync window are preserved.
-      if (fetchAll) {
-        setActivities(fetchedActivities)
-      } else {
-        setActivities((prev) => {
-          const byId = new Map<number, StravaActivity>()
-          for (const a of prev) byId.set(a.id, a)
-          for (const a of fetchedActivities) byId.set(a.id, a)
-          return Array.from(byId.values()).sort(
-            (a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime()
-          )
-        })
-      }
+      const existing = activitiesRef.current
+      const fresh = dedupeAgainstExisting(fetchedActivities, existing)
 
-      if (isSupabaseConfigured()) {
-        upsertActivities(storedAthlete.id, fetchedActivities)
+      const byId = new Map<number, StravaActivity>()
+      for (const a of existing) byId.set(a.id, a)
+      for (const a of fresh) byId.set(a.id, a)
+      applyActivities(
+        Array.from(byId.values()).sort(
+          (a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime()
+        )
+      )
+
+      if (isSupabaseConfigured() && fresh.length > 0) {
+        upsertActivities(storedAthlete.id, fresh)
       }
     },
-    []
+    [applyActivities]
   )
 
   const handleSyncAll = useCallback(async () => {
@@ -284,127 +273,36 @@ function DashboardLayout() {
       // Wait for upsert to complete before querying for uncached
       await new Promise((r) => setTimeout(r, 1000))
 
-      const uncachedIds = await fetchActivityIdsWithoutDetails(storedAthlete.id)
+      // Details can only be fetched for intervals.icu activities. Legacy
+      // Strava-era activities keep whatever details were cached before the
+      // API access ended.
+      const uncachedIds = (await fetchActivityIdsWithoutDetails(storedAthlete.id)).filter(
+        isIntervalsActivityId
+      )
       if (uncachedIds.length === 0) return
 
       setSyncProgress({ current: 0, total: uncachedIds.length })
 
-      const tokens = await storage.auth.getTokens()
-      if (!tokens) return
-
-      let currentTokens = tokens
-      if (await storage.auth.isTokenExpired()) {
-        currentTokens = await refreshStravaToken({ data: { refreshToken: tokens.refresh_token } })
-        await storage.auth.setTokens(currentTokens)
-      }
+      const passphrase = await storage.auth.getPassphrase()
+      if (!passphrase) return
 
       for (let i = 0; i < uncachedIds.length; i++) {
         setSyncProgress({ current: i + 1, total: uncachedIds.length })
 
         try {
-          // Re-check token every 50 activities
-          if (i > 0 && i % 50 === 0) {
-            if (await storage.auth.isTokenExpired()) {
-              const refreshed = await refreshStravaToken({ data: { refreshToken: currentTokens.refresh_token } })
-              currentTokens = refreshed
-              await storage.auth.setTokens(refreshed)
-            }
-          }
-
-          const detailed: StravaDetailedActivity = await fetchStravaActivity({
-            data: { accessToken: currentTokens.access_token, activityId: uncachedIds[i] },
+          const detailsJson = await fetchIntervalsActivityDetails({
+            data: { passphrase, activityId: uncachedIds[i] },
           })
-
-          const photoUrl = detailed.photos?.primary?.urls
-            ? detailed.photos.primary.urls['600'] || detailed.photos.primary.urls['100'] || Object.values(detailed.photos.primary.urls)[0] || null
-            : null
-
-          // Fetch power streams if available
-          let powerPerKm: number[] | undefined
-          let powerCurve: Record<number, number> | undefined
-          if (detailed.average_watts || detailed.device_watts) {
-            try {
-              const streams = await fetchStravaStreams({
-                data: { accessToken: currentTokens.access_token, activityId: uncachedIds[i], keys: ['watts', 'distance', 'time'] },
-              })
-              if (streams.watts?.length && streams.distance?.length) {
-                powerPerKm = computePowerPerKm(streams.distance, streams.watts)
-              }
-              if (streams.watts?.length && streams.time?.length) {
-                powerCurve = computePowerCurve(streams.time, streams.watts)
-              }
-            } catch {
-              // Non-critical, skip streams
-            }
+          if (detailsJson) {
+            cacheActivityDetails(uncachedIds[i], detailsJson)
           }
-
-          const detailsJson: ActivityDetailsJson = {
-            calories: detailed.calories,
-            device_name: detailed.device_name,
-            description: detailed.description || null,
-            workout_type: detailed.workout_type ?? null,
-            average_temp: detailed.average_temp,
-            perceived_exertion: detailed.perceived_exertion ?? null,
-            achievement_count: detailed.achievement_count ?? 0,
-            kudos_count: detailed.kudos_count ?? 0,
-            comment_count: detailed.comment_count ?? 0,
-            gear_name: detailed.gear?.name || null,
-            segment_efforts: detailed.segment_efforts || [],
-            splits_metric: detailed.splits_metric || [],
-            laps: detailed.laps || [],
-            best_efforts: detailed.best_efforts || [],
-            summary_polyline: detailed.map?.summary_polyline || null,
-            photo_url: photoUrl,
-            power_per_km: powerPerKm,
-            power_curve: powerCurve,
-          }
-
-          cacheActivityDetails(uncachedIds[i], detailsJson)
         } catch (err) {
           console.warn(`Failed to fetch details for activity ${uncachedIds[i]}:`, err)
-          // On rate limit, wait longer
-          await new Promise((r) => setTimeout(r, 30000))
         }
 
-        // Delay between requests to respect Strava rate limits (100 req / 15 min)
+        // Small delay between requests (intervals.icu allows 2500 req / 15 min)
         if (i < uncachedIds.length - 1) {
-          await new Promise((r) => setTimeout(r, 10000))
-        }
-      }
-
-      // Phase 3: Backfill power curves for rides detailed before the feature
-      // existed. Only needs the streams call (details already cached).
-      const curveBackfillIds = await fetchRideIdsWithoutPowerCurve(storedAthlete.id)
-      if (curveBackfillIds.length > 0) {
-        setSyncProgress({ current: 0, total: curveBackfillIds.length })
-
-        for (let i = 0; i < curveBackfillIds.length; i++) {
-          setSyncProgress({ current: i + 1, total: curveBackfillIds.length })
-
-          try {
-            if (i > 0 && i % 50 === 0 && (await storage.auth.isTokenExpired())) {
-              const refreshed = await refreshStravaToken({ data: { refreshToken: currentTokens.refresh_token } })
-              currentTokens = refreshed
-              await storage.auth.setTokens(refreshed)
-            }
-
-            const streams = await fetchStravaStreams({
-              data: { accessToken: currentTokens.access_token, activityId: curveBackfillIds[i], keys: ['watts', 'time'] },
-            })
-            if (streams.watts?.length && streams.time?.length) {
-              const curve = computePowerCurve(streams.time, streams.watts)
-              if (Object.keys(curve).length > 0) {
-                await patchActivityPowerCurve(curveBackfillIds[i], curve)
-              }
-            }
-          } catch (err) {
-            console.warn(`Failed to backfill power curve for activity ${curveBackfillIds[i]}:`, err)
-            await new Promise((r) => setTimeout(r, 30000))
-          }
-
-          if (i < curveBackfillIds.length - 1) {
-            await new Promise((r) => setTimeout(r, 10000))
-          }
+          await new Promise((r) => setTimeout(r, 300))
         }
       }
     } catch (err) {
@@ -439,12 +337,12 @@ function DashboardLayout() {
   useEffect(() => {
     async function init() {
       // First check auth - we need athlete ID for settings
-      const [tokens, storedAthlete] = await Promise.all([
-        storage.auth.getTokens(),
+      const [passphrase, storedAthlete] = await Promise.all([
+        storage.auth.getPassphrase(),
         storage.auth.getAthlete(),
       ])
 
-      if (!tokens || !storedAthlete) {
+      if (!passphrase || !storedAthlete) {
         navigate({ to: '/' })
         return
       }
@@ -474,19 +372,20 @@ function DashboardLayout() {
         // If we have cached data, show it immediately
         if (cachedActivities.length > 0) {
           hasCachedData = true
+          activitiesRef.current = cachedActivities
           setActivities(cachedActivities)
           setIsLoading(false)
         }
       }
       settingsLoaded.current = true
 
-      // Background sync with Strava — never clear auth on sync failure
+      // Background sync with intervals.icu — never clear auth on sync failure
       try {
         await syncActivities(false)
       } catch (err) {
-        console.warn('Strava sync failed, using cached data:', err)
+        console.warn('intervals.icu sync failed, using cached data:', err)
         if (!hasCachedData) {
-          setError('Failed to sync with Strava. Please try again later.')
+          setError('Failed to sync with intervals.icu. Please try again later.')
         }
       } finally {
         setIsLoading(false)
@@ -1059,7 +958,7 @@ function DashboardLayout() {
               )}
               {!syncProgress && (
                 <p className="text-[0.7rem] text-text-muted mt-2 leading-relaxed">
-                  Fetches your full Strava history and downloads detailed data (segments, splits, laps) for all rides.
+                  Fetches your full intervals.icu history and downloads detailed data (splits, route, power curves) for new activities.
                 </p>
               )}
             </div>

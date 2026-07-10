@@ -15,6 +15,9 @@ function createMockAdapter(): StorageAdapter {
     remove: vi.fn(async (key: string) => {
       store.delete(key)
     }),
+    clear: vi.fn(async () => {
+      store.clear()
+    }),
   }
 }
 
@@ -27,12 +30,15 @@ describe('createAuthRepository', () => {
     repo = createAuthRepository(adapter)
   })
 
-  it('stores and retrieves tokens', async () => {
-    const tokens = { access_token: 'abc', refresh_token: 'def', expires_at: 9999999999 }
-    await repo.setTokens(tokens)
-    const result = await repo.getTokens()
-    expect(result).toEqual(tokens)
-    expect(adapter.set).toHaveBeenCalledWith(STORAGE_KEYS.AUTH_TOKENS, tokens)
+  it('stores and retrieves the passphrase', async () => {
+    await repo.setPassphrase('open sesame')
+    const result = await repo.getPassphrase()
+    expect(result).toBe('open sesame')
+    expect(adapter.set).toHaveBeenCalledWith(STORAGE_KEYS.AUTH_PASSPHRASE, 'open sesame')
+  })
+
+  it('returns null when no passphrase is stored', async () => {
+    expect(await repo.getPassphrase()).toBeNull()
   })
 
   it('stores and retrieves athlete', async () => {
@@ -49,8 +55,8 @@ describe('createAuthRepository', () => {
     expect(result).toEqual(athlete)
   })
 
-  it('clears both tokens and athlete', async () => {
-    await repo.setTokens({ access_token: 'a', refresh_token: 'b', expires_at: 0 })
+  it('clears passphrase, athlete and legacy tokens', async () => {
+    await repo.setPassphrase('secret')
     await repo.setAthlete({
       id: 1,
       firstname: 'J',
@@ -60,44 +66,10 @@ describe('createAuthRepository', () => {
       country: '',
     })
     await repo.clear()
-    expect(adapter.remove).toHaveBeenCalledWith(STORAGE_KEYS.AUTH_TOKENS)
+    expect(adapter.remove).toHaveBeenCalledWith(STORAGE_KEYS.AUTH_PASSPHRASE)
     expect(adapter.remove).toHaveBeenCalledWith(STORAGE_KEYS.AUTH_ATHLETE)
-  })
-
-  describe('isTokenExpired', () => {
-    it('returns true when no tokens exist', async () => {
-      expect(await repo.isTokenExpired()).toBe(true)
-    })
-
-    it('returns true when token is expired', async () => {
-      const pastExpiry = Math.floor(Date.now() / 1000) - 120
-      await repo.setTokens({
-        access_token: 'a',
-        refresh_token: 'b',
-        expires_at: pastExpiry,
-      })
-      expect(await repo.isTokenExpired()).toBe(true)
-    })
-
-    it('returns true within 60 second buffer', async () => {
-      // Token expires 30 seconds from now — within the 60s buffer
-      const almostExpired = Math.floor(Date.now() / 1000) + 30
-      await repo.setTokens({
-        access_token: 'a',
-        refresh_token: 'b',
-        expires_at: almostExpired,
-      })
-      expect(await repo.isTokenExpired()).toBe(true)
-    })
-
-    it('returns false when token is fresh', async () => {
-      const futureExpiry = Math.floor(Date.now() / 1000) + 3600
-      await repo.setTokens({
-        access_token: 'a',
-        refresh_token: 'b',
-        expires_at: futureExpiry,
-      })
-      expect(await repo.isTokenExpired()).toBe(false)
-    })
+    expect(adapter.remove).toHaveBeenCalledWith(STORAGE_KEYS.LEGACY_AUTH_TOKENS)
+    expect(await repo.getPassphrase()).toBeNull()
+    expect(await repo.getAthlete()).toBeNull()
   })
 })

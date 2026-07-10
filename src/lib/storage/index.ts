@@ -5,7 +5,6 @@ import { createAuthRepository } from './repositories/auth'
 export type {
   StorageAdapter,
   AuthRepository,
-  StravaTokens,
   StravaAthlete,
 } from './types'
 

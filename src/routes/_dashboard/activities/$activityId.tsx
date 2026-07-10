@@ -2,17 +2,14 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState, useEffect, useMemo } from 'react'
 import { useDashboard } from '~/lib/dashboard-context'
 import { storage } from '~/lib/storage'
-import { fetchStravaActivity, fetchStravaStreams } from '~/lib/server-functions'
-import { refreshStravaToken } from '~/lib/server-functions'
+import { fetchIntervalsActivityDetails } from '~/lib/server-functions'
+import { isIntervalsActivityId } from '~/lib/intervals'
 import {
-  type StravaDetailedActivity,
   type ActivityDetailsJson,
   metersToKm,
   secondsToHMS,
   calculatePace,
   formatPace,
-  computePowerPerKm,
-  computePowerCurve,
 } from '~/lib/strava'
 import {
   fetchCachedActivityDetails,
@@ -65,64 +62,18 @@ function ActivityDetailPage() {
   // Find summary data from context
   const summary = activities.find((a) => a.id === Number(activityId))
 
-  async function fetchFromStrava(id: number, hasPower?: boolean) {
-    const tokens = await storage.auth.getTokens()
-    if (!tokens) return null
+  // Details are only fetchable for intervals.icu activities; legacy Strava-era
+  // activities rely entirely on the cached details from before the cutover.
+  async function fetchFromIntervals(id: number) {
+    if (!isIntervalsActivityId(id)) return null
 
-    let currentTokens = tokens
-    if (await storage.auth.isTokenExpired()) {
-      currentTokens = await refreshStravaToken({ data: { refreshToken: tokens.refresh_token } })
-      await storage.auth.setTokens(currentTokens)
-    }
+    const passphrase = await storage.auth.getPassphrase()
+    if (!passphrase) return null
 
-    const detailed: StravaDetailedActivity = await fetchStravaActivity({
-      data: { accessToken: currentTokens.access_token, activityId: id },
+    const detailsJson = await fetchIntervalsActivityDetails({
+      data: { passphrase, activityId: id },
     })
-
-    const primaryPhoto = detailed.photos?.primary?.urls
-    const photoUrl = primaryPhoto
-      ? primaryPhoto['600'] || primaryPhoto['100'] || Object.values(primaryPhoto)[0] || null
-      : null
-
-    // Fetch power streams if activity has watts (check both detailed and summary)
-    let powerPerKm: number[] | undefined
-    let powerCurve: Record<number, number> | undefined
-    if (detailed.average_watts || detailed.device_watts || hasPower) {
-      try {
-        const streams = await fetchStravaStreams({
-          data: { accessToken: currentTokens.access_token, activityId: id, keys: ['watts', 'distance', 'time'] },
-        })
-        if (streams.watts?.length && streams.distance?.length) {
-          powerPerKm = computePowerPerKm(streams.distance, streams.watts)
-        }
-        if (streams.watts?.length && streams.time?.length) {
-          powerCurve = computePowerCurve(streams.time, streams.watts)
-        }
-      } catch (err) {
-        console.warn('Failed to fetch power streams:', err)
-      }
-    }
-
-    const detailsJson: ActivityDetailsJson = {
-      calories: detailed.calories,
-      device_name: detailed.device_name,
-      description: detailed.description || null,
-      workout_type: detailed.workout_type ?? null,
-      average_temp: detailed.average_temp,
-      perceived_exertion: detailed.perceived_exertion ?? null,
-      achievement_count: detailed.achievement_count ?? 0,
-      kudos_count: detailed.kudos_count ?? 0,
-      comment_count: detailed.comment_count ?? 0,
-      gear_name: detailed.gear?.name || null,
-      segment_efforts: detailed.segment_efforts || [],
-      splits_metric: detailed.splits_metric || [],
-      laps: detailed.laps || [],
-      best_efforts: detailed.best_efforts || [],
-      summary_polyline: detailed.map?.summary_polyline || null,
-      photo_url: photoUrl,
-      power_per_km: powerPerKm,
-      power_curve: powerCurve,
-    }
+    if (!detailsJson) return null
 
     setDetails(detailsJson)
 
@@ -147,10 +98,9 @@ function ActivityDetailPage() {
         }
       }
 
-      // Fetch from Strava API
+      // Fetch from intervals.icu
       try {
-        const hasPower = !!activities.find((a) => a.id === id)?.average_watts
-        await fetchFromStrava(id, hasPower)
+        await fetchFromIntervals(id)
       } catch (err) {
         console.error('Failed to load activity details:', err)
       } finally {
@@ -161,15 +111,19 @@ function ActivityDetailPage() {
     loadDetails()
   }, [activityId])
 
+  const canRefresh = isIntervalsActivityId(Number(activityId))
+
   async function handleRefresh() {
     const id = Number(activityId)
-    const hasPower = !!activities.find((a) => a.id === id)?.average_watts
+    // Never clear cached details for legacy Strava activities — they can't be
+    // re-fetched from anywhere.
+    if (!isIntervalsActivityId(id)) return
     setRefreshing(true)
     try {
       if (isSupabaseConfigured()) {
         await clearCachedActivityDetails(id)
       }
-      await fetchFromStrava(id, hasPower)
+      await fetchFromIntervals(id)
     } catch (err) {
       console.error('Failed to refresh activity details:', err)
     } finally {
@@ -238,11 +192,12 @@ function ActivityDetailPage() {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {canRefresh && (
             <button
               onClick={handleRefresh}
               disabled={refreshing || loading}
               className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-[var(--radius-sm)] text-[0.7rem] font-semibold text-text-muted hover:text-text-primary hover:bg-bg-tertiary transition-colors disabled:opacity-50"
-              title="Re-fetch from Strava"
+              title="Re-fetch from intervals.icu"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={refreshing ? 'animate-spin' : ''}>
                 <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
@@ -252,6 +207,7 @@ function ActivityDetailPage() {
               </svg>
               {refreshing ? 'Refreshing...' : 'Refresh'}
             </button>
+            )}
             {details?.workout_type != null && details.workout_type > 0 && (
               <span className="inline-block py-1.5 px-3 rounded-[var(--radius-sm)] text-[0.7rem] font-semibold uppercase tracking-wide bg-warning-muted text-warning">
                 {workoutTypeLabel(summary.type, details.workout_type)}

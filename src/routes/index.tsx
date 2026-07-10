@@ -1,8 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { storage } from '~/lib/storage'
-import { getStravaAuthUrl } from '~/lib/server-functions'
-import { LoginButton } from '~/components/LoginButton'
+import { verifyPassphrase } from '~/lib/server-functions'
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -11,15 +10,18 @@ export const Route = createFileRoute('/')({
 function Home() {
   const navigate = useNavigate()
   const [isChecking, setIsChecking] = useState(true)
+  const [passphrase, setPassphrase] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     async function checkAuth() {
-      const [tokens, athlete] = await Promise.all([
-        storage.auth.getTokens(),
+      const [storedPassphrase, athlete] = await Promise.all([
+        storage.auth.getPassphrase(),
         storage.auth.getAthlete(),
       ])
 
-      if (tokens && athlete) {
+      if (storedPassphrase && athlete) {
         navigate({ to: '/overview' })
       } else {
         setIsChecking(false)
@@ -29,9 +31,24 @@ function Home() {
     checkAuth()
   }, [navigate])
 
-  const handleLogin = async () => {
-    const authUrl = await getStravaAuthUrl()
-    window.location.href = authUrl
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!passphrase.trim() || isSubmitting) return
+
+    setIsSubmitting(true)
+    setError(null)
+    try {
+      const athlete = await verifyPassphrase({ data: { passphrase } })
+      await Promise.all([
+        storage.auth.setPassphrase(passphrase),
+        storage.auth.setAthlete(athlete),
+      ])
+      navigate({ to: '/overview' })
+    } catch (err) {
+      console.error('Login failed:', err)
+      setError('Wrong passphrase. Try again.')
+      setIsSubmitting(false)
+    }
   }
 
   if (isChecking) {
@@ -75,9 +92,28 @@ function Home() {
             Precision analytics for your training data
           </p>
         </div>
-        <LoginButton onClick={handleLogin} />
+        <form onSubmit={handleSubmit} className="flex flex-col items-center gap-4 w-full max-w-[320px]">
+          <input
+            type="password"
+            value={passphrase}
+            onChange={(e) => setPassphrase(e.target.value)}
+            placeholder="Passphrase"
+            autoFocus
+            className="w-full py-3.5 px-5 bg-bg-secondary/80 border border-border-subtle rounded-[var(--radius-md)] text-text-primary text-center text-base placeholder:text-text-muted focus:outline-none focus:border-accent/60 focus:shadow-[0_0_0_3px_rgba(20,184,166,0.15)] transition-all"
+          />
+          <button
+            type="submit"
+            disabled={!passphrase.trim() || isSubmitting}
+            className="group relative flex items-center justify-center gap-3 w-full bg-linear-to-br from-accent to-accent-dark text-white border border-accent/30 py-3.5 px-10 text-base font-semibold rounded-[var(--radius-md)] cursor-pointer transition-all duration-300 shadow-[0_4px_16px_rgba(20,184,166,0.25)] hover:-translate-y-0.5 hover:shadow-[0_8px_32px_rgba(20,184,166,0.35)] active:translate-y-0 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+          >
+            {isSubmitting ? 'Unlocking...' : 'Unlock'}
+          </button>
+          {error && (
+            <p className="text-danger text-sm bg-danger-muted px-4 py-2 rounded-[var(--radius-sm)]">{error}</p>
+          )}
+        </form>
         <p className="text-text-muted text-xs tracking-wide mt-2">
-          Connects securely with your Strava account
+          Training data synced from Garmin via intervals.icu
         </p>
       </div>
     </div>
