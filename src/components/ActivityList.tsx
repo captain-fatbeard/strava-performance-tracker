@@ -16,6 +16,18 @@ interface ActivityListProps {
 type SortColumn = 'date' | 'type' | 'distance' | 'time' | 'elevation' | 'power' | 'hr' | 'score' | 'category' | null
 type SortDirection = 'asc' | 'desc'
 
+type TypeFilter = 'all' | 'ride' | 'zwift' | 'run'
+type CategoryFilter = 'all' | 'training' | 'performance'
+type ScoreFilter = 'all' | 'Easy' | 'Moderate' | 'Solid' | 'Hard' | 'Epic'
+
+const DISTANCE_OPTIONS = [
+  { value: 0, label: 'Any distance' },
+  { value: 20, label: '20+ km' },
+  { value: 40, label: '40+ km' },
+  { value: 60, label: '60+ km' },
+  { value: 80, label: '80+ km' },
+] as const
+
 interface MergedActivity {
   type: 'single'
   activity: StravaActivity
@@ -89,6 +101,35 @@ export function ActivityList({ activities }: ActivityListProps) {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [page, setPage] = useState(1)
 
+  // Filters
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
+  const [scoreFilter, setScoreFilter] = useState<ScoreFilter>('all')
+  const [minDistanceKm, setMinDistanceKm] = useState(0)
+  const [yearFilter, setYearFilter] = useState<'all' | string>('all')
+
+  const hasActiveFilters =
+    typeFilter !== 'all' ||
+    categoryFilter !== 'all' ||
+    scoreFilter !== 'all' ||
+    minDistanceKm > 0 ||
+    yearFilter !== 'all'
+
+  const clearFilters = useCallback(() => {
+    setTypeFilter('all')
+    setCategoryFilter('all')
+    setScoreFilter('all')
+    setMinDistanceKm(0)
+    setYearFilter('all')
+  }, [])
+
+  // Years present in the data, newest first
+  const availableYears = useMemo(() => {
+    const years = new Set<string>()
+    for (const a of activities) years.add(a.start_date_local.slice(0, 4))
+    return Array.from(years).sort().reverse()
+  }, [activities])
+
   const scoreMap = useMemo(() => {
     const rides = activities.filter(isRide)
     const ftp = estimateFTP(rides) || 0
@@ -97,6 +138,26 @@ export function ActivityList({ activities }: ActivityListProps) {
     for (const s of scores) map.set(s.activityId, s.rideScore)
     return map
   }, [activities])
+
+  const matchesFilters = useCallback(
+    (a: StravaActivity): boolean => {
+      if (typeFilter === 'ride' && a.type !== 'Ride') return false
+      if (typeFilter === 'zwift' && a.type !== 'VirtualRide') return false
+      if (typeFilter === 'run' && a.type !== 'Run') return false
+      if (categoryFilter !== 'all') {
+        const isTraining = trainingActivityIds.includes(a.id)
+        if ((categoryFilter === 'training') !== isTraining) return false
+      }
+      if (scoreFilter !== 'all') {
+        const score = scoreMap.get(a.id)
+        if (score == null || getScoreLabel(score) !== scoreFilter) return false
+      }
+      if (minDistanceKm > 0 && metersToKm(a.distance) < minDistanceKm) return false
+      if (yearFilter !== 'all' && !a.start_date_local.startsWith(yearFilter)) return false
+      return true
+    },
+    [typeFilter, categoryFilter, scoreFilter, minDistanceKm, yearFilter, trainingActivityIds, scoreMap]
+  )
 
   // Build grouped activity IDs set for quick lookup
   const groupedActivityIds = useMemo(() => {
@@ -115,7 +176,8 @@ export function ActivityList({ activities }: ActivityListProps) {
 
     const query = searchQuery.toLowerCase().trim()
 
-    // Add groups (only if they have visible activities)
+    // Add groups (only if they have visible activities). A group stays
+    // visible when any member matches the active filters.
     for (const group of activityGroups) {
       const merged = aggregateGroup(group, activities)
       if (merged.activities.length > 0) {
@@ -123,6 +185,7 @@ export function ActivityList({ activities }: ActivityListProps) {
             !merged.activities.some((a) => a.name.toLowerCase().includes(query))) {
           continue
         }
+        if (!merged.activities.some(matchesFilters)) continue
         items.push(merged)
       }
     }
@@ -131,6 +194,7 @@ export function ActivityList({ activities }: ActivityListProps) {
     for (const activity of activities) {
       if (!groupedActivityIds.has(activity.id)) {
         if (query && !activity.name.toLowerCase().includes(query)) continue
+        if (!matchesFilters(activity)) continue
         items.push({ type: 'single', activity })
       }
     }
@@ -178,12 +242,12 @@ export function ActivityList({ activities }: ActivityListProps) {
     items.sort((a, b) => (getSortValue(a, activeCol) - getSortValue(b, activeCol)) * dir)
 
     return items
-  }, [activities, activityGroups, groupedActivityIds, searchQuery, sortColumn, sortDirection, scoreMap, trainingActivityIds])
+  }, [activities, activityGroups, groupedActivityIds, searchQuery, sortColumn, sortDirection, scoreMap, trainingActivityIds, matchesFilters])
 
   // Reset to first page when filters/sort change.
   useEffect(() => {
     setPage(1)
-  }, [searchQuery, sortColumn, sortDirection])
+  }, [searchQuery, sortColumn, sortDirection, typeFilter, categoryFilter, scoreFilter, minDistanceKm, yearFilter])
 
   const pagedItems = useMemo(
     () => listItems.slice((page - 1) * ACTIVITIES_PAGE_SIZE, page * ACTIVITIES_PAGE_SIZE),
@@ -280,12 +344,13 @@ export function ActivityList({ activities }: ActivityListProps) {
 
   const thClass = "text-left p-4 px-5 bg-bg-tertiary text-text-muted font-semibold uppercase text-[0.7rem] tracking-wider max-md:px-2 max-md:py-2.5"
   const tdClass = "p-4 px-5 border-b border-border-subtle max-md:px-2 max-md:py-2.5"
+  const filterSelectClass = "custom-select bg-bg-tertiary border border-border text-text-secondary py-1.5 pr-8 pl-3 rounded-[var(--radius-sm)] text-[0.75rem] cursor-pointer transition-all duration-150 hover:border-text-muted focus:outline-none focus:border-accent focus:ring-3 focus:ring-accent/15 shrink-0"
 
   return (
     <>
-      {/* Toolbar: search + group toggle */}
-      <div className="flex items-center gap-3 mb-3">
-        <div className="relative flex-1 max-w-[300px]">
+      {/* Toolbar: search + filters + group toggle */}
+      <div className="flex items-center gap-3 mb-3 flex-wrap">
+        <div className="relative flex-1 min-w-[180px] max-w-[300px]">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="11" cy="11" r="8" />
             <path d="M21 21l-4.35-4.35" />
@@ -298,21 +363,111 @@ export function ActivityList({ activities }: ActivityListProps) {
             className="w-full bg-bg-tertiary border border-border text-text-primary py-1.5 pl-9 pr-3 rounded-[var(--radius-sm)] text-[0.8rem] transition-all duration-150 hover:border-text-muted focus:outline-none focus:border-accent focus:ring-3 focus:ring-accent/15"
           />
         </div>
-        <button
-          className={`py-1.5 px-4 rounded-[var(--radius-sm)] text-[0.8rem] font-semibold cursor-pointer transition-all duration-150 ${
-            groupMode
-              ? 'bg-accent text-white hover:bg-accent-dark'
-              : 'bg-bg-tertiary border border-border text-text-secondary hover:bg-bg-elevated hover:text-text-primary'
-          }`}
-          onClick={toggleGroupMode}
+
+        {/* Type segmented control */}
+        <div className="flex rounded-[var(--radius-sm)] border border-border overflow-hidden shrink-0">
+          {(
+            [
+              ['all', 'All'],
+              ['ride', 'Rides'],
+              ['zwift', 'Zwift'],
+              ['run', 'Runs'],
+            ] as Array<[TypeFilter, string]>
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              onClick={() => setTypeFilter(value)}
+              className={`py-1.5 px-3 text-[0.75rem] font-semibold cursor-pointer transition-all duration-150 not-first:border-l not-first:border-border ${
+                typeFilter === value
+                  ? 'bg-accent/15 text-accent'
+                  : 'bg-bg-tertiary text-text-muted hover:text-text-primary hover:bg-bg-elevated'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
+          className={filterSelectClass}
+          title="Filter by category"
         >
-          {groupMode ? 'Grouping On' : 'Group Activities'}
-        </button>
-        {groupMode && selectedIds.size > 0 && (
-          <span className="text-sm text-text-muted animate-fade-in">
-            {selectedIds.size} selected
+          <option value="all">All categories</option>
+          <option value="training">Training</option>
+          <option value="performance">Performance</option>
+        </select>
+
+        <select
+          value={scoreFilter}
+          onChange={(e) => setScoreFilter(e.target.value as ScoreFilter)}
+          className={filterSelectClass}
+          title="Filter by ride score"
+        >
+          <option value="all">Any score</option>
+          <option value="Easy">Easy</option>
+          <option value="Moderate">Moderate</option>
+          <option value="Solid">Solid</option>
+          <option value="Hard">Hard</option>
+          <option value="Epic">Epic</option>
+        </select>
+
+        <select
+          value={minDistanceKm}
+          onChange={(e) => setMinDistanceKm(Number(e.target.value))}
+          className={filterSelectClass}
+          title="Filter by minimum distance"
+        >
+          {DISTANCE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+
+        <select
+          value={yearFilter}
+          onChange={(e) => setYearFilter(e.target.value)}
+          className={filterSelectClass}
+          title="Filter by year"
+        >
+          <option value="all">All years</option>
+          {availableYears.map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+
+        {hasActiveFilters && (
+          <button
+            onClick={clearFilters}
+            className="py-1.5 px-3 rounded-[var(--radius-sm)] text-[0.75rem] font-semibold cursor-pointer text-text-muted hover:text-text-primary bg-bg-tertiary border border-border hover:border-text-muted transition-all duration-150"
+          >
+            ✕ Clear
+          </button>
+        )}
+
+        {(hasActiveFilters || searchQuery.trim()) && (
+          <span className="text-[0.75rem] text-text-muted data-value">
+            {listItems.length} result{listItems.length === 1 ? '' : 's'}
           </span>
         )}
+
+        <div className="ml-auto flex items-center gap-3">
+          <button
+            className={`py-1.5 px-4 rounded-[var(--radius-sm)] text-[0.8rem] font-semibold cursor-pointer transition-all duration-150 ${
+              groupMode
+                ? 'bg-accent text-white hover:bg-accent-dark'
+                : 'bg-bg-tertiary border border-border text-text-secondary hover:bg-bg-elevated hover:text-text-primary'
+            }`}
+            onClick={toggleGroupMode}
+          >
+            {groupMode ? 'Grouping On' : 'Group Activities'}
+          </button>
+          {groupMode && selectedIds.size > 0 && (
+            <span className="text-sm text-text-muted animate-fade-in">
+              {selectedIds.size} selected
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Group name modal */}
@@ -397,6 +552,13 @@ export function ActivityList({ activities }: ActivityListProps) {
             </tr>
           </thead>
           <tbody>
+            {pagedItems.length === 0 && (
+              <tr>
+                <td colSpan={11} className="p-8 text-center text-text-muted text-sm">
+                  No activities match the current filters.
+                </td>
+              </tr>
+            )}
             {pagedItems.map((item) => {
               if (item.type === 'group') {
                 const isExpanded = expandedGroups.has(item.group.id)
