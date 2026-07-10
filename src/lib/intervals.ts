@@ -175,6 +175,19 @@ export function dedupeAgainstExisting(
   })
 }
 
+// Self-heal: ids of intervals.icu-sourced activities that duplicate a
+// Strava-era activity (same type, started within the duplicate window).
+// These can appear if a sync ever ran against an incomplete view of the
+// cache; the Strava copy wins since it carries details and power estimates.
+export function findIntervalsDuplicateIds(activities: StravaActivity[]): number[] {
+  const stravaEra = activities.filter((a) => !isIntervalsActivityId(a.id))
+  const intervalsEra = activities.filter((a) => isIntervalsActivityId(a.id))
+  if (stravaEra.length === 0 || intervalsEra.length === 0) return []
+
+  const kept = new Set(dedupeAgainstExisting(intervalsEra, stravaEra).map((a) => a.id))
+  return intervalsEra.filter((a) => !kept.has(a.id)).map((a) => a.id)
+}
+
 // Google encoded polyline (precision 5), as used by Strava's summary_polyline.
 export function encodePolyline(points: Array<[number, number]>): string {
   let result = ''

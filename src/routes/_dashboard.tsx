@@ -7,7 +7,7 @@ import {
   type ActivityType,
 } from '~/lib/storage/supabase-client'
 import { fetchIntervalsActivities, fetchIntervalsActivityDetails } from '~/lib/server-functions'
-import { dedupeAgainstExisting, isIntervalsActivityId } from '~/lib/intervals'
+import { dedupeAgainstExisting, isIntervalsActivityId, findIntervalsDuplicateIds } from '~/lib/intervals'
 import { type StravaActivity, type StravaAthlete, metersToKm } from '~/lib/strava'
 import { estimateFTP, calculateMaxHR, calculateRestingHR, calculateAge } from '~/lib/performance'
 import { deriveThresholds } from '~/lib/tss'
@@ -27,6 +27,7 @@ import {
   removeTrainingActivity,
   fetchCachedActivities,
   upsertActivities,
+  deleteActivities,
   cacheActivityDetails,
   fetchActivityIdsWithoutDetails,
   isSupabaseConfigured,
@@ -218,6 +219,12 @@ function DashboardLayout() {
   // Kept in sync manually wherever activities are set from async flows.
   const activitiesRef = useRef<StravaActivity[]>([])
 
+  // True only after the cached-activities query has SUCCEEDED (an empty cache
+  // is fine; a failed query is not). Sync must never write results back while
+  // this is false — deduplication against an incomplete view of the cache
+  // permanently duplicates every activity that exists under a Strava id.
+  const cacheHealthyRef = useRef(false)
+
   const applyActivities = useCallback((merged: StravaActivity[]) => {
     activitiesRef.current = merged
     setActivities(merged)
@@ -265,7 +272,7 @@ function DashboardLayout() {
         )
       )
 
-      if (isSupabaseConfigured() && fresh.length > 0) {
+      if (isSupabaseConfigured() && cacheHealthyRef.current && fresh.length > 0) {
         upsertActivities(storedAthlete.id, fresh)
       }
     },
@@ -411,13 +418,34 @@ function DashboardLayout() {
         setTrainingActivityIds(trainingIds)
         setActivityGroups(groups)
 
-        // If we have cached data, show it immediately
-        if (cachedActivities.length > 0) {
-          hasCachedData = true
-          activitiesRef.current = cachedActivities
-          setActivities(cachedActivities)
-          setIsLoading(false)
+        // null = query failed → cache state unknown, sync stays read-only
+        if (cachedActivities !== null) {
+          cacheHealthyRef.current = true
+
+          // Self-heal: drop intervals.icu copies that duplicate a Strava-era
+          // activity (can happen if a past sync ran against a failed cache
+          // read) and delete them from Supabase.
+          const duplicateIds = findIntervalsDuplicateIds(cachedActivities)
+          const cleaned =
+            duplicateIds.length > 0
+              ? cachedActivities.filter((a) => !duplicateIds.includes(a.id))
+              : cachedActivities
+          if (duplicateIds.length > 0) {
+            console.warn(`Removing ${duplicateIds.length} duplicate activities`)
+            deleteActivities(storedAthlete.id, duplicateIds)
+          }
+
+          // If we have cached data, show it immediately
+          if (cleaned.length > 0) {
+            hasCachedData = true
+            activitiesRef.current = cleaned
+            setActivities(cleaned)
+            setIsLoading(false)
+          }
         }
+      } else {
+        // No Supabase at all — nothing to corrupt, sync freely
+        cacheHealthyRef.current = true
       }
       settingsLoaded.current = true
 

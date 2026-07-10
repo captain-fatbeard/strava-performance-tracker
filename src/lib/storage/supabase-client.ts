@@ -459,7 +459,11 @@ function rowToActivity(row: ActivityRow): StravaActivity {
   }
 }
 
-export async function fetchCachedActivities(athleteId: number): Promise<StravaActivity[]> {
+// Returns null when the query FAILS, as opposed to an empty array for a
+// genuinely empty cache. Callers must treat null as "cache state unknown" and
+// avoid writing sync results back — deduplication against a partial view of
+// the cache creates permanent duplicate rows.
+export async function fetchCachedActivities(athleteId: number): Promise<StravaActivity[] | null> {
   if (!supabase) return []
 
   try {
@@ -471,13 +475,34 @@ export async function fetchCachedActivities(athleteId: number): Promise<StravaAc
 
     if (error) {
       console.warn('Supabase fetch cached activities error:', error.message)
-      return []
+      return null
     }
 
     return (data as ActivityRow[]).map(rowToActivity)
   } catch (err) {
     console.warn('Supabase fetch cached activities error:', err)
-    return []
+    return null
+  }
+}
+
+export async function deleteActivities(athleteId: number, ids: number[]): Promise<boolean> {
+  if (!supabase || ids.length === 0) return false
+
+  try {
+    const { error } = await supabase
+      .from('activities')
+      .delete()
+      .eq('athlete_id', athleteId)
+      .in('id', ids)
+
+    if (error) {
+      console.warn('Supabase delete activities error:', error.message)
+      return false
+    }
+    return true
+  } catch (err) {
+    console.warn('Supabase delete activities error:', err)
+    return false
   }
 }
 

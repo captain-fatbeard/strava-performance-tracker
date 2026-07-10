@@ -6,6 +6,7 @@ import {
   fromIntervalsApiId,
   mapIntervalsActivity,
   dedupeAgainstExisting,
+  findIntervalsDuplicateIds,
   encodePolyline,
   computeSplitsFromStreams,
   estimatePowerStream,
@@ -153,6 +154,33 @@ describe('dedupeAgainstExisting', () => {
       ),
     ]
     expect(dedupeAgainstExisting(fetched, existing)).toHaveLength(1)
+  })
+})
+
+describe('findIntervalsDuplicateIds', () => {
+  it('flags intervals copies of Strava-era activities', () => {
+    const stravaRun = makeStravaActivity() // Run at 2026-06-29T17:12:56Z
+    const intervalsCopy = mapIntervalsActivity(
+      makeIntervalsActivity({ id: 'i164403943', type: 'Run', start_date: '2026-06-29T17:12:56Z' })
+    )
+    const legitNew = mapIntervalsActivity(
+      makeIntervalsActivity({ id: 'i164403999', type: 'Ride', start_date: '2026-07-09T09:15:02Z' })
+    )
+    const ids = findIntervalsDuplicateIds([stravaRun, intervalsCopy, legitNew])
+    expect(ids).toEqual([intervalsCopy.id])
+  })
+
+  it('returns empty when there is nothing to heal', () => {
+    const stravaRun = makeStravaActivity()
+    const legitNew = mapIntervalsActivity(makeIntervalsActivity())
+    expect(findIntervalsDuplicateIds([stravaRun, legitNew])).toEqual([])
+    expect(findIntervalsDuplicateIds([])).toEqual([])
+  })
+
+  it('never flags Strava-era activities themselves', () => {
+    const a = makeStravaActivity({ id: 1 })
+    const b = makeStravaActivity({ id: 2 }) // same time+type, both Strava-era
+    expect(findIntervalsDuplicateIds([a, b])).toEqual([])
   })
 })
 
